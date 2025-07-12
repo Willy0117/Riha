@@ -6,6 +6,7 @@ use App\Models\Customer; // ★★★ この行を追加 ★★★
 use Illuminate\Http\Request;
 use Inertia\Inertia; // ★★★ この行があることを確認 ★★★
 use Illuminate\Support\Facades\DB;
+use PDF;
 
 class CustomerController extends Controller
 {
@@ -203,5 +204,21 @@ class CustomerController extends Controller
 
         // IDが指定されていない場合はエラーメッセージを表示
         return redirect()->route('customers.index')->with('error', '削除する顧客が選択されていません。');
-    }    
+    } 
+    /**
+     * 顧客一覧をPDFとして出力する
+     *
+     * @return \Illuminate\Http\Response
+     */
+public function exportPdf()
+    {
+        $customers = Customer::all();
+        //$pdf = PDF::loadView('customers.pdf', compact('customers'));
+        //　横向けに出力する場合
+        $pdf = PDF::loadView('customers.pdf', compact('customers'))
+          ->setPaper('a4', 'landscape');  // 横向きに設定
+        // シンプルにファイル名だけ指定
+        return $pdf->stream('customer_list.pdf');
+    }
+
 }

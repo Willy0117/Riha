@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\PDFController; // PDFControllerをインポート
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -25,16 +26,17 @@ Route::middleware([
     // ★★★ ここから保険料シミュレーションのルートを追加 ★★★
     })->name('dashboard');
 
-Route::get('/greeting/{locale}', function($locale) {
-    session()->put('locale', $locale);
-    return redirect()->back();
-})->name('lang.change');
+    Route::get('/greeting/{locale}', function($locale) {
+        session()->put('locale', $locale);
+        return redirect()->back();
+    })->name('lang.change');
 
+    // 顧客一覧PDF出力ルート
 
-// ★★★ この行を追加 ★★★
+    Route::get('/customers/export/pdf', [CustomerController::class, 'exportPdf'])->name('customers.export.pdf');
+
     Route::delete('/customers/bulk-destroy', [CustomerController::class, 'bulkDestroy'])->name('customers.bulk-destroy');
 
-    // ★★★ ここに顧客管理のリソースルートを追加 ★★★
     Route::resource('customers', CustomerController::class);
 
 /*
@@ -56,4 +58,7 @@ Route::get('/insurance-simulation', function () {
 Route::get('/test-i18n', function () {
     return Inertia::render('TestI18n');
 })->name('test.i18n');// ★★★ ここまで追加 ★★★
+
+// シンプルなPDF表示テスト用のルート
+Route::get('/test-pdf', [PDFController::class, 'showSimplePdf'])->name('test.pdf');
 

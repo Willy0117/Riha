@@ -1,6 +1,7 @@
 <script setup>
 //import { ref, watch } from 'vue';
-import { ref } from 'vue';
+//import { ref } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import Banner from '@/Components/Banner.vue';
@@ -14,31 +15,43 @@ const { locale } = useI18n();
 
 const page = usePage();
 
-const currentLocale = ref(page.props.locale);
+// const currentLocale = ref(page.props.locale);
 
 const showingNavigationDropdown = ref(false);
+const { locale: i18nLocale } = useI18n();
 
-const handleLanguageChange = () => {
-    const newLocale = currentLocale.value; // v-modelで更新された値を取得
-    const targetUrl = route('lang.change', { locale: newLocale });
-    
-    console.log('Language Change requested. New locale:', newLocale);
-    console.log('Target URL:', targetUrl);
-
-    // router.visit を使うことで、ブラウザの完全なリロードに近い挙動をさせます。
-    // preserveState: false, preserveScroll: true は router.get と同じオプションです。
-    router.visit(targetUrl, {
-        method: 'get', // GET リクエストであることを明示
-        preserveState: false, 
-        preserveScroll: true,
-        // visit はデフォルトでフルページ訪問なので、これで十分なはずです
-    });
-};
-
-defineProps({
+const props = defineProps({
     title: String,
+//    currentLocale: { // Combined the prop definition here
+//        type: String,
+//        default: 'ja',
+//    },
 });
 
+watch(() => page.props.locale, (newLocale) => {
+    if (newLocale) {
+        i18nLocale.value = newLocale;
+        console.log('Vue I18n Global Locale updated to:', i18nLocale.value);
+    }
+}, { immediate: true });
+
+const changeLanguage = (targetLocale) => {
+    console.log('言語切り替えを試行中:', targetLocale); // デバッグ用ログ
+    // route() ヘルパーに渡すパラメータ名を 'locale' に統一します
+    router.visit(route('lang.change', { locale: targetLocale }), { // ← ここを { locale: targetLocale } に変更
+        preserveState: false, // ページ全体をリロード
+    });
+};
+/*
+const getLocalizedUrl = (targetLocale) => {
+    const currentUrl = new URL(page.url, window.location.origin);
+    currentUrl.searchParams.set('locale', targetLocale);
+
+    console.log(`Generated URL for ${targetLocale}:`, currentUrl.toString());
+
+    return currentUrl.toString();
+};
+*/
 const switchToTeam = (team) => {
     router.put(route('current-team.update'), {
         team_id: team.id,
@@ -50,6 +63,8 @@ const switchToTeam = (team) => {
 const logout = () => {
     router.post(route('logout'));
 };
+
+
 </script>
 
 <template>
@@ -86,15 +101,39 @@ const logout = () => {
                         </div>
 
                         <div class="hidden sm:flex sm:items-center sm:ms-6">
-                            <div class="ms-3 relative">
-                                <div class="language-switcher flex space-x-2">
-                                    <a :href="route('lang.change', { locale: 'en' })" class="px-3 py-2 border rounded-md text-sm font-medium hover:bg-gray-100">
-                                        {{ $t('app.english') }} <!-- 翻訳キーを使用 -->
-                                    </a>
-                                    <a :href="route('lang.change', { locale: 'ja' })" class="px-3 py-2 border rounded-md text-sm font-medium hover:bg-gray-100">
-                                        {{ $t('app.japanese') }} <!-- 翻訳キーを使用 -->
-                                    </a>
-                                </div>
+                             <div class="ms-3 relative">
+                                <Dropdown align="right" width="48">
+                                    <template #trigger>
+                                        <span class="inline-flex rounded-md">
+                                            <button type="button"
+                                                class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 bg-white hover:text-gray-700 focus:outline-none focus:bg-gray-50 active:bg-gray-50 transition ease-in-out duration-150"
+                                            >
+                                                {{ $page.props.locale === 'ja' ? '日本語' : 'English' }}
+                                                <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </span>
+                                    </template>
+
+                                    <template #content>
+                                        <DropdownLink
+                                            as="button"
+                                            @click="changeLanguage('ja')"
+                                            v-if="$page.props.locale !== 'ja'"
+                                        >
+                                            日本語
+                                        </DropdownLink>
+
+                                        <DropdownLink
+                                            as="button"
+                                            @click="changeLanguage('en')"
+                                            v-if="$page.props.locale !== 'en'"
+                                        >
+                                            English
+                                        </DropdownLink>
+                                    </template>
+                                </Dropdown>
                             </div>
                             <div class="ms-3 relative">
                                 <!-- Teams Dropdown -->

@@ -5,6 +5,9 @@ import Pagination from '@/Components/Pagination.vue';
 import { router } from '@inertiajs/vue3';
 import { ref, watch, computed } from 'vue';
 
+import Dropdown from '@/Components/Dropdown.vue';
+import DropdownLink from '@/Components/DropdownLink.vue';
+
 // コントローラーから渡される props を受け取る
 const props = defineProps({
     customers: Object,
@@ -172,6 +175,23 @@ const confirmAndDelete = (customerId, customerName) => {
                         placeholder="会社名、代表者名、担当者名で検索..."
                         class="w-64 max-w-xs border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm text-sm"
                     />
+                    <Dropdown align="right" width="48">
+                        <template #trigger>
+                            <button type="button"
+                                class="inline-flex items-center px-4 py-2 border border-transparent text-sm leading-5 font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition ease-in-out duration-150"
+                            >
+                                印刷
+                                <svg class="ml-2 -mr-0.5 h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+                        </template>
+                        <template #content>
+                            <a :href="route('customers.export.pdf')" target="_blank" rel="noopener noreferrer" class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">
+                            PDF出力
+                            </a>
+                        </template>
+                    </Dropdown>
 
                     <button
                         @click="bulkDelete"

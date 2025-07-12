@@ -3,10 +3,12 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\InsuranceSimulationController; // 追加
+use App\Http\Controllers\Api\CustomerController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
-// ★★★ ここから追加 ★★★
+
 Route::post('/calculate-premium', [InsuranceSimulationController::class, 'calculate']);
-// ★★★ ここまで追加 ★★★
+
+Route::get('/customers', [CustomerController::class, 'index']);
