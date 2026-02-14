@@ -13,6 +13,9 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Contracts\LogoutResponse;
+use App\Http\Responses\LogoutResponse as CustomLogoutResponse;
+
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -21,6 +24,10 @@ class FortifyServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
+        $this->app->singleton(
+            LogoutResponse::class,
+            CustomLogoutResponse::class
+        );
         //
     }
 
@@ -44,5 +51,16 @@ class FortifyServiceProvider extends ServiceProvider
         RateLimiter::for('two-factor', function (Request $request) {
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
+
+        Fortify::redirects('login', function () {
+            $user = auth()->user();
+
+            if ($user?->hasRole('admin') || $user?->hasRole('super_admin')) {
+                return '/admin/dashboard';
+            }
+
+            return '/dashboard';
+        });
+
     }
 }

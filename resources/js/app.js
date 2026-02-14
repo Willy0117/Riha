@@ -6,7 +6,28 @@ import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
 import { createI18n } from 'vue-i18n';
-//import messages from "./lang/messages.js";
+
+import en from '../lang/en.json';
+import ja from '../lang/ja.json';
+
+const messages = {
+    // 完全に純粋な JavaScript オブジェクトに変換
+    en: JSON.parse(JSON.stringify(en)),
+    ja: JSON.parse(JSON.stringify(ja))
+};
+//const messages = { en, ja };
+
+// Laravel セッションなどからデフォルト言語を取得（なければ 'en'）
+const defaultLocale = document.documentElement.lang || 'en';
+
+const i18n = createI18n({
+    legacy: false, // Composition API対応
+    locale: defaultLocale,
+    fallbackLocale: 'en',
+    messages,
+    escapeParameterHtml: true, 
+    warnHtmlMessage: false,
+});
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -14,21 +35,6 @@ createInertiaApp({
     title: (title) => `${title} - ${appName}`,
     resolve: (name) => resolvePageComponent(`./Pages/${name}.vue`, import.meta.glob('./Pages/**/*.vue')),
     setup({ el, App, props, plugin }) {
-
-        const initialLocale = props.initialPage.props.locale || 'ja'; // Laravelから渡されたロケールを優先
-        const initialTranslations = props.initialPage.props.language || {}; 
-
-        // vue-i18n のインスタンスを作成
-        const i18n = createI18n({
-            locale: initialLocale,
-            fallbackLocale: 'en',          // フォールバックロケールを設定
-            legacy: false,                 // Vue 3 Composition API で使用するために必須
-            messages: initialTranslations,
-            globalInjection: true,         // コンポーネント内で $t グローバルヘルパーを使えるようにする
-        });
-
-        i18n.global.locale.value = initialLocale;
-
         return createApp({ render: () => h(App, props) })
             .use(plugin)
             .use(ZiggyVue)

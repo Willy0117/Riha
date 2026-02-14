@@ -1,14 +1,14 @@
 <script setup>
-import { ref, watch, computed } from 'vue'
-import AppLayout from '@/Layouts/AppLayout.vue'
-import Welcome from '@/Components/Welcome.vue'
-import AutoCompleteInput from '@/Components/AutoCompleteInput.vue'
+import AppLayout from '@/Layouts/AppLayout.vue';
+import { useI18n } from 'vue-i18n'
+import RehabApplicationsTable from '@/Components/RehabApplicationsTable.vue'
+import { usePage } from '@inertiajs/vue3'
 
-const selectedCustomer = ref(null)
+const { t } = useI18n()
+const { props } = usePage()
 
-watch(selectedCustomer, (newVal) => {
-  console.log('👀 [Dashboard] selectedCustomer changed:', newVal)
-})
+const user = props.user
+const applications = props.applications
 
 </script>
 
@@ -16,30 +16,18 @@ watch(selectedCustomer, (newVal) => {
     <AppLayout title="Dashboard">
         <template #header>
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                Dashboard
+                {{ user.name }}
             </h2>
         </template>
-    <div class="p-6 max-w-md mx-auto">
-      <AutoCompleteInput
-        v-model="selectedCustomer"
-        labelKey="company_name"
-        placeholder="顧客名を入力してください"
-      />
-     <!-- デバッグ用: オブジェクトをそのまま表示 -->
-      <pre class="mt-4 bg-gray-100 p-2">
-        {{ selectedCustomer }}
-      </pre>      
-      <p class="mt-4">
-        選択中の顧客:
-        {{ selectedCustomer ? selectedCustomer.company_name : 'なし' }}
-      </p>
-      <!-- hiddenにIDや他フィールドも渡せます -->
-      <input type="hidden" name="customer_id" :value="selectedCustomer?.id || ''" />
-    </div>
+
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg">
-                    <Welcome />
+                <!-- 指導士申込状況セクション -->
+                    <section id="instructor-applications" class="bg-white shadow sm:rounded-lg p-6 mb-4">
+                    <h2 class="text-lg font-semibold mb-4">{{ t('instructor_application_status') }}</h2>
+
+                    </section>
                 </div>
             </div>
         </div>

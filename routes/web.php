@@ -2,18 +2,175 @@
 
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
-use Illuminate\Support\Facades\App;
 use Inertia\Inertia;
-use App\Http\Controllers\CustomerController;
-use App\Http\Controllers\PDFController; // PDFControllerをインポート
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 
-Route::get('/', function () {
-    return Inertia::render('Welcome', [
-        'canLogin' => Route::has('login'),
-        'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
-    ]);
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\SetLocaleController;
+use App\Http\Controllers\Admin\AuthController;
+use App\Http\Controllers\Admin\MemberController as AdminMemberController;
+use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
+use App\Http\Controllers\MemberController as MemberRegController;
+use App\Http\Controllers\BankSearchController;
+use App\Http\Controllers\PreRegister\PreRegisterController;
+use App\Http\Controllers\PreRegister\EmailVerifyController;
+use Laravel\Fortify\Fortify;
+use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
+
+Route::prefix('admin')->name('admin.')->group(function () {
+
+    // ログイン（Jetstream）
+    Route::get('/login', [AuthenticatedSessionController::class, 'create'])
+        ->middleware('guest')
+        ->name('login');
+
+    Route::post('/admin/login', [\App\Http\Controllers\Admin\LoginController::class, 'store'])
+        ->middleware('guest');
+
+    // 認証後
+    Route::middleware(['auth', 'role:admin|super_admin'])->group(function () {
+
+        Route::post('/logout', function () {
+            auth()->logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            return Inertia::location('/admin/login');
+        })->name('logout');
+        
+        Route::get('/dashboard', fn () => inertia('Admin/Dashboard'))
+            ->name('dashboard');
+        // Tenant
+        Route::resource('tenants', \App\Http\Controllers\Admin\TenantController::class);
+        Route::post('tenants/bulk-delete', [\App\Http\Controllers\Admin\TenantController::class, 'bulkDelete'])->name('tenants.bulkDelete');
+        // Role
+        Route::resource('roles', \App\Http\Controllers\Admin\RoleController::class);
+        Route::post('roles/bulk-delete', [\App\Http\Controllers\Admin\RoleController::class, 'bulkDelete'])->name('roles.bulkDelete');
+        // Permission
+        Route::resource('permissions', \App\Http\Controllers\Admin\PermissionController::class);
+        Route::post('permissions/bulk-delete', [\App\Http\Controllers\Admin\PermissionController::class, 'bulkDelete'])->name('permissions.bulkDelete');
+        Route::post('permissions/assign', [\App\Http\Controllers\Admin\PermissionController::class, 'assign'])->name('permissions.assign');
+        // user
+        Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+
+        Route::prefix('member')->name('member.')->group(function () {
+            Route::get('/', [AdminMemberController::class, 'index'])->name('index');
+            Route::get('/pdf/{id}', [AdminMemberController::class, 'pdfPreview'])->name('pdf.preview');
+            Route::get('/{member}', [AdminMemberController::class, 'show'])->name('show');
+            Route::get('/{member}/edit', [AdminMemberController::class, 'edit'])->name('edit');
+            Route::put('/{member}', [AdminMemberController::class, 'update'])->name('update');
+            // routes/admin.php
+            Route::get('{member}/status/edit', [AdminMemberController::class, 'editStatus'])
+                ->name('editStatus');
+
+            Route::put('{member}/status', [AdminMemberController::class, 'updateStatus'])
+                ->name('updateStatus');
+
+            Route::get('/{member}/progress/edit', [AdminMemberController::class, 'editProgress'])
+                ->name('editProgress');
+            Route::put('/{member}/progress', [AdminMemberController::class, 'updateProgress'])
+                ->name('updateProgress');
+            Route::post('/{member}/upload-document', [AdminMemberController::class, 'uploadDocument'])
+                ->name('uploadDocument');
+              
+        });
+    });
+});
+
+// メール仮登録
+Route::prefix('pre-register')->name('pre-register.')->group(function () {
+    // メール入力画面
+//  Route::get('/mail', function () { return inertia('PreRegister/Email'); })->name('mail');
+    Route::get('/mail', function (Request $request) {
+        return inertia('PreRegister/Email', [
+            'isAgent' => $request->has('agent'),
+        ]);
+    })->name('mail');    
+    // 仮登録 → メール送信
+    Route::post('/pre', [PreRegisterController::class, 'store'])->name('pre');
+    // メール確認
+    Route::get('/verify/{token}', [EmailVerifyController::class, 'verify'])->name('verify');
+    // メール完了
+    Route::get('/thanks', function () { return inertia('PreRegister/Thanks'); })->name('thanks'); 
+});
+
+
+Route::prefix('members')->group(function () {
+
+    Route::get('register/{token}', 
+        [MemberRegController::class, 'showRegistrationForm']
+    )->name('members.register');
+
+    Route::get('register/{token}/register', 
+        [MemberRegController::class, 'showRegisterForm']
+    )->name('members.register.register');
+
+    Route::post('register/{token}/register',[MemberRegController::class, 'register'])->name('members.register.register');
+
+    // DB登録・完了処理（POST データなしでも session から処理）
+    Route::get('register/{token}/complete-registration', [MemberRegController::class, 'completeRegistration'])
+        ->name('members.completeRegistration');
+
+    // 完了画面
+    Route::get('complete',[MemberRegController::class, 'showComplete'])->name('members.complete');
+
+    // 加盟団体加入で拒否された場合のメッセージ画面
+    Route::get('register/{token}/rejected', [MemberRegController::class, 'showRejectedMessage'])
+        ->name('members.register.rejected');
+
+    Route::get('resend', [MemberRegController::class, 'resend'])
+        ->name('members.resend');
+
+    Route::get('bank', [MemberRegController::class, 'bank'])
+        ->name('members.bank');
+
+    Route::get('pdfcreate', [MemberRegController::class, 'pdfCreate'])
+        ->name('members.pdfcreate');
+
+    Route::post('pdfgenerate/{token}', [MemberRegController::class, 'pdfGenerate']
+        )->name('members.pdfgenerate');
+/*
+    Route::post('pdfgenerate', [MemberRegController::class, 'pdfGenerate'])
+        ->name('members.pdfgenerate');   
+*/
+    Route::get('pdf-preview/{token}', 
+        [MemberRegController::class, 'pdfPreview']
+    )->name('members.pdf.preview');
+
+});
+
+Route::get('/banks/search', [BankSearchController::class, 'banks'])
+  ->name('banks.search');
+
+Route::get('/branches/search', [BankSearchController::class, 'branches'])
+  ->name('branches.search');
+
+  Route::get('/test', function () {
+    return Inertia::render('Test');
+});
+
+
+Route::get('/zipcode/{zip}', function ($zip) {
+    $zip = preg_replace('/[^0-9]/', '', $zip);
+
+    if (strlen($zip) !== 7) {
+        return response()->json(['results' => []]);
+    }
+
+    $response = Http::get(
+        'https://zipcloud.ibsnet.co.jp/api/search',
+        ['zipcode' => $zip]
+    );
+
+    return $response->json();
+});
+
+Route::post('/locale', function (Request $request) {
+    $locale = $request->input('locale', 'en');
+    session(['locale' => $locale]);
+    app()->setLocale($locale);
+    return response()->json(['status' => 'ok']);
 });
 
 Route::middleware([
@@ -21,44 +178,5 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function () {
-        return Inertia::render('Dashboard');
-    // ★★★ ここから保険料シミュレーションのルートを追加 ★★★
-    })->name('dashboard');
-
-    Route::get('/greeting/{locale}', function($locale) {
-        session()->put('locale', $locale);
-        return redirect()->back();
-    })->name('lang.change');
-
-    // 顧客一覧PDF出力ルート
-
-    Route::get('/customers/export/pdf', [CustomerController::class, 'exportPdf'])->name('customers.export.pdf');
-
-    Route::delete('/customers/bulk-destroy', [CustomerController::class, 'bulkDestroy'])->name('customers.bulk-destroy');
-
-    Route::resource('customers', CustomerController::class);
-
-/*
-    Route::get('/insurance-simulation', function () {
-        return Inertia::render('InsuranceSimulation');
-    })->name('insurance.simulation');
-*/
-    // ★★★ ここまで追加 ★★★    
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
-
-Route::get('/test', function () {
-    return Inertia::render('TestPage'); // TestPage.vue をレンダリング
-});
-
-Route::get('/insurance-simulation', function () {
-    return Inertia::render('InsuranceSimulation');
-})->name('insurance.simulation');
-
-Route::get('/test-i18n', function () {
-    return Inertia::render('TestI18n');
-})->name('test.i18n');// ★★★ ここまで追加 ★★★
-
-// シンプルなPDF表示テスト用のルート
-Route::get('/test-pdf', [PDFController::class, 'showSimplePdf'])->name('test.pdf');
-
