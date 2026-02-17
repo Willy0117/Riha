@@ -6,10 +6,13 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\BankCategoryController;
+use App\Http\Controllers\InsuranceSimulationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+Route::post('/calculate-premium', [InsuranceSimulationController::class, 'calculate']);
 
 Route::get('/banks', [BankController::class, 'index']);
 Route::get('/branches', [BankController::class, 'branches']);

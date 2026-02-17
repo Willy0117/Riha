@@ -20,25 +20,19 @@ use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
 Route::prefix('admin')->name('admin.')->group(function () {
 
-    // ログイン（Jetstream）
-    Route::get('/login', [AuthenticatedSessionController::class, 'create'])
-        ->middleware('guest')
-        ->name('login');
+    Route::middleware('guest:admin')->group(function () {
 
-    Route::post('/admin/login', [\App\Http\Controllers\Admin\LoginController::class, 'store'])
-        ->middleware('guest');
+        Route::get('/login', [\App\Http\Controllers\Admin\AuthController::class, 'showLogin'])->name('login');
+
+        Route::post('/login', [\App\Http\Controllers\Admin\AuthController::class, 'login'])->name('login.post');
+    });
 
     // 認証後
-    Route::middleware(['auth', 'role:admin|super_admin'])->group(function () {
+    Route::middleware(['auth:admin'])->group(function () {
 
-        Route::post('/logout', function () {
-            auth()->logout();
-            request()->session()->invalidate();
-            request()->session()->regenerateToken();
+        Route::post('/logout', [\App\Http\Controllers\Admin\AuthController::class, 'logout'])
+            ->name('logout');
 
-            return Inertia::location('/admin/login');
-        })->name('logout');
-        
         Route::get('/dashboard', fn () => inertia('Admin/Dashboard'))
             ->name('dashboard');
         // Tenant
@@ -77,6 +71,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         });
     });
 });
+
+// 未ログインユーザー用
+//Route::middleware('guest:web')->group(function () {
+//    Route::get('/login', [\App\Http\Controllers\Auth\LoginController::class, 'showLoginForm'])->name('login');
+//    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login']);
+//});
 
 // メール仮登録
 Route::prefix('pre-register')->name('pre-register.')->group(function () {
@@ -166,6 +166,10 @@ Route::get('/zipcode/{zip}', function ($zip) {
     return $response->json();
 });
 
+Route::get('/insurance-simulation', function () {
+    return Inertia::render('InsuranceSimulation');
+});
+
 Route::post('/locale', function (Request $request) {
     $locale = $request->input('locale', 'en');
     session(['locale' => $locale]);
@@ -174,9 +178,20 @@ Route::post('/locale', function (Request $request) {
 });
 
 Route::middleware([
+    'auth:web',
+    config('jetstream.auth_session'),
+    'verified',
+])->group(function () {
+    DD:
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+//    Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+});
+/*
+Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 });
+*/

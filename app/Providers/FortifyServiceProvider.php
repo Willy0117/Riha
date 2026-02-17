@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Inertia\Inertia;
 use App\Actions\Fortify\CreateNewUser;
 use App\Actions\Fortify\ResetUserPassword;
 use App\Actions\Fortify\UpdateUserPassword;
@@ -41,6 +42,20 @@ class FortifyServiceProvider extends ServiceProvider
         Fortify::updateUserPasswordsUsing(UpdateUserPassword::class);
         Fortify::resetUserPasswordsUsing(ResetUserPassword::class);
         Fortify::redirectUserForTwoFactorAuthenticationUsing(RedirectIfTwoFactorAuthenticatable::class);
+        // リクエストURLに基づいて、動的に使用するガードを書き換える
+//        if (request()->is('admin/*')) {
+//            config(['fortify.guard' => 'admin']);
+//        }
+        $guard = request()->is('admin', 'admin/*') ? 'admin' : 'web';
+        config(['fortify.guard' => $guard]);
+
+        // 管理者専用のログインページを表示
+        Fortify::loginView(function () {
+            if (request()->is('admin/login')) {
+                return Inertia::render('Admin/Login'); // コピーしたVue
+            }
+            return Inertia::render('Auth/Login');
+        });
 
         RateLimiter::for('login', function (Request $request) {
             $throttleKey = Str::transliterate(Str::lower($request->input(Fortify::username())).'|'.$request->ip());
@@ -53,12 +68,22 @@ class FortifyServiceProvider extends ServiceProvider
         });
 
         Fortify::redirects('login', function () {
-            $user = auth()->user();
-
-            if ($user?->hasRole('admin') || $user?->hasRole('super_admin')) {
+            // adminガードで認証されているか確認
+            if (auth()->guard('admin')->check()) {
+                var_dump(auth());
+                stop();
                 return '/admin/dashboard';
             }
 
+
+            $user = auth()->user();
+/*
+            if ($user?->hasRole('admin') || $user?->hasRole('super_admin')) {
+                return '/admin/dashboard';
+            }
+*/
+                var_dump(auth());
+                stop();
             return '/dashboard';
         });
 

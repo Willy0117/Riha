@@ -99,26 +99,14 @@
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
             <th v-if="isSuperAdmin">{{ t('tenant') }}</th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('type')">
-              {{ t('members.type') }}
-              <span v-if="form.sort_by==='type'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>            
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('agent')">
-              {{ t('members.agent') }}
-              <span v-if="form.sort_by==='agent'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>            
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('company_name')">
               {{ t('members.company_name') }}
               <span v-if="form.sort_by==='company_name'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('representative')">
-              {{ t('members.applicant') }}
-              <span v-if="form.sort_by==='representative'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <!-- 02.06 TEL 不要　th class="px-3 py-2 cursor-pointer" @click="sortBy('tel')">
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('tel')">
               {{ t('members.tel') }}
               <span v-if="form.sort_by==='tel'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th -->
+            </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('address')">
               {{ t('members.address') }}
               <span v-if="form.sort_by==='address'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
@@ -135,8 +123,6 @@
               {{ t('members.progress') }}
               <span v-if="form.sort_by==='progress_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 text-center">{{ t('members.history_certificate') }}</th>
-            <th class="px-3 py-2 text-center">{{ t('members.mail_address_certificate') }}</th>
             <th class="px-3 py-2 text-center">{{ t('actions') }}</th>
           </tr>
         </thead>
@@ -149,59 +135,22 @@
             <td v-if="isSuperAdmin">
               {{ tenants.find(t => t.id === member.tenant_id)?.name || '-' }}
             </td>            
-            <td class="px-3 py-2">{{ member.type ?? '-' }}</td>
-            <td class="px-3 py-2">{{ member.agent ?? '-' }}</td>
-            <td class="px-3 py-2">{{ member.organization?.name ?? '-' }}</td>
-            <td class="px-3 py-2">{{ member.name ?? '-' }}</td>
-            <!-- td class="px-3 py-2">{{ member.tel ?? '-' }}</td -->
-            <td class="px-3 py-2">{{ member.address ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.full_name ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.tel ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.full_address ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.created_at ? dayjs(member.created_at).format('YYYY/MM/DD') : '' }}</td>
             <td class="px-3 py-2">
               <span
                 class="cursor-pointer text-blue-600 hover:underline"
                 @click="openStatus(member)"
               >
-                {{ member.status.name }}
+                {{ member.status?.name }}
               </span>
-            </td>
-            <td v-if="props.filters?.status_id == 1" class="px-3 py-2">
-              <span
-                class="cursor-pointer text-blue-600 hover:underline"
-                @click="openProgress(member)"
-              >
-                {{ member.progress.name }}
-              </span>
-            </td>
-
-            <td class="px-3 py-2 text-center">
-              <img
-                v-if="member.history_certificate?.thumbnail_path"
-                :src="member.history_certificate.thumbnail_path"
-                class="w-10 h-10 object-contain border rounded cursor-pointer hover:opacity-80"
-                @click="openPdf(member.history_certificate.path)"
-              />
-              <span v-else class="text-gray-400 text-xs">-</span>
-            </td>
-
-            <td class="px-3 py-2 text-center">
-              <img
-                v-if="member.mail_address_certificate?.thumbnail_path"
-                :src="member.mail_address_certificate.thumbnail_path"
-                class="w-10 h-10 object-contain border rounded cursor-pointer hover:opacity-80"
-                @click="openPdf(member.mail_address_certificate.path)"
-              />
-              <span v-else class="text-gray-400 text-xs">-</span>
             </td>
             <td class="px-3 py-2 text-center flex justify-center space-x-1">
               <Link :href="route('admin.member.edit', { member: member.id, ...persistQuery() })" class="text-blue-500 hover:text-blue-700">
                 <PencilIcon class="w-4 h-4"/>
-              </Link -->
-              <button
-                @click="openUpload(member)"
-                class="text-green-500 hover:text-green-700"
-              >
-                <DocumentPlusIcon class="w-4 h-4"/>
-              </button>
+              </Link>
             </td>
           </tr>
         </tbody>
@@ -212,32 +161,7 @@
     </div>
 
     <div>
-      <DialogModal
-        :show="!!previewPdf"
-        maxWidth="7xl"
-        @close="previewPdf = null"
-      >
-        <template #title>
-          PDF プレビュー
-        </template>
-
-        <template #content>
-          <div class="w-[90vw] h-[80vh]">
-            <iframe
-              v-if="previewPdf"
-              :src="previewPdf"
-              class="w-full h-full border"
-            />
-          </div>
-        </template>
-
-        <template #footer>
-          <SecondaryButton @click="previewPdf = null">
-            閉じる
-          </SecondaryButton>
-        </template>
-      </DialogModal>
-
+ 
       <DialogModal :show="showStatusModal" @close="closeModal">
         <template #title>
           ステータス変更
@@ -268,88 +192,9 @@
         </template>
       </DialogModal>
 
-      <DialogModal :show="showProgressModal" @close="closeModal">
-        <template #title>
-              進捗訂正
-        </template>
-        <template #content>
-            <select
-              v-model="progressForm.progress_id"
-              class="w-full border rounded px-3 py-2"
-            >
-              <option
-                v-for="p in progresses"
-                :key="p.id"
-                :value="p.id"
-              >
-                {{ p.name }}
-              </option>
-            </select>
-        </template>
-        <template #footer>
-          <SecondaryButton @click="closeModal">
-            <v-spacer />
-            <v-btn text @click="showProgressModal = false">{{ t('cancel') }}</v-btn>
-          </SecondaryButton>
-          <PrimaryButton class="ms-3" @click="submitProgress">
-              {{ t('actions.update') }}
-          </PrimaryButton>
-        </template>
-      </DialogModal>
 
-      <DialogModal :show="showUploadModal" @close="closeModal">
-        <template #title>書類アップロード</template>
 
-        <template #content>
-          <!-- 書類種別 -->
-          <div class="mt-4">
-            <label class="block text-sm font-medium text-gray-700 mb-1">
-              書類種別
-            </label>
-
-            <select
-              v-model="uploadForm.type_id"
-              class="w-full border rounded px-3 py-2"
-            >
-              <option value="">選択してください</option>
-
-              <option
-                v-for="d in documentTypes"
-                :key="d.id"
-                :value="d.id"
-              >
-                {{ d.name }}
-              </option>
-            </select>
-          </div>
-
-          <!-- ドラッグ＆ドロップ領域 -->
-          <div
-            class="mt-4 p-4 border-2 border-dashed border-gray-300 rounded text-center cursor-pointer hover:border-gray-500"
-            @dragover.prevent
-            @dragenter.prevent
-            @drop.prevent="handleDrop"
-            @click="fileInput.click()"
-          >
-            <p v-if="!file">ここに PDF をドラッグするかクリックして選択</p>
-            <p v-else class="text-sm text-gray-700">選択中: {{ file.name }}</p>
-
-            <!-- hidden file input -->
-            <input
-              type="file"
-              ref="fileInput"
-              class="hidden"
-              accept="application/pdf"
-              @change="onFileChange"
-            />
-          </div>
-        </template>
-
-        <template #footer>
-          <SecondaryButton @click="closeModal">キャンセル</SecondaryButton>
-          <PrimaryButton @click="submitUpload">アップロード</PrimaryButton>
-        </template>
-      </DialogModal>      
+   
     </div>
   </AppLayout>
 </template>
@@ -374,16 +219,16 @@ const props = defineProps({
   user: Object,
   tenants: Array,
   statuses: Array,
-  processes: Array,
   filters: {
     type: Object,
     default: () => ({
-      company_name: '', representative: '', tel: '', tenant_id: '', status_id: 1,
+      company_name: '', tel: '', tenant_id: '', status_id: 1,
       per_page: 20, sort_by: 'created_at', sort_dir: 'desc', page: 1
     })
   }
 })
-console.log(props.filters)
+console.log(props.members)
+
 const { t } = useI18n()
 
 const isSuperAdmin = computed(() =>

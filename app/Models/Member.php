@@ -7,59 +7,29 @@ use Illuminate\Database\Eloquent\Model;
 class Member extends Model
 {
     protected $fillable = [
-        'type',
-        'last_name',
-        'first_name',
-        'last_name_kana',
-        'first_name_kana',
-        'agree',
-        'affiliate',
-        'agreed_at',
+        'name',
+        'tel',
         'status_id',
-        'progress_id',
-        'agent', 
+        'name_kana',
+        'name_prefix',
+        'name_suffix',
+        'postal_code',
+        'address1',
+        'address2',
+        'address3',
+        'mobile',
+        'fax',
+        'email',
     ];
-
-    protected $casts = [
-        'agent' => 'boolean',
-        'agree' => 'boolean',
-        'affiliate' => 'boolean',
-        'agreed_at' => 'datetime',
+    
+    protected $appends = [
+        'full_name',
+        'full_address',
     ];
 
     public function status()
     {
         return $this->belongsTo(Status::class);
-    }
-
-    public function progress()
-    {
-        return $this->belongsTo(Progress::class, 'progress_id'); 
-    }
-
-    public function organization()
-    {
-        return $this->hasOne(Organization::class);
-    }
-
-    public function organizations()
-    {
-        return $this->hasMany(Organization::class);
-    }
-
-    public function applicationOrganization()
-    {
-        return $this->hasOne(ApplicationOrganization::class);
-    }
-
-    public function applicationOrganizations()
-    {
-        return $this->hasMany(ApplicationOrganization::class);
-    }
-
-    public function getFullNameAttribute()
-    {
-        return trim($this->last_name . ' ' . $this->first_name);
     }
     
     public function bankAccount()
@@ -70,21 +40,27 @@ class Member extends Model
     /* =====================
      |  表示用ラベル
      * ===================== */
-
-    // 法人 / 個人事業主
-    public function getTypeLabelAttribute(): string
+    public function getFullNameAttribute()
     {
-        return match ($this->type) {
-            'corporation' => '法人',
-            'solo' => '個人事業主',
-            default => '-',
-        };
+        return trim(
+            ($this->name_prefix ?? '') .
+            ($this->name ?? '') .
+            ($this->name_suffix ?? '')
+        );
     }
 
-    // 代理人申請 / 本人申請
-    public function getAgentLabelAttribute(): string
+    public function documents()
     {
-        return $this->agent ? '代理人申請' : '本人申請';
+        return $this->hasMany(OrganizationDocument::class);
+    }
+
+    public function getFullAddressAttribute()
+    {
+        return collect([
+            $this->address1,
+            $this->address2,
+            $this->address3,
+        ])->filter()->implode('');
     }
 
 }
