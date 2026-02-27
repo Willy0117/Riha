@@ -11,10 +11,8 @@ use App\Http\Controllers\SetLocaleController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\MemberController as AdminMemberController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
-use App\Http\Controllers\MemberController as MemberRegController;
-use App\Http\Controllers\BankSearchController;
-use App\Http\Controllers\PreRegister\PreRegisterController;
-use App\Http\Controllers\PreRegister\EmailVerifyController;
+use App\Http\Controllers\ApplicationController;
+
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
@@ -78,24 +76,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 //    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login']);
 //});
 
-// メール仮登録
-Route::prefix('pre-register')->name('pre-register.')->group(function () {
-    // メール入力画面
-//  Route::get('/mail', function () { return inertia('PreRegister/Email'); })->name('mail');
-    Route::get('/mail', function (Request $request) {
-        return inertia('PreRegister/Email', [
-            'isAgent' => $request->has('agent'),
-        ]);
-    })->name('mail');    
-    // 仮登録 → メール送信
-    Route::post('/pre', [PreRegisterController::class, 'store'])->name('pre');
-    // メール確認
-    Route::get('/verify/{token}', [EmailVerifyController::class, 'verify'])->name('verify');
-    // メール完了
-    Route::get('/thanks', function () { return inertia('PreRegister/Thanks'); })->name('thanks'); 
-});
-
-
 Route::prefix('members')->group(function () {
 
     Route::get('register/{token}', 
@@ -140,14 +120,13 @@ Route::prefix('members')->group(function () {
 
 });
 
-Route::get('/banks/search', [BankSearchController::class, 'banks'])
-  ->name('banks.search');
+Route::get('/test-mail', function () {
+    \Mail::raw('SES Production Test', function ($message) {
+        $message->to('dev@coo-net.co.jp')
+                ->subject('SES OK');
+    });
 
-Route::get('/branches/search', [BankSearchController::class, 'branches'])
-  ->name('branches.search');
-
-  Route::get('/test', function () {
-    return Inertia::render('Test');
+    return 'sent';
 });
 
 
@@ -182,9 +161,16 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    DD:
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-//    Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
+
+    Route::get('/application/register', [ApplicationController::class, 'create'])
+        ->name('application.register');
+    Route::post('/application/register', [ApplicationController::class, 'store'])
+        ->name('application.register.store');
+
+
+
+    //    Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
 });
 /*
 Route::middleware([

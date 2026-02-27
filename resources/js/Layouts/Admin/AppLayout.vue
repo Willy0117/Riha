@@ -91,9 +91,8 @@ const user = props.auth.user
 const { t, messages, locale } = useI18n();
 
 const logout = () => {
-  router.post('logout')
+  router.post(route('admin.logout'))
 }
-
 const toggleMenu = () => {
   // Navigation.vueのisOpenをグローバル管理にする場合はPinia等で対応可
   // 今回は簡易対応のためにイベントを投げる

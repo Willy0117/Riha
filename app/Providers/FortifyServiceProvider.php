@@ -10,13 +10,14 @@ use App\Actions\Fortify\UpdateUserProfileInformation;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 use Laravel\Fortify\Actions\RedirectIfTwoFactorAuthenticatable;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Contracts\LogoutResponse;
 use App\Http\Responses\LogoutResponse as CustomLogoutResponse;
-
 
 class FortifyServiceProvider extends ServiceProvider
 {
@@ -67,25 +68,43 @@ class FortifyServiceProvider extends ServiceProvider
             return Limit::perMinute(5)->by($request->session()->get('login.id'));
         });
 
-        Fortify::redirects('login', function () {
-            // adminガードで認証されているか確認
-            if (auth()->guard('admin')->check()) {
-                var_dump(auth());
-                stop();
-                return '/admin/dashboard';
+
+        Fortify::authenticateUsing(function ($request) {
+            $guard = request()->is('admin/*') ? 'admin' : 'web';
+            config(['fortify.guard' => $guard]);
+
+            if ($guard === 'admin') {
+                $request->validate([
+                    'email' => 'required|email',
+                    'password' => 'required|string',
+                ]);
+                $user = \App\Models\Admin::where('email', $request->email)->first();
+            } else {
+                $request->validate([
+                    'username' => 'required|string',
+                    'password' => 'required|string',
+                ]);
+                $user = \App\Models\User::where('username', $request->username)->first();
             }
 
-
-            $user = auth()->user();
-/*
-            if ($user?->hasRole('admin') || $user?->hasRole('super_admin')) {
-                return '/admin/dashboard';
+            if ($user && Hash::check($request->password, $user->password)) {
+                // SPA ではここで明示的に guard でログイン
+                Auth::guard($guard)->login($user, $request->filled('remember'));
+                return $user;
             }
-*/
-                var_dump(auth());
-                stop();
-            return '/dashboard';
+
+            return null;
         });
+
+        Fortify::redirects('login', function () {
+            if (Auth::guard('admin')->check()) {
+                return '/admin/dashboard';
+            }
+            if (Auth::guard('web')->check()) {
+                return '/dashboard';
+            }
+            return route('login');
+        });        
 
     }
 }

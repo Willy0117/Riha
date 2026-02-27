@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 
 use TCPDF_FONTS;
 use setasign\Fpdi\Tcpdf\Fpdi;
@@ -21,252 +22,61 @@ use App\Mail\MemberRegistrationCompleted;
 use App\Mail\AgentRegistrationCompleted;
 use App\Mail\PreRegisterMail;
 
-class MemberController extends Controller
+class ApplicationController extends Controller
 {
-    // 1. 誓約 + 加盟団体 ページ
-    public function showRegistrationForm(Request $request,$token)
+    public function create()
     {
-        $preUser = PreUser::where('token', $token)->first();
+        $user = Auth::user();
+        $now = Carbon::now();
 
-        if (!$preUser || Carbon::now()->greaterThan($preUser->expires_at)) {
-            return redirect()
-                ->route('members.resend');
-        }
-        
-        $sessionToken = session('token'); 
-
-        if ($sessionToken !== $request->token) {
-            $request->session()->forget('member_form');
+        // 納期計算
+        if ($now->hour < 15) {
+            $delivery = $now->copy()->addHours(3);
+        } else {
+            $delivery = $now->copy()->addDay()->setTime(12, 0);
         }
 
-        return Inertia::render('Members/AgreeAndAffiliates', [
-            'token' => $token,
-            'agree' => false,
-            'affiliate' => 0,
-            'is_agent' => (bool) $preUser->agent,
+        // 30分丸め
+        $minute = $delivery->minute;
+
+        if ($minute > 0 && $minute <= 30) {
+            $delivery->setMinute(30);
+        } elseif ($minute > 30) {
+            $delivery->addHour()->setMinute(0);
+        }
+
+        $delivery->setSecond(0);
+
+        $defaultFuneral = Carbon::today()
+            ->addDays(2)
+            ->setTime(12, 0);
+
+        return Inertia::render('Applications/Register', [
+            'defaultFuneralDatetime' => $defaultFuneral->format('Y-m-d\TH:i'),
+            'minFuneralDatetime' => Carbon::today()
+                ->addDays(2)
+                ->setTime(0, 0)
+                ->format('Y-m-d\TH:i'),
+            'application_date' => $now->format('Y-m-d H:i'),
+            'delivery_date' => $delivery->format('Y-m-d H:i'),
+            'user' => [
+                'hall_name' => $user->hall_name,
+                'tel' => $user->tel,
+            ],
         ]);
     }
 
-    // 3. Register 入力ページ
-    public function showRegisterForm(Request $request,$token)
+    public function store(Request $request)
     {
-        $preUser = PreUser::where('token', $token)->first();
-
-        if (!$preUser || Carbon::now()->greaterThan($preUser->expires_at)) {
-            return redirect()
-                ->route('members.resend');
-        }
-
-        $form = [];
-
-        if (session()->has('member_form')) {
-            $form = array_replace_recursive($form, session('member_form'));
-        }
-        $files = session('member_files', []);
-
-        $form['is_agent'] = (bool) $preUser->agent;
-        
-        return Inertia::render('Members/Register', [
-            'token'    => $token,
-            'form'     => $form,
-            'files'    => $files,
+        $data = $request->validate([
+            'title' => 'required|string|max:255',
+            'description' => 'nullable|string',
         ]);
-    }
 
-    // 4. 完了処理（PDF2点）
-    public function completeRegistration(Request $request, string $token)
-    {
-        // 仮登録ユーザー取得（email 用）
-        $preUser = PreUser::where('token', $token)->firstOrFail();
+        Application::create($data);
 
-        $form = session('member_form');
-        
-        if (!$form) {
-            return redirect()
-                ->route('members.register', ['token' => $request->token])
-                ->with('error', '通信状態の影響により処理を続行できませんでした。お手数ですが、メールのリンクからもう一度お手続きをお願いいたします。');
-        }
-
-        $member = null;
-        $corp = null;
-        $agent = null;
-
-        try {
-            DB::transaction(function () use ($form, $request, $preUser, &$member, &$corp, &$agent) {
-      
-                $isAgent = (bool) ($preUser->agent ?? false);
-
-                // members
-                $member = Member::create([
-                    'last_name'  => $form['rep_last_name'],
-                    'first_name' => $form['rep_first_name'],
-                    'last_name_kana'  => $form['rep_last_kana'],
-                    'first_name_kana' => $form['rep_first_kana'],
-                    'agree' => 1,
-                    'affiliate' => 1,
-                    'agreed_at' => now(),
-                    'status' => 1,
-                    'progress' => 1,
-                    'agent' => $isAgent,
-                    'type' => $form['type'],
-                ]);
-                // bank_accounts
-                $member->bankAccount()->create([
-                    'bank_type' => $form['bank_type'],
-                    'bank_name' => $form['bank_name'],
-                    'bank_code' => $form['bank_code'] ?? null,
-                    'branch_name' => $form['branch_name'],
-                    'branch_code' => $form['branch_code'] ?? null,
-                    'account_type' => $form['account_type'],
-                    'account_no' => $form['account_no'],
-                    'account_kana' => $form['account_kana'],
-                    'account_name' => $form['account_name'],
-                ]);
-
-                $corp = $form['corp'];
-
-                $email = $preUser->email;
-                if ($isAgent) $email = $corp['email'];
-
-                $corpOrg = $member->organization()->create([    
-                    'type' => 1,
-                    'name' => $form['company_name'],
-                    'name_kana' => $form['company_kana'],
-                    'name_prefix' => $form['company_type_prefix'],
-                    'name_suffix' => $form['company_type_suffix'],
-                    'postal_code' => $corp['postal_code'],
-                    'address1' => $corp['address1'],
-                    'address2' => $corp['address2'],
-                    'address3' => $corp['address3'],
-                    'tel' => $corp['tel'],
-                    'fax' => $corp['fax'],
-                    'mobile' => $corp['mobile'],
-                    'email' => $email,
-                    'position'  => $corp['position'],
-                    'last_name' => $corp['last_name'],
-                    'first_name' => $corp['first_name'],
-                ]);
-
-                $appCorpOrg = $member->applicationOrganization()->create([
-                    'type' => 1,
-                    'name' => $form['company_name'],
-                    'name_kana' => $form['company_kana'],
-                    'name_prefix' => $form['company_type_prefix'],
-                    'name_suffix' => $form['company_type_suffix'],
-                    'postal_code' => $corp['postal_code'],
-                    'address1' => $corp['address1'],
-                    'address2' => $corp['address2'],
-                    'address3' => $corp['address3'],
-                    'tel' => $corp['tel'],
-                    'fax' => $corp['fax'],
-                    'mobile' => $corp['mobile'],
-                    'email' => $email,
-                    'position'  => $corp['position'],
-                    'last_name' => $corp['last_name'],
-                    'first_name' => $corp['first_name'],
-                ]);
-
-                $mail = $form['mail'];
-
-                $mailOrg = $member->organization()->create([    
-                    'type' => 2,
-                    'name' => $form['company_name'],
-                    'name_kana' => $form['company_kana'],
-                    'name_prefix' => $form['company_type_prefix'],
-                    'name_suffix' => $form['company_type_suffix'],
-                    'postal_code' => $mail['postal_code'],
-                    'address1' => $mail['address1'],
-                    'address2' => $mail['address2'],
-                    'address3' => $mail['address3'],
-                    'tel' => $mail['tel'],
-                    'fax' => $mail['fax'],
-                    'mobile' => $mail['mobile'],
-                    'email' => $mail['email'],
-                    'position'  => $mail['position'],
-                    'last_name' => $mail['last_name'],
-                    'first_name' => $mail['first_name'],
-                ]);
-
-                $appMailOrg = $member->applicationOrganization()->create([    
-                    'type' => 2,
-                    'name' => $form['company_name'],
-                    'name_kana' => $form['company_kana'],
-                    'name_prefix' => $form['company_type_prefix'],
-                    'name_suffix' => $form['company_type_suffix'],
-                    'postal_code' => $mail['postal_code'],
-                    'address1' => $mail['address1'],
-                    'address2' => $mail['address2'],
-                    'address3' => $mail['address3'],
-                    'tel' => $mail['tel'],
-                    'fax' => $mail['fax'],
-                    'mobile' => $mail['mobile'],
-                    'email' => $mail['email'],
-                    'position'  => $mail['position'],
-                    'last_name' => $mail['last_name'],
-                    'first_name' => $mail['first_name'],
-                ]);
-                if ($isAgent) {
-
-                    $agent = $form['agent'];
-
-                    $agentOrg = $member->organization()->create([    
-                        'type' => 3,
-                        'name' => $agent['company_name'],
-                        'name_kana' => '',
-                        'postal_code' => $agent['postal_code'],
-                        'address1' => $agent['address1'],
-                        'address2' => $agent['address2'],
-                        'address3' => $agent['address3'],
-                        'tel' => $agent['tel'],
-                        'fax' => $agent['fax'],
-                        'mobile' => $agent['mobile'],
-                        'email' => $preUser->email,
-                        'position'  => $agent['position'],
-                        'last_name' => $agent['last_name'],
-                        'first_name' => $agent['first_name'],
-                    ]); 
-                }               
-                    //1:履歴事項全部証明書
-                $corpOrg->documents()->create([  
-                    'type' => 1,
-                    'file_path' => $form['history_certificate_path'],
-                    'thumbnail_path' => $form['history_certificate_thumbnail'],
-                ]);
- 
-                if ($form['same_as_corp'] != 1 && $form['mail_address_certificate_path'] ) {
-                    //2:郵送先確認書類
-                    $corpOrg->documents()->create([  
-                        'type' => 2,
-                        'file_path' => $form['mail_address_certificate_path'],
-                        'thumbnail_path' => $form['mail_address_certificate_thumbnail'],
-
-                    ]);
-                }
-
-                $preUser->update([
-                    'verified_at' => now(),
-                ]);
-
-                // member 登録
-                $member->verified_at = now();
-                $member->save();
-
-                $corp = $corpOrg;
-                $agent = $agentOrg;
- 
-            });
-        } catch (\Exception $e) {
-            throw $e;
-                    // DB登録失敗 → 拒否画面に飛ばす
-            return Inertia::render('Members/Reject', [
-                'message' => '登録処理に失敗しました。もう一度メールに記載のURLから登録し直してください。',
-            ]);
-        }
-        // 完了メール送信
-        $this->sendCompletedMails($member, $preUser, $corp, $agent);
-
-        return redirect()->route('members.complete')
-            ->with('success', 'ご登録ありがとうございました');
+        return redirect()->route('application.register')
+            ->with('success', '申請を登録しました。');
     }
 
     public function showComplete()
