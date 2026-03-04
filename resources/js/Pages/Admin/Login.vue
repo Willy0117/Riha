@@ -33,7 +33,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="{{ t('login') }}" />
+    <Head :title="t('login')" />
 
     <AuthenticationCard>
         <template #logo>

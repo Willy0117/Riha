@@ -13,8 +13,7 @@ use Illuminate\Support\Facades\Auth;
 use TCPDF_FONTS;
 use setasign\Fpdi\Tcpdf\Fpdi;
 use Carbon\Carbon;
-use App\Models\Member;
-use App\Models\PreUser;
+use App\Models\Application;
 use Imagick;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\UploadedFile;
@@ -24,7 +23,25 @@ use App\Mail\PreRegisterMail;
 
 class ApplicationController extends Controller
 {
-    public function create()
+    public function index(Request $request) 
+    {
+        $user = Auth::user();
+
+        // user の organization_id に一致する申込データを取得
+        $applications = Application::where('organization_id', $user->organization_id)
+            ->latest()
+            ->paginate(20)
+            ->withQueryString(); // ページネーション時に検索・絞り込み条件保持
+
+        return Inertia::render('Applications/Index', [
+            'user' => $user,
+            'applications' => $applications,
+        ]);
+
+    }
+
+
+    public function create(Request $request)
     {
         $user = Auth::user();
         $now = Carbon::now();
@@ -51,7 +68,7 @@ class ApplicationController extends Controller
             ->addDays(2)
             ->setTime(12, 0);
 
-        return Inertia::render('Applications/Register', [
+        return Inertia::render('Applications/Create', [
             'defaultFuneralDatetime' => $defaultFuneral->format('Y-m-d\TH:i'),
             'minFuneralDatetime' => Carbon::today()
                 ->addDays(2)
@@ -69,24 +86,36 @@ class ApplicationController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'nullable|string',
+            'last_name'     => 'required|string',
+            'first_name'     => 'required|string',
+            'deceased_furigana' => 'required|string',
+            'gender'            => 'required|string',
+            'chief_mourner_name'=> 'nullable|string',
+            'age_at_death'      => 'nullable|integer',
+            'relationship_to_deceased' => 'nullable|string',
+            'delivery_date'     => 'required|string',
+            'funeral_datetime'  => 'required|string',
+            'spouse_status'     => 'nullable|string',
+            'children_count'    => 'nullable|integer',
+            'grandchildren_count'=> 'nullable|integer',
+            'staff_name'        => 'required|string',
+            'bg_color'          => 'nullable|string',
+            'text_color'        => 'nullable|string',
+            'traits'            => 'nullable|array',
+            'note'              => 'nullable|string',
         ]);
+
+        $data['organization_id'] = auth()->user()->organization_id;
 
         Application::create($data);
 
-        return redirect()->route('application.register')
-            ->with('success', '申請を登録しました。');
+        return redirect()->route('applications.create')
+            ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
     }
 
-    public function showComplete()
+    public function edit(Request $request)
     {
-        // 完了画面に入る直前で後始末
-        // session()->forget(['agree', 'affiliate', 'agree_at']);
 
-        return Inertia::render('Members/Complete', [
-            'success' => session('success'),
-        ]);
     }
     
     protected function sendCompletedMails(Member $member, $preUser, $corp, $agent = null): void

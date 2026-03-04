@@ -176,11 +176,17 @@ const showAccessControl = computed(() => {
         <HomeIcon class="w-5 h-5"/>
         <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
       </Link>
-      <Link :href="route('application.register')"
+      <Link :href="route('applications.create')"
             class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('temperatures.index') ? 'bg-gray-300 font-semibold' : ''">
+            :class="isActive('applications.create') ? 'bg-gray-300 font-semibold' : ''">
         <CubeIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('application') }}</span>
+        <span v-if="!collapsed" class="ml-2">{{ t('applications.poem') }}</span>
+      </Link>        
+      <Link :href="route('applications.index')"
+            class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+            :class="isActive('applications.index') ? 'bg-gray-300 font-semibold' : ''">
+        <CubeIcon class="w-5 h-5"/>
+        <span v-if="!collapsed" class="ml-2">{{ t('applications.list') }}</span>
       </Link>        
 
     

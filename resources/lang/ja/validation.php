@@ -6,13 +6,14 @@ return [
     'required_if' => ':attribute が未入力またはファイルが選択されていません。',
 
     'attributes' => [
-        'company_name'=> '会社名',
-        'address1'=> '市町村区',
-        'tel'=> '電話番号',
-        'fax'=> 'FAX',
-        'history_certificate' => '履歴事項全部証明書',
-        'mail_address_certificate' => '送付先住所確認書類',
-        'bank_name' => '銀行名',
-        'branch_name' => '支店名',
+        'deceased_name' => '故人名',
+        'last_name' => '姓',
+        'first_name' => '名',
+        'deceased_furigana' => '故人名（ふりがな）',
+        'gender'            => '性別',
+        'application_date'  => '申込日',
+        'delivery_date'     => '納品予定日時',
+        'staff_name'        => '担当者',
+        'funeral_datetime'  => '葬儀日時',
     ],
 ];

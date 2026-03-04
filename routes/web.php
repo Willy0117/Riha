@@ -163,14 +163,9 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
-    Route::get('/application/register', [ApplicationController::class, 'create'])
-        ->name('application.register');
-    Route::post('/application/register', [ApplicationController::class, 'store'])
-        ->name('application.register.store');
+    Route::resource('applications', ApplicationController::class);
 
 
-
-    //    Route::post('/logout', [\App\Http\Controllers\AuthController::class, 'logout'])->name('logout');
 });
 /*
 Route::middleware([
