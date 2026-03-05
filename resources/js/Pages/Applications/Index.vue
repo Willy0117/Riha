@@ -39,19 +39,30 @@
             </select>
             <!-- 既存 form をそのまま利用 -->
             <input v-model="form.code" type="text" :placeholder="t('code')" class="border rounded px-3 py-2 w-full" />
-            <input v-model="form.name" type="text" :placeholder="t('name')" class="border rounded px-3 py-2 w-full" />
-            <select v-model="form.process_id" class="border rounded px-3 py-2 w-full">
-              <option value="">{{ t('please_select') }}</option>
-              <option v-for="p in processes" :key="p.id" :value="p.id">
-                {{ p.name }}
-              </option>
-            </select>
-            <select v-model="form.measurement" class="border rounded px-3 py-2 w-full">
-              <option :value="null">{{ t('please_select')}}</option>
-              <option value="0">{{ t('dont') }}</option>
-              <option value="1">{{ t('do') }}</option>
-            </select>
 
+            <!-- 喪主様情報 -->
+            <div class="col-span-4 sm:col-span-2 border-gray-300">
+                <InputLabel for="name" :value="t('applications.name')" />
+                <TextInput id="name" v-model="form.name" type="text" class="mt-1 block w-full" />
+            </div>
+            <div class="col-span-2 sm:col-span-2">
+                <InputLabel for="delivery_date" :value="t('registers.delivery_date')" />
+                <TextInput
+                    v-model="form.delivery_date"
+                    type="datetime-local"
+                    :min="minFuneralDatetime"
+                    class="mt-1 block w-full"
+                />
+            </div>           
+            <div class="col-span-2 sm:col-span-2">
+                <InputLabel for="application_date" :value="t('registers.application_date')" />
+                <TextInput
+                    v-model="form.application_date"
+                    type="datetime-local"
+                    :min="minFuneralDatetime"
+                    class="mt-1 block w-full"
+                />
+            </div>           
             <div class="flex justify-end space-x-2 mt-4">
               <button @click="submitSearch(); openDrawer = false"
                       class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
@@ -98,6 +109,10 @@
             <th class="px-3 py-2">
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('id')">
+              {{ t('applications.code') }}
+              <span v-if="form.sort_by==='id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            </th>
             <th v-if="isSuperAdmin">{{ t('tenant') }}</th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">
               {{ t('applications.name') }}
@@ -107,9 +122,9 @@
               {{ t('applications.furigana') }}
               <span v-if="form.sort_by==='furigana'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('gender')">
-              {{ t('applications.gender') }}
-              <span v-if="form.sort_by==='gender'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('age_at_death')">
+              {{ t('applications.age_at_death') }}
+              <span v-if="form.sort_by==='age_at_death'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('gender')">
               {{ t('applications.gender') }}
@@ -123,6 +138,10 @@
               {{ t('applications.application_date') }}
               <span v-if="form.sort_by==='created_at'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('status')">
+              {{ t('applications.status') }}
+              <span v-if="form.sort_by==='status'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            </th>
             <th class="px-3 py-2 text-center">{{ t('actions') }}</th>
           </tr>
         </thead>
@@ -132,12 +151,13 @@
             <td class="px-3 py-2">
               <input type="checkbox" :value="application.id" v-model="selectedIds" />
             </td>
+            <td>{{ application.order_code }}</td>
             <td v-if="isSuperAdmin">
               {{ tenants.find(t => t.id === application.tenant_id)?.name || '-' }}
             </td>            
             <td class="px-3 py-2">{{ application.fullname ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.deceased_furigana ?? '-' }}</td>
-            <td class="px-3 py-2">{{ application.gender ?? '-' }}</td>
+            <td class="px-3 py-2 text-right">{{ application.age_at_death ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.gender ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.delivery_date ? dayjs(application.delivery_date).format('YYYY/MM/DD HH:mm') : '' }}</td>
             <td class="px-3 py-2">{{ application.created_at ? dayjs(application.created_at).format('YYYY/MM/DD HH:mm') : '' }}</td>
@@ -206,6 +226,9 @@ import AppLayout from '@/Layouts/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import DialogModal from '@/Components/DialogModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import InputError from '@/Components/InputError.vue';
+import TextInput from '@/Components/TextInput.vue';
+import Checkbox from '@/Components/Checkbox.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
@@ -224,7 +247,7 @@ const props = defineProps({
   filters: {
     type: Object,
     default: () => ({
-      company_name: '', tel: '', tenant_id: '', status_id: 1,
+      code: '', name: '', delivary_date: '', status_id: 1,tenant_id: '',
       per_page: 20, sort_by: 'created_at', sort_dir: 'desc', page: 1
     })
   }
@@ -243,6 +266,9 @@ const openDrawer = ref(false)
 // 複数検索用に reactive 拡張
 const form = reactive({
   name: props.filters.name,
+  delivary_date: props.filters.delivery_date,
+  application_date: props.filters.application_date,
+  code: props.filters.code,
   status_id: props.filters.status_id,
   tenant_id: props.filters.tenant_id,
   per_page: props.filters.per_page || 20,
@@ -274,8 +300,11 @@ watch(() => props.applications.current_page, () => {
 // persistQueryに各検索項目を追加
 const persistQuery = () => ({
   tenant_id: form.tenant_id,
-  company_name: form.company_name,
+  code: form.code,
   name: form.name,
+  delivary_date: form.delivery_date,
+  application_date: form.application_date,
+  gender: form.gendar,
   status_id: form.status_id,
   per_page: form.per_page,
   sort_by: form.sort_by,
@@ -285,7 +314,7 @@ const persistQuery = () => ({
 
 const submitSearch = () => {
   console.log(persistQuery())
-  router.get(route('admin.application.index'), { ...persistQuery(), page: 1 }, {
+  router.get(route('applications.index'), { ...persistQuery(), page: 1 }, {
     preserveState: true,
     replace: true,
     onSuccess: () => resetSelectedIds()

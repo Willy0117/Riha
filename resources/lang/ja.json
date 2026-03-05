@@ -211,6 +211,7 @@
   "applications": {
     "poem": "名前の詩 新規申込",
     "list": "申込一覧",
+    "code": "受注コード",
     "application_date": "申込日",
     "delivery_date": "納品予定日時",
     "staff_name": "担当者名",
@@ -223,7 +224,7 @@
     "last_name": "姓",
     "first_name": "名",
     "deceased_furigana": "",
-    "age_at_death": "年齢（満 歳）", 
+    "age_at_death": "年齢", 
     "gender": "性別",
     "spouse_status": "配偶者",
     "children_count": "子",
@@ -233,6 +234,9 @@
     "traits": "故人様の性格",
     "special_notes": "故人様に対する特記事項（お人柄など）",
     "note": "備考欄",
+    "status": "状態",
+    "signaturePad": "手書き漢字",
+    "clear": "クリア",
     "send": "申込内容を送信"   
   },
 

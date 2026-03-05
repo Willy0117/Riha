@@ -27,15 +27,62 @@ class ApplicationController extends Controller
     {
         $user = Auth::user();
 
-        // user の organization_id に一致する申込データを取得
-        $applications = Application::where('organization_id', $user->organization_id)
-            ->latest()
-            ->paginate(20)
-            ->withQueryString(); // ページネーション時に検索・絞り込み条件保持
+        $name = trim((string) $request->input('name'));
+        $applicationDate = $request->input('application_date');
+        $deliveryDate = $request->input('delivery_date');
 
+        $allowedSorts = 
+        [
+            'created_at', 'gender', 'order_code', 'id', 'name', 'age_at_death', 'delivery_date', 'deceased_furigana', 'status'
+        ];
+
+        $sortBy  = in_array($request->input('sort_by'), $allowedSorts)
+            ? $request->input('sort_by')
+            : 'created_at';
+
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+
+        $per_page = $request->input('per_page') ?? 20;
+
+        $query = Application::where('organization_id', $user->organization_id);
+
+        if ($name !== '') {
+            $keywords = preg_split('/\s+/', $name);
+
+            foreach ($keywords as $word) {
+                $query->where(function ($sub) use ($word) {
+                    $sub->where('last_name', 'like', "%{$word}%")
+                        ->orWhere('first_name', 'like', "%{$word}%");
+                });
+            }
+        }
+        
+        if ($sortBy === 'name') {
+            $query->orderBy('last_name', $sortDir)
+                ->orderBy('first_name', $sortDir);
+        } else {
+            $query->orderBy($sortBy, $sortDir);
+        }
+
+        $applications = $query
+            ->when($request->filled('application_date'), fn($q) =>
+                $q->whereDate('application_date', $applicationDate)
+            )
+            ->when($request->filled('delivery_date'), fn($q) =>
+                $q->whereDate('delivery_date', $deliveryDate)
+            )
+            ->paginate($per_page)
+            ->withQueryString();
+            
         return Inertia::render('Applications/Index', [
             'user' => $user,
             'applications' => $applications,
+            'filter' => [
+                'per_page'      => $per_page,
+                'name'          => $name,
+                'delivery_date' => $deliveryDate,
+                'application_date' => $applicationDate,
+            ],
         ]);
 
     }
@@ -114,6 +161,11 @@ class ApplicationController extends Controller
     }
 
     public function edit(Request $request)
+    {
+
+    }
+
+    public function show(Request $request)
     {
 
     }
@@ -356,7 +408,7 @@ class ApplicationController extends Controller
         $pdf->AddPage();
 
         // 既存PDFテンプレート読み込み
-        $templatePath = storage_path('app/templates/aplus.pdf');
+        $templatePath = storage_path('app/templates/order_sheet/poem.pdf');
         $pageCount = $pdf->setSourceFile($templatePath);
         $tpl = $pdf->importPage(1);
         $pdf->useTemplate($tpl);

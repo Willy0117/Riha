@@ -7,9 +7,13 @@ import FormSection from '@/Components/FormSection.vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import { useI18n } from 'vue-i18n'
+
+import { ref } from 'vue';
+import Vue3SignaturePad from 'vue3-signature-pad'
 
 const { t } = useI18n()
 
@@ -44,8 +48,14 @@ const form = useForm({
     // --- その他項目 ---
     traits: [],
     special_notes: '',
-    // ... 略    
+    signature: null, // ここに手書き画像を格納    
 });
+
+const signaturePad = ref(null);
+
+const clearPad = () => {
+  signaturePad.value?.clearSignature()
+}
 
 const traitsOptions = [
     '優しい', '明朗', '温和', '誠実', '思いやり', '面倒見良い', '忍耐強い',
@@ -66,6 +76,9 @@ const getTextImageUrl = (color) => {
 }
 
 const submit = () => {
+    if (!signaturePad.value.isEmpty()) {
+        form.signature = signaturePad.value.toDataURL(); // PNG base64
+    }
     form.post(route('applications.store'), {
         preserveScroll: true,
     });
@@ -80,7 +93,7 @@ const submit = () => {
     </ActionMessage>
     <FormSection @submitted="submit">
         <template #form>
-            <div class="col-span-2 sm:col-span-2">
+            <div class="col-span-6 sm:col-span-2">
                 <InputLabel for="delivery_date" :value="t('registers.delivery_date')" />
                 <TextInput
                     v-model="form.delivery_date"
@@ -92,7 +105,7 @@ const submit = () => {
             </div>
         
             <!-- 申込基本情報 -->
-            <div class="col-span-2 sm:col-span-2">
+            <div class="col-span-6 sm:col-span-2">
                 <InputLabel for="funeral" :value="t('registers.funeral_datetime')" />
                 <TextInput
                     v-model="form.funeral_datetime"
@@ -101,49 +114,67 @@ const submit = () => {
                     class="mt-1 block w-full"
                     />
             </div>
-            <div class="col-span-2 sm:col-span-2">
+            <div class="col-span-6 sm:col-span-2">
                 <InputLabel for="staff_name" :value="t('registers.staff_name')" />
                 <TextInput id="staff_name" v-model="form.staff_name" type="text" class="mt-1 block w-full" />
                 <InputError :message="form.errors.staff_name" class="mt-2" />
             </div>
 
             <!-- 喪主様情報 -->
-            <div class="col-span-4 sm:col-span-2 border-gray-300">
+            <div class="col-span-6 sm:col-span-2 border-gray-300">
                 <InputLabel for="chief_mourner_name" :value="t('registers.chief_mourner_name')" />
                 <TextInput id="chief_mourner_name" v-model="form.chief_mourner_name" type="text" class="mt-1 block w-full" />
             </div>
 
-            <div class="col-span-1 sm:col-span-1">
+            <div class="col-span-6 sm:col-span-2">
                 <InputLabel for="relationship" :value="t('registers.relationship_to_deceased')" />
                 <TextInput id="relationship" v-model="form.relationship_to_deceased" type="text" class="mt-1 block w-full" placeholder="例：長男、妻" />
             </div>
+            <div class="col-span-6  sm:col-span-2">&nbsp;</div>
             <!-- 氏名 -->
-            <div class="col-span-2 col-start-1">
-                <InputLabel for="last_name" :value="t('registers.last_name')" />
-                    <TextInput
-                        id="last_name"
-                        v-model="form.last_name"
-                        type="text"
-                        :placeholder="t('registers.last_name')"
-                        class="w-full"
-                    />
-                <InputError :message="form.errors.last_name" class="mt-2" />
-            </div>
-            <div class="col-span-2 sm:col-span-2 border-gray-300">
-                <InputLabel for="first_name" :value="t('registers.first_name')" />
-                    <TextInput
-                        id="first_name"
-                        v-model="form.first_name"
-                        type="text"
-                        :placeholder="t('registers.first_name')"
-                        class="w-full"
-                    />
-                <InputError :message="form.errors.first_name" class="mt-2" />
-            </div>
+            <div class="col-span-6  sm:col-span-3">
+                <div class="col-span-6  sm:col-span-2">
+                    <InputLabel for="last_name" :value="t('registers.last_name')" />
+                        <TextInput
+                            id="last_name"
+                            v-model="form.last_name"
+                            type="text"
+                            :placeholder="t('registers.last_name')"
+                            class="w-full"
+                        />
+                    <InputError :message="form.errors.last_name" class="mt-2" />
+                </div>
+                <div class="col-span-6 sm:col-span-2">
+                    <InputLabel for="first_name" :value="t('registers.first_name')" />
+                        <TextInput
+                            id="first_name"
+                            v-model="form.first_name"
+                            type="text"
+                            :placeholder="t('registers.first_name')"
+                            class="w-full"
+                        />
+                    <InputError :message="form.errors.first_name" class="mt-2" />
+                </div>
+            </div>             
+            <div class="col-span-6 sm:col-span-1">
+ <div class="space-y-2">
+  <div class="border-2 border-gray-400 rounded-lg bg-white">
+    <Vue3SignaturePad
+      ref="signaturePad"
+      :options="{ minWidth: 1, maxWidth: 3, penColor: 'black' }"
+      style="width: 100%; height: 96px;"
+    />
+  </div>
 
-
+  <div class="flex justify-end">
+    <SecondaryButton type="button" @click="clearPad">
+      {{ t('applications.clear') }}
+    </SecondaryButton>
+  </div>
+</div>
+            </div>   
             <!-- 性別 -->
-            <div class="col-span-1">
+            <div class="col-span-6 sm:col-span-1">
                 <InputLabel value="性別" />
                 <div class="mt-2 flex gap-6">
                     <label class="flex items-center gap-2">
@@ -160,7 +191,7 @@ const submit = () => {
             </div>
 
             <!-- 年齢 -->
-            <div class="col-span-1">
+            <div class="col-span-6 sm:col-span-1">
                 <InputLabel for="age_at_death" :value="t('registers.age_at_death')" />
                 <div class="mt-1 flex items-center gap-2">
                     <TextInput
@@ -172,7 +203,7 @@ const submit = () => {
                     <span class="text-sm text-gray-500">歳</span>
                 </div>
             </div>
-            <div class="col-span-2">
+            <div class="col-span-6  sm:col-span-2">
                 <InputLabel for="deceased_name" :value="t('registers.furigana')" />
                     <TextInput
                         v-model="form.deceased_furigana"
@@ -183,7 +214,7 @@ const submit = () => {
                 <InputError :message="form.errors.deceased_furigana" class="mt-2" />
             </div>
             <!-- 配偶者 -->
-            <div class="col-span-2">
+            <div class="col-span-6  sm:col-span-2">
                 <InputLabel :value="t('registers.spouse_status')" />
                 <div class="mt-2 flex flex-wrap items-center gap-6">
                     <label class="flex items-center gap-2">
@@ -208,7 +239,7 @@ const submit = () => {
             </div>
 
             <!-- 子・孫 -->
-            <div class="col-span-2">
+            <div class="col-span-6  sm:col-span-2">
                 <div class="grid grid-cols-2 gap-6">
                     <div>
                         <InputLabel value="子" />
@@ -228,44 +259,38 @@ const submit = () => {
                 </div>
             </div>
             <!-- 背景色 -->
-            <div class="col-span-6">
-                <div class="grid grid-cols-2 gap-4">
-                <div class="">
-                    <p class="">{{ t('registers.bg_color') }}</p>
-                    <div class="flex gap-4">
+            <div class="col-span-6 sm:col-span-3">
+                <p class="">{{ t('registers.bg_color') }}</p>
+                <div class="flex flex-wrap gap-4">
 
-                        <div v-for="color in colors"
-                            :key="'bg-'+color"
-                            @click="form.bg_color = color"
-                            class="cursor-pointer">
-                            <img :src="getImageUrl(color)" class="!w-16 !h-16 !max-w-none rounded border-4"
-                                :class="form.bg_color === color
-                                ? 'ring-4 ring-black scale-105'
-                                : 'hover:scale-105'"
-                            />
-                        </div>
-
+                    <div v-for="color in colors"
+                        :key="'bg-'+color"
+                        @click="form.bg_color = color"
+                        class="cursor-pointer">
+                        <img :src="getImageUrl(color)" class="!w-16 !h-16 !max-w-none rounded border-4"
+                            :class="form.bg_color === color
+                            ? 'ring-4 ring-black scale-105'
+                            : 'hover:scale-105'"
+                        />
                     </div>
+
                 </div>
-                <div class="">
-                    <p class="">{{ t('registers.text_color') }}</p>
-                    <div class="flex gap-6">
-
-                        <div v-for="color in text_colors"
-                            :key="'text_'+color"
-                            @click="form.text_color = color"
-                            class="cursor-pointer">
-                            <img :src="getTextImageUrl(color)" class="!w-16 !h-16 !max-w-none rounded border-4"
-                                :class="form.text_color === color
-                                ? 'ring-4 ring-black scale-105'
-                                : 'hover:scale-105'"
-                            />
-                        </div>
-
+            </div>    
+            <div class="col-span-6 sm:col-span-3">
+                <p class="">{{ t('registers.text_color') }}</p>
+                <div class="flex flex-wrap gap-4">
+                    <div v-for="color in text_colors"
+                        :key="'text_'+color"
+                        @click="form.text_color = color"
+                        class="cursor-pointer">
+                        <img :src="getTextImageUrl(color)" class="!w-16 !h-16 !max-w-none rounded border-4"
+                            :class="form.text_color === color
+                            ? 'ring-4 ring-black scale-105'
+                            : 'hover:scale-105'"
+                        />
                     </div>
+
                 </div>
-                </div>
-                
             </div> 
 
 

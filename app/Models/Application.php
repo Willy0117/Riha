@@ -70,6 +70,11 @@ class Application extends Model
     {
         return $this->last_name . ' ' . $this->first_name;
     }
+
+    public function getOrderCodeAttribute()
+    {
+        return 'P' . str_pad($this->id, 8, '0', STR_PAD_LEFT);
+    }
     /*
     |--------------------------------------------------------------------------
     | Global Scope（SaaS安全対策）
@@ -87,5 +92,5 @@ class Application extends Model
         });
     }
         // JSON化時に自動で fullname を含める
-    protected $appends = ['fullname'];
+    protected $appends = ['fullname', 'order_code'];
 }
