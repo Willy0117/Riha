@@ -11,7 +11,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import { useI18n } from 'vue-i18n'
-
+import { Inertia } from '@inertiajs/inertia';
 import { ref } from 'vue';
 import Vue3SignaturePad from 'vue3-signature-pad'
 
@@ -48,13 +48,13 @@ const form = useForm({
     // --- その他項目 ---
     traits: [],
     special_notes: '',
-    signature: null, // ここに手書き画像を格納    
+    canvas: null, // ここに手書き画像を格納    
 });
 
-const signaturePad = ref(null);
+const canvasPad = ref(null);
 
 const clearPad = () => {
-  signaturePad.value?.clearSignature()
+  canvasPad.value?.clearSignature()
 }
 
 const traitsOptions = [
@@ -76,13 +76,28 @@ const getTextImageUrl = (color) => {
 }
 
 const submit = () => {
-    if (!signaturePad.value.isEmpty()) {
-        form.signature = signaturePad.value.toDataURL(); // PNG base64
+    if (!canvasPad.value.isEmpty()) {
+        form.canvas = canvasPad.value.toDataURL(); // PNG base64
     }
     form.post(route('applications.store'), {
         preserveScroll: true,
     });
 };
+
+const pdfProcessing = ref(false);
+
+function generatePdf() {
+    pdfProcessing.value = true;
+
+    form.post(route('applications.pdfGenerate'), {
+        onSuccess: (page) => {
+            window.open(page.props.pdf_url, '_blank')
+        }
+    });
+
+    pdfProcessing.value = false;
+}
+
 </script>
 
 <template>
@@ -157,21 +172,21 @@ const submit = () => {
                 </div>
             </div>             
             <div class="col-span-6 sm:col-span-1">
- <div class="space-y-2">
-  <div class="border-2 border-gray-400 rounded-lg bg-white">
-    <Vue3SignaturePad
-      ref="signaturePad"
-      :options="{ minWidth: 1, maxWidth: 3, penColor: 'black' }"
-      style="width: 100%; height: 96px;"
-    />
-  </div>
+                <div class="space-y-2">
+                    <div class="border-2 border-gray-400 rounded-lg bg-white">
+                        <Vue3SignaturePad
+                        ref="canvasPad"
+                        :options="{ minWidth: 1, maxWidth: 3, penColor: 'black' }"
+                        style="width: 100%; height: 128px;"
+                        />
+                    </div>
 
-  <div class="flex justify-end">
-    <SecondaryButton type="button" @click="clearPad">
-      {{ t('applications.clear') }}
-    </SecondaryButton>
-  </div>
-</div>
+                    <div class="flex justify-end">
+                        <SecondaryButton type="button" @click="clearPad">
+                        {{ t('applications.clear') }}
+                        </SecondaryButton>
+                    </div>
+                </div>
             </div>   
             <!-- 性別 -->
             <div class="col-span-6 sm:col-span-1">
@@ -313,11 +328,21 @@ const submit = () => {
 
             <div class="col-span-6">
                 <InputLabel for="remarks" :value="t('registers.note')" />
-                <textarea id="remarks" v-model="form.remarks" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" rows="2"></textarea>
+                <textarea id="remarks" v-model="form.note" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" rows="2"></textarea>
             </div>
         </template>
 
         <template #actions>
+                <!-- PDF生成ボタン -->
+            <SecondaryButton
+                type="button"
+                :class="{ 'opacity-25': pdfProcessing }"
+                :disabled="pdfProcessing"
+                @click="generatePdf"
+            >
+                {{ t('registers.pdf') }}
+            </SecondaryButton>
+            
             <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                 {{ t('registers.send') }}
             </PrimaryButton>

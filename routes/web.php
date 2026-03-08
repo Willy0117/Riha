@@ -76,49 +76,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
 //    Route::post('/login', [\App\Http\Controllers\Auth\LoginController::class, 'login']);
 //});
 
-Route::prefix('members')->group(function () {
 
-    Route::get('register/{token}', 
-        [MemberRegController::class, 'showRegistrationForm']
-    )->name('members.register');
-
-    Route::get('register/{token}/register', 
-        [MemberRegController::class, 'showRegisterForm']
-    )->name('members.register.register');
-
-    Route::post('register/{token}/register',[MemberRegController::class, 'register'])->name('members.register.register');
-
-    // DB登録・完了処理（POST データなしでも session から処理）
-    Route::get('register/{token}/complete-registration', [MemberRegController::class, 'completeRegistration'])
-        ->name('members.completeRegistration');
-
-    // 完了画面
-    Route::get('complete',[MemberRegController::class, 'showComplete'])->name('members.complete');
-
-    // 加盟団体加入で拒否された場合のメッセージ画面
-    Route::get('register/{token}/rejected', [MemberRegController::class, 'showRejectedMessage'])
-        ->name('members.register.rejected');
-
-    Route::get('resend', [MemberRegController::class, 'resend'])
-        ->name('members.resend');
-
-    Route::get('bank', [MemberRegController::class, 'bank'])
-        ->name('members.bank');
-
-    Route::get('pdfcreate', [MemberRegController::class, 'pdfCreate'])
-        ->name('members.pdfcreate');
-
-    Route::post('pdfgenerate/{token}', [MemberRegController::class, 'pdfGenerate']
-        )->name('members.pdfgenerate');
-/*
-    Route::post('pdfgenerate', [MemberRegController::class, 'pdfGenerate'])
-        ->name('members.pdfgenerate');   
-*/
-    Route::get('pdf-preview/{token}', 
-        [MemberRegController::class, 'pdfPreview']
-    )->name('members.pdf.preview');
-
-});
 
 Route::get('/test-mail', function () {
     \Mail::raw('SES Production Test', function ($message) {
@@ -128,6 +86,8 @@ Route::get('/test-mail', function () {
 
     return 'sent';
 });
+
+Route::get('/pdf', [\App\Http\Controllers\PDFController::class, 'index']);
 
 
 Route::get('/zipcode/{zip}', function ($zip) {
@@ -163,9 +123,11 @@ Route::middleware([
 ])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // PDF生成用
+    //Route::post('applications/pdf-generate', [ApplicationController::class, 'pdfGenerate'])->name('applications.pdfGenerate');
+    Route::get('applications/pdf-generate', [ApplicationController::class, 'pdfGenerate'])->name('applications.pdfGenerate');
+
     Route::resource('applications', ApplicationController::class);
-
-
 });
 /*
 Route::middleware([

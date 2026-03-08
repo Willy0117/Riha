@@ -17,7 +17,6 @@ class Application extends Model
         'organization_id',
         'application_date',
         'delivery_date',
-        'vigil_datetime',
         'funeral_datetime',
         'staff_name',
         'last_name',
@@ -43,9 +42,8 @@ class Application extends Model
     |--------------------------------------------------------------------------
     */
     protected $casts = [
-        'application_date'   => 'date',
-        'delivery_date'      => 'date',
-        'vigil_datetime'     => 'datetime',
+        'application_date'   => 'datetime',
+        'delivery_date'      => 'datetime',
         'funeral_datetime'   => 'datetime',
         'traits'             => 'array',
     ];
