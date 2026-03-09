@@ -1,6 +1,12 @@
 <template>
   <AppLayout>
     <template #header>{{ t('applications.list') }}</template>
+    <div
+      v-if="showSuccess"
+      class="mb-4 rounded-md border border-green-300 bg-green-100 px-4 py-3 text-green-800 shadow"
+    >
+      {{ props.flash.success }}
+    </div>
     <div dir="rtl">
       <!-- 検索 トリガーボタン -->
         <div class="relative size-4 ...">
@@ -256,6 +262,21 @@ console.log(props.applications)
 
 const { t } = useI18n()
 
+const showSuccess = ref(false)
+
+watch(
+  () => props.flash.success,
+  (val) => {
+    if (val) {
+      showSuccess.value = true
+      setTimeout(() => {
+        showSuccess.value = false
+      }, 4000)
+    }
+  },
+  { immediate: true }
+)
+
 const isSuperAdmin = computed(() =>
   props.user?.roles?.some(r => r.name.toLowerCase() === 'super admin')
 )
@@ -323,7 +344,7 @@ const submitSearch = () => {
 
 // ページ番号クリック
 const goPage = (page) => {
-  router.get(route('admin.application.index'), { ...persistQuery(), page }, {
+  router.get(route('applications.index'), { ...persistQuery(), page }, {
     preserveState: true,
     replace: true,
     onSuccess: () => resetSelectedIds()
@@ -340,10 +361,10 @@ const sortBy = (field) => {
 // 行単位削除
 const deleteapplication = (application_id) => {
   if (!confirm(t('confirm_delete'))) return
-  router.delete(route('admin.application.destroy', application_id), {
+  router.delete(route('applications.destroy', application_id), {
     preserveState: true,
     onSuccess: () => {
-      router.get(route('admin.application.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
+      router.get(route('applications.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
     }
   })
 }
@@ -357,7 +378,7 @@ const bulkDelete = () => {
       preserveState: true,
       onSuccess: () => {
         // 削除後に検索条件・ページを保持して再取得
-        router.get(route('admin.application.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
+        router.get(route('applications.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
       }
     }
   )

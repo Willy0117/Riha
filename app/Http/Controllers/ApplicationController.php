@@ -161,49 +161,74 @@ class ApplicationController extends Controller
 
         $data['organization_id'] = auth()->user()->organization_id;
 
-        $application = Application::create($data);
-        
-        $file_path = '';
+        $pdfPath = null;
+        $thumbPath = null;
 
-        if ($request->filled('canvas')) {
+        try {
 
-            [$file_path, $thumbnail_path] =
-                $fileService->storeBase64Image(
-                    $request->canvas,
-                    'public/canvas'
-                );
+            DB::beginTransaction();
 
+            // Application保存
+            $application = Application::create($data);
+
+            $file_path = '';
+
+            if ($request->filled('canvas')) {
+
+                [$file_path, $thumbnail_path] =
+                    $fileService->storeBase64Image(
+                        $request->canvas,
+                        'poem/canvas'
+                    );
+
+                $application->documents()->create([
+                    'type' => 'canvas',
+                    'file_path' => $file_path,
+                    'thumbnail_path' => $thumbnail_path,
+                ]);
+
+            }
+
+            $application->user = Auth::user()->name . ' ' . ($application->organization->tel ?? '');
+
+            // PDF生成
+            $pdfData = $pdfService->createApplicationPdf($application, $file_path);
+
+            $pdfPath = 'poem/pdf/' . $application->order_code . '.pdf';
+
+            if (!Storage::put($pdfPath, $pdfData)) {
+                throw new \Exception('PDF保存失敗');
+            }
+            // サムネイル
+            $thumbPath = $fileService->createThumbnail($pdfPath, 'poem/pdf');
+
+            // DB登録
             $application->documents()->create([
-                'type' => 'canvas',
-                'file_path' => $file_path,
-                'thumbnail_path' => $thumbnail_path,
+                'type' => 'pdf',
+                'file_path' => $pdfPath,
+                'thumbnail_path' => $thumbPath,
             ]);
 
+            DB::commit();
+
+        } catch (\Throwable $e) {
+
+            DB::rollBack();
+
+            if ($pdfPath && Storage::exists($pdfPath)) {
+                Storage::delete($pdfPath);
+            }
+
+            if ($thumbPath && Storage::exists($thumbPath)) {
+                Storage::delete($thumbPath);
+            }
+
+            throw $e;
         }
-        // 表示用文字列を追加
-        $application->user = Auth::user()->name . ' ' . ($application->organization->tel ?? '');
-
-        // 2. PDF作成
-        $pdfData = $pdfService->createApplicationPdf($application,$file_path);
-
-        // PDFをStorageに保存
-        $pdfPath = 'public/pdf/'. $application->order_code .'.pdf';
-        Storage::put($pdfPath, $pdfData);
-
-        // サムネイル作成
-        $thumbPath = $fileService->createThumbnail($pdfPath, 'public/pdf');
-
-        // ApplicationDocument に登録
-        $application->documents()->create([
-            'type' => 'pdf',
-            'file_path' => $pdfPath,
-            'thumbnail_path' => $thumbPath,
-        ]);
-
    
 
 
-        return redirect()->route('applications.create')
+        return redirect()->route('applications.index')
             ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
     }
 

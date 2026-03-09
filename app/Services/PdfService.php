@@ -7,6 +7,13 @@ use Illuminate\Support\Facades\Storage;
 
 class PdfService
 {
+    protected $disk;
+
+    public function __construct()
+    {
+        $this->disk = config('filesystems.default');
+    }
+
     /**
      * Application の情報から PDF を作成し、文字列で返す
      */
@@ -128,7 +135,7 @@ class PdfService
         $pdf->SetXY(65, 224);
         $pdf->MultiCell(120, 8, $data['remarks'] ?? 'なし');
 
-        $canvasPath = storage_path('app/public/' . $canvasFilePath);
+        $canvasPath = Storage::disk($this->disk)->path($canvasFilePath);
 
         if ($canvasFilePath && file_exists($canvasPath)) {
             $pdf->Image($canvasPath, 150, 108, 32);
