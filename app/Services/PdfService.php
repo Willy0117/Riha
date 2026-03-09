@@ -28,7 +28,8 @@ class PdfService
         $pdf->AddPage();
 
         // 既存PDFテンプレート読み込み
-        $templatePath = storage_path('app/templates/order_sheet/poem.pdf');
+        $templatePath = Storage::path('templates/order_sheet/poem.pdf');
+
         $pageCount = $pdf->setSourceFile($templatePath);
         $tpl = $pdf->importPage(1);
         $pdf->useTemplate($tpl);
