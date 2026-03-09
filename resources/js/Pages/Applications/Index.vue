@@ -179,6 +179,19 @@
               <Link :href="route('applications.edit', { application: application.id, ...persistQuery() })" class="text-blue-500 hover:text-blue-700">
                 <PencilIcon class="w-4 h-4"/>
               </Link>
+              <button
+                @click="openUpload(application)"
+                class="text-green-500 hover:text-green-700 flex items-center space-x-1 text-sm px-2 py-1"
+              >
+                <DocumentPlusIcon class="w-4 h-4"/><span>{{ t('applications.delivery') }}</span>
+              </button>
+              <!-- 印刷 -->
+              <button
+                @click="openPrint(application)"
+                class="text-purple-500 hover:text-purple-700 flex items-center space-x-1 text-sm px-2 py-1"
+              >
+                <PrinterIcon class="w-4 h-4"/><span>{{ t('applications.print') }}</span>
+              </button>
             </td>
           </tr>
         </tbody>
@@ -188,17 +201,42 @@
       <Pagination :paginator="applications" :onPageChange="goPage" :startItem="startItem" :endItem="endItem"/>
     </div>
 
-    <div>
- 
+  <div>
+      <DialogModal
+        :show="!!previewPdf"
+        maxWidth="7xl"
+        @close="previewPdf = null"
+      >
+        <template #title>
+          PDF プレビュー
+        </template>
+
+        <template #content>
+          <div class="w-[90vw] h-[80vh]">
+            <iframe
+              v-if="previewPdf"
+              :src="previewPdf"
+              class="w-full h-full border"
+            />
+          </div>
+        </template>
+
+        <template #footer>
+          <SecondaryButton @click="previewPdf = null">
+            {{ t('closed') }}
+          </SecondaryButton>
+        </template>
+      </DialogModal>
+
       <DialogModal :show="showStatusModal" @close="closeModal">
         <template #title>
-          ステータス変更
+            {{ t('applications.status_change') }}
         </template>
 
         <template #content>
           <select
             v-model="statusForm.status_id"
-            class="w-full border rounded px-3 py-2"
+            class="w-full border rounded px-3 py-2 mb-4"
           >
             <option
               v-for="s in statuses"
@@ -208,6 +246,12 @@
               {{ s.name }}
             </option>
           </select>
+          <!-- 日付入力 -->
+          <input
+            type="datetime-local"
+            v-model="statusForm.date"
+            class="w-full border rounded px-3 py-2 mb-4"
+          />
         </template>
         <template #footer>
           <SecondaryButton @click="closeModal">
@@ -220,9 +264,73 @@
         </template>
       </DialogModal>
 
+      <DialogModal :show="showProgressModal" @close="closeModal">
+        <template #title>
+          {{ t('applications.progress_change') }}
+        </template>
+        <template #content>
+            <select
+              v-model="progressForm.progress_id"
+              class="w-full border rounded px-3 py-2"
+            >
+              <option
+                v-for="p in progresses"
+                :key="p.id"
+                :value="p.id"
+              >
+                {{ p.name }}
+              </option>
+            </select>
+        </template>
+        <template #footer>
+          <SecondaryButton @click="closeModal">
+            <v-spacer />
+            <v-btn text @click="showProgressModal = false">{{ t('cancel') }}</v-btn>
+          </SecondaryButton>
+          <PrimaryButton class="ms-3" @click="submitProgress">
+              {{ t('actions.update') }}
+          </PrimaryButton>
+        </template>
+      </DialogModal>
 
+      <DialogModal :show="showUploadModal" @close="closeModal">
+        <template #title>{{ t('applications.documents') }}</template>
 
-   
+        <template #content>
+          <!-- ドラッグ＆ドロップ領域 -->
+          <div
+            class="mt-4 min-h-80 p-4 bg-[#e7dfc8] border-2 border-dashed border-gray-300 rounded text-center cursor-pointer hover:border-gray-500"
+            @dragover.prevent
+            @dragenter.prevent
+            @drop.prevent="handleDrop"
+            @click="fileInput.click()"
+          >
+            <p v-if="!file">{{ t('applications.uploads') }}</p>
+            <p v-else class="text-sm text-gray-700">{{ t('selected') }} {{ file.name }}</p>
+
+            <!-- hidden file input -->
+            <input
+              type="file"
+              ref="fileInput"
+              class="hidden"
+              accept="image/png"
+              @change="onFileChange"
+            />
+          </div>
+        </template>
+
+        <template #footer>
+          <div class="flex justify-end gap-3">
+            <SecondaryButton @click="closeModal">
+              {{ t('cancel') }}
+            </SecondaryButton>
+
+            <PrimaryButton @click="submitUpload">
+              {{ t('upload') }}
+            </PrimaryButton>
+          </div>
+        </template>
+      </DialogModal>      
     </div>
   </AppLayout>
 </template>
@@ -243,7 +351,8 @@ import { Link, router } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch} from 'vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
-import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
+import { PrinterIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
+import { Inertia } from '@inertiajs/inertia'
 
 const props = defineProps({
   applications: Object,
@@ -256,8 +365,13 @@ const props = defineProps({
       code: '', name: '', delivary_date: '', status_id: 1,tenant_id: '',
       per_page: 20, sort_by: 'created_at', sort_dir: 'desc', page: 1
     })
-  }
+  },
+  flash: {
+        type: Object,
+        default: () => ({ success: null })
+    }
 })
+
 console.log(props.applications)
 
 const { t } = useI18n()
@@ -454,7 +568,7 @@ const statuses = ref([])
 
 const openStatus = async (application) => {
   const res = await axios.get(
-    `/admin/application/${application.id}/status/edit`
+    `/application/${application.id}/status/edit`
   )
 
   statusForm.value.application_id = application.id
@@ -466,7 +580,7 @@ const openStatus = async (application) => {
 
 const submitStatus = async () => {
   await axios.put(
-    `/admin/application/${statusForm.value.application_id}/status`,
+    `/application/${statusForm.value.application_id}/status`,
     { 
       status_id: statusForm.value.status_id,
     }
@@ -492,13 +606,6 @@ const uploadForm = ref({
 
 const file = ref(null)
 
-const documentTypes = [
-  { id: 1, name: '履歴事項全部証明書' },
-  { id: 2, name: '郵送先確認書' },
-  { id: 3, name: '口座振替依頼書' },
-  { id: 4, name: '委任状' },
-]
-
 /**
  * モーダルを開く（status / progress と同型）
  */
@@ -514,10 +621,10 @@ const fileInput = ref(null)
  */
 const handleDrop = (e) => {
   const droppedFiles = e.dataTransfer.files
-  if (droppedFiles.length && droppedFiles[0].type === 'application/pdf') {
+  if (droppedFiles.length && droppedFiles[0].type === 'image/png') {
     file.value = droppedFiles[0]
   } else {
-    alert('PDF ファイルを1つだけアップロードしてください')
+    alert('PNG ファイルを1つだけアップロードしてください')
   }
 }
 
@@ -526,10 +633,10 @@ const handleDrop = (e) => {
  */
 const onFileChange = (e) => {
   const selected = e.target.files[0]
-  if (selected && selected.type === 'application/pdf') {
+  if (selected && selected.type === 'image/png') {
     file.value = selected
   } else {
-    alert('PDF ファイルを選択してください')
+    alert('PNG ファイルを選択してください')
     file.value = null
   }
 }
@@ -538,19 +645,17 @@ const onFileChange = (e) => {
  * submit（status と同型）
  */
 const submitUpload = async () => {
-  if (!file.value || !uploadForm.value.type_id)
-    return alert('書類と種別を選択してください')
+  if (!file.value)
+    return alert('アップするファイルを選択してください')
 
   const formData = new FormData()
   formData.append('document', file.value)   // ← controller と一致
-  formData.append('type_id', uploadForm.value.type_id)
   console.log(formData);
 
   try {
     await axios.post(
-      `/admin/application/${uploadForm.value.application_id}/upload-document`,
+      `/applications/${uploadForm.value.application_id}/upload-document`,
       formData,
-      //      { headers: { 'Content-Type': 'multipart/form-data' } }
     )
 
     alert('アップロード完了')
@@ -562,4 +667,11 @@ const submitUpload = async () => {
   }
 }
 
+const openPrint = (application) => {
+  Inertia.visit(
+    route('applications.printDocument', {
+      application: application.id,...persistQuery(), 
+    })
+  )
+}
 </script>

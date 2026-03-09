@@ -291,30 +291,14 @@ class ApplicationController extends Controller
         $member->save();
     }
 
- 
-    // Apuls Pdf Create
-    public function pdfCreate()
+    public function printDocument(Request $request)
     {
-        $form = session('member_form', [
-            'company_furigana' => '',
-            'representative_furigana' => '',
-            'company_name' => '',
-            'representative' => '',
-            'address_zip' => '',
-            'address' => '',
-            'tel' => '',
-            'bank_name' => '',
-            'branch_name' => '',
-            'account_type' => '普通',
-            'account_no' => '',
-            'account_kana' => '',
-            'account_name' => '',
-        ]);
 
-        return Inertia::render('Members/PdfCreate', [
-            'form' => $form
-        ]);
+
+
+
     }
+
     // Apuls Pdf Generate
     public function pdfGenerate(Request $request)
     {
@@ -474,5 +458,31 @@ class ApplicationController extends Controller
         ]);
     }
 
+
+    public function uploadDocument(Request $request, Application $application, FileService $fileService)
+    {
+        $request->validate([
+            'document' => 'required|file|mimes:png|max:10240',
+        ]);
+
+        [$file_path, $thumbnail_path] =
+            $fileService->storeUploadedFile(
+                $request->file('document'),
+                'poem/png'
+            );
+
+        $application->documents()->create([
+            'type' => 'png',
+            'file_path' => $file_path,
+            'thumbnail_path' => $thumbnail_path,
+        ]);
+
+
+        return response()->json([
+            'success' => true,
+            'file_url' => Storage::url($file_path),
+            'thumbnail_url' => $thumbnail_path ? Storage::url($thumbnail_path) : null,
+        ]);
+    }
 
 }

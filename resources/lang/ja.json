@@ -237,6 +237,10 @@
     "status": "状態",
     "signaturePad": "手書き漢字",
     "clear": "クリア",
+    "documents": "アップロードファイル",
+    "uploads": "pngファイルをアップロードする",
+    "print": "印刷",
+    "delivery": "納品",
     "send": "申込内容を送信"   
   },
 
