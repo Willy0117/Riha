@@ -12,8 +12,9 @@ import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import { useI18n } from 'vue-i18n'
 import { Inertia } from '@inertiajs/inertia';
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import Vue3SignaturePad from 'vue3-signature-pad'
+import dayjs from 'dayjs';
 
 const { t } = useI18n()
 
@@ -83,20 +84,33 @@ const submit = () => {
         preserveScroll: true,
     });
 };
+const updateDeliveryDate = () => {
+  let now = dayjs(); // 現在時刻
+  let delivery;
 
-const pdfProcessing = ref(false);
+  if (now.hour() < 15) {
+    delivery = now.add(3, 'hour');
+  } else {
+    delivery = now.add(1, 'day').hour(12).minute(0);
+  }
 
-function generatePdf() {
-    pdfProcessing.value = true;
+  // 30分丸め
+  const minute = delivery.minute();
+  if (minute > 0 && minute <= 30) {
+    delivery = delivery.minute(30);
+  } else if (minute > 30) {
+    delivery = delivery.add(1, 'hour').minute(0);
+  }
+  delivery = delivery.second(0);
 
-    form.post(route('applications.pdfGenerate'), {
-        onSuccess: (page) => {
-            window.open(page.props.pdf_url, '_blank')
-        }
-    });
+  form.delivery_date = delivery.format('YYYY-MM-DDTHH:mm'); // datetime-local 用
+};
 
-    pdfProcessing.value = false;
-}
+onMounted(() => {
+  updateDeliveryDate();
+  setInterval(updateDeliveryDate, 60 * 1000); // 1分ごとに更新
+});
+
 
 </script>
 
@@ -332,17 +346,7 @@ function generatePdf() {
             </div>
         </template>
 
-        <template #actions>
-                <!-- PDF生成ボタン -->
-            <SecondaryButton
-                type="button"
-                :class="{ 'opacity-25': pdfProcessing }"
-                :disabled="pdfProcessing"
-                @click="generatePdf"
-            >
-                {{ t('registers.pdf') }}
-            </SecondaryButton>
-            
+        <template #actions>       
             <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
                 {{ t('registers.send') }}
             </PrimaryButton>

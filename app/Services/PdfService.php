@@ -28,6 +28,9 @@ class PdfService
 
         // TCPDF同梱の日本語フォント
         $pdf->SetFont('kozminproregular', '', 11); // もしくは cid0jp
+                // 受注コード
+        $pdf->SetXY(158, 18);
+        $pdf->Write(8, $data->order_code);
         //納品時間    
         $pdf->SetXY(50, 48);
         $pdf->Write(8, ($data['delivery_date']??now())->format('Y年m月d日 H時i分'));
@@ -38,7 +41,7 @@ class PdfService
         $pdf->SetXY(65, 62);
         $pdf->Write(8, $data['staff_name']??'山田　太郎');
         $pdf->SetXY(65, 69);
-        $pdf->Write(8, $data['user_name']??'那珂ホール');
+        $pdf->Write(8, $data->user);
         $pdf->SetXY(65, 76);
         $pdf->Write(8, ($data['funeral_datetime']??now())->format('Y年m月d日 H時i分'));
         $pdf->SetXY(65, 83);
@@ -57,7 +60,14 @@ class PdfService
         $pdf->SetXY(65, 114);
         $pdf->Write(8, ($data['age_at_death']??'90') . '　歳');
         $pdf->SetXY(65, 121);
-        $pdf->Write(8, $data['spouse_status']??'有');
+
+        $spouse = $data['spouse_status']??'none';
+        $spouse_status = [
+            'none' => '無',
+            'alive' => '有',
+            'deceased' => '死別',
+        ];
+        $pdf->Write(8, $spouse_status[$spouse]);
         $pdf->SetXY(65, 128);
         $pdf->Write(8, $data['children_count']??'未記入');
         $pdf->SetXY(65, 135);
@@ -117,12 +127,12 @@ class PdfService
 
         $pdf->SetXY(65, 224);
         $pdf->MultiCell(120, 8, $data['remarks'] ?? 'なし');
-         // Canvas を貼り付け
-        if ($canvasFilePath && file_exists(storage_path('app/' . $canvasFilePath))) {
-            // x, y, width などは調整
+
+        $canvasPath = storage_path('app/public/' . $canvasFilePath);
+
+        if ($canvasFilePath && file_exists($canvasPath)) {
             $pdf->Image($canvasPath, 150, 108, 32);
         }
-
         // PDFデータを文字列で返す
         return $pdf->Output('', 'S'); // 'S'で文字列取得
     }

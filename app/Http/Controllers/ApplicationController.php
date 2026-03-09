@@ -124,8 +124,8 @@ class ApplicationController extends Controller
                 ->addDays(2)
                 ->setTime(0, 0)
                 ->format('Y-m-d\TH:i'),
-            'application_date' => $now->format('Y-m-d H:i'),
-            'delivery_date' => $delivery->format('Y-m-d H:i'),
+            'application_date' => $now->format('Y-m-d\TH:i'),
+            'delivery_date' => $delivery->format('Y-m-d\TH:i'),
             'user' => [
                 'hall_name' => $user->hall_name,
                 'tel' => $user->tel,
@@ -180,11 +180,14 @@ class ApplicationController extends Controller
             ]);
 
         }
+        // 表示用文字列を追加
+        $application->user = Auth::user()->name . ' ' . ($application->organization->tel ?? '');
+
         // 2. PDF作成
         $pdfData = $pdfService->createApplicationPdf($application,$file_path);
 
         // PDFをStorageに保存
-        $pdfPath = 'public/pdf/pdf_'.$application->id.'.pdf';
+        $pdfPath = 'public/pdf/'. $application->order_code .'.pdf';
         Storage::put($pdfPath, $pdfData);
 
         // サムネイル作成
@@ -327,6 +330,9 @@ class ApplicationController extends Controller
 
         // TCPDF同梱の日本語フォント
         $pdf->SetFont('kozminproregular', '', 11); // もしくは cid0jp
+        // 受注コード
+        $pdf->SetXY(158, 18);
+        $pdf->Write(8, 'P12345678'); // $application->order_code
         //納品時間    
         $pdf->SetXY(50, 48);
         $pdf->Write(8, ($data['delivery_date']??now())->format('Y年m月d日 H時i分'));
