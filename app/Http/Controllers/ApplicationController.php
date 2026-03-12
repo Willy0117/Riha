@@ -291,14 +291,49 @@ class ApplicationController extends Controller
         $member->save();
     }
 
-    public function printDocument(Request $request)
+    public function printDocument(Request $request, Application $application)
     {
+        // ---------------------------
+        // 1. ApplicationDocuments の取得
+        //    type = 'poem' の PNG のみ
+        // ---------------------------
+        $documents = $application->documents()
+            ->where('type', 'png') // enumで 'poem' にしている場合
+            ->get()
+            ->map(function ($doc) {
+                return [
+                    'id' => $doc->id,
+                    'file_path' => $doc->file_path,
+                    'file_url' => Storage::url($doc->file_path),
+                ];
+            });
 
+        // ---------------------------
+        // 2. 検索条件の受け取り（persistQuery() で渡したもの）
+        // ---------------------------
+        $filters = $request->only([
+            'tenant_id',
+            'code',
+            'name',
+            'delivary_date',
+            'application_date',
+            'gender',
+            'status_id',
+            'per_page',
+            'sort_by',
+            'sort_dir',
+            'page',
+        ]);
 
-
-
+        // ---------------------------
+        // 3. Inertia に渡す
+        // ---------------------------
+        return inertia('Applications/PrintDocument', [
+            'application' => $application,
+            'documents'   => $documents,
+            'filters'     => $filters, // Vue 側で検索条件として使える
+        ]);
     }
-
     // Apuls Pdf Generate
     public function pdfGenerate(Request $request)
     {
