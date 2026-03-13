@@ -23,6 +23,7 @@ use App\Mail\PreRegisterMail;
 
 use App\Services\FileService;
 use App\Services\PdfService;
+use App\Enums\Status;
 
 class ApplicationController extends Controller
 {
@@ -47,7 +48,8 @@ class ApplicationController extends Controller
 
         $per_page = $request->input('per_page') ?? 20;
 
-        $query = Application::where('organization_id', $user->organization_id);
+        $query = Application::with('pdfDocuments')
+                ->where('organization_id', $user->organization_id);
 
         if ($name !== '') {
             $keywords = preg_split('/\s+/', $name);
@@ -80,6 +82,7 @@ class ApplicationController extends Controller
         return Inertia::render('Applications/Index', [
             'user' => $user,
             'applications' => $applications,
+            'statusOptions' => Status::options(),
             'filter' => [
                 'per_page'      => $per_page,
                 'name'          => $name,
@@ -237,9 +240,44 @@ class ApplicationController extends Controller
 
     }
 
-    public function show(Request $request)
+    public function show(Request $request, Application $application)
     {
+        $application->load([
+            'canvasDocument'
+        ]);
 
+        $user = Auth::user();
+
+        $name = trim((string) $request->input('name'));
+        $applicationDate = $request->input('application_date');
+        $deliveryDate = $request->input('delivery_date');
+
+        $allowedSorts = 
+        [
+            'created_at', 'gender', 'order_code', 'id', 'name', 'age_at_death', 'delivery_date', 'deceased_furigana', 'status'
+        ];
+
+        $sortBy  = in_array($request->input('sort_by'), $allowedSorts)
+            ? $request->input('sort_by')
+            : 'created_at';
+
+        $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
+
+        $per_page = $request->input('per_page') ?? 20;
+
+
+        return Inertia::render('Applications/Show', [
+            'user'        => $user,  
+            'application' => $application,
+            'filter' => [
+                'per_page'      => $per_page,
+                'name'          => $name,
+                'delivery_date' => $deliveryDate,
+                'application_date' => $applicationDate,
+                'sort_by'       => $sortBy,
+                'sort_dir'      => $sortDir, 
+            ],
+        ]);
     }
     
     protected function sendCompletedMails(Member $member, $preUser, $corp, $agent = null): void
@@ -493,6 +531,24 @@ class ApplicationController extends Controller
         ]);
     }
 
+    public function updateStatus(Request $request, Application $application)
+    {
+        $data = [
+            'status' => $request->status,
+        ];
+
+        if ($request->status === 'working') {
+            $data['working_at'] = $request->date;
+        }
+
+        if ($request->status === 'completed') {
+            $data['completed_at'] = $request->date;
+        }
+
+        $application->update($data);
+        
+        return response()->json(['success' => true]);
+    }
 
     public function uploadDocument(Request $request, Application $application, FileService $fileService)
     {

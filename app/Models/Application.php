@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
+use App\Enums\Status;
 
 class Application extends Model
 {
@@ -34,6 +35,9 @@ class Application extends Model
         'text_color',
         'bg_color',
         'remarks',
+        'working_at',
+        'completed_at',
+        'status',
     ];
 
     /*
@@ -46,8 +50,16 @@ class Application extends Model
         'delivery_date'      => 'datetime',
         'funeral_datetime'   => 'datetime',
         'traits'             => 'array',
+        'working_at'         => 'datetime',
+        'completed_at'       => 'datetime',
+
     ];
 
+    protected function serializeDate(\DateTimeInterface $date)
+    {
+        // これにより、Vueには "2026-03-12 16:42:00" という形式で渡ります
+        return $date->format('Y-m-d H:i:s');
+    }
     /*
     |--------------------------------------------------------------------------
     | Relationships
@@ -91,4 +103,22 @@ class Application extends Model
     }
         // JSON化時に自動で fullname を含める
     protected $appends = ['fullname', 'order_code'];
+
+    public function getStatusAttribute($value)
+    {
+        return Status::from($value)->label();
+    }
+    /*
+
+     */
+    public function pdfDocuments()
+    {
+        return $this->hasMany(ApplicationDocument::class)
+                    ->where('type', 'pdf');
+    }
+    public function canvasDocument()
+    {
+        return $this->hasOne(ApplicationDocument::class)
+                    ->where('type', 'canvas');
+    }
 }

@@ -16,7 +16,9 @@ class ApplicationDocument extends Model
         'thumbnail_path',
     ];
 
-    protected $appends = ['url', 'thumbnail_url'];
+    protected $appends = [
+        'url', 'thumbnail_url'
+    ];
 
     public function application()
     {
@@ -25,7 +27,7 @@ class ApplicationDocument extends Model
 
     public function getUrlAttribute()
     {
-        return $this->path ? Storage::url($this->file_path) : null;
+        return $this->file_path ? Storage::url($this->file_path) : null;
     }
 
     public function getThumbnailUrlAttribute()

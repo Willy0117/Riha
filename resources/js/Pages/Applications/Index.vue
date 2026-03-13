@@ -157,7 +157,19 @@
             <td class="px-3 py-2">
               <input type="checkbox" :value="application.id" v-model="selectedIds" />
             </td>
-            <td>{{ application.order_code }}</td>
+            <td>
+              <span v-if="application.pdf_documents?.length">
+                <button
+                  @click="previewPdf = application.pdf_documents[0]?.url"
+                  class="text-blue-600 hover:underline"
+                >
+                  {{ application.order_code }}
+                </button>
+              </span>
+              <span v-else>
+                {{ application.order_code }}
+              </span>
+            </td>
             <td v-if="isSuperAdmin">
               {{ tenants.find(t => t.id === application.tenant_id)?.name || '-' }}
             </td>            
@@ -172,11 +184,11 @@
                 class="cursor-pointer text-blue-600 hover:underline"
                 @click="openStatus(application)"
               >
-                {{ application.status?.name }}
+                {{ application.status }}
               </span>
             </td>
             <td class="px-3 py-2 text-center flex justify-center space-x-1">
-              <Link :href="route('applications.edit', { application: application.id, ...persistQuery() })" class="text-blue-500 hover:text-blue-700">
+              <Link :href="route('applications.show', { application: application.id, ...persistQuery() })" class="text-blue-500 hover:text-blue-700">
                 <PencilIcon class="w-4 h-4"/>
               </Link>
               <button
@@ -235,15 +247,15 @@
 
         <template #content>
           <select
-            v-model="statusForm.status_id"
+            v-model="statusForm.status"
             class="w-full border rounded px-3 py-2 mb-4"
           >
             <option
-              v-for="s in statuses"
-              :key="s.id"
-              :value="s.id"
+              v-for="s in statusOptions"
+              :key="s.value"
+              :value="s.value"
             >
-              {{ s.name }}
+              {{ s.label }}
             </option>
           </select>
           <!-- 日付入力 -->
@@ -350,15 +362,15 @@ import axios from 'axios'
 import { Link, router } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch} from 'vue'
 import { useI18n } from 'vue-i18n'
-import dayjs from 'dayjs'
 import { PrinterIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
 import { Inertia } from '@inertiajs/inertia'
+import dayjs from 'dayjs'
 
 const props = defineProps({
   applications: Object,
   user: Object,
   tenants: Array,
-  statuses: Array,
+  statusOptions: Array,
   filters: {
     type: Object,
     default: () => ({
@@ -561,28 +573,41 @@ const showStatusModal = ref(false)
 
 const statusForm = ref({
   application_id: null,
-  status_id: null,
+  status: '',
+  date: '',
 })
 
-const statuses = ref([])
+const statusMap = {
+  '受付済': 'received',
+  '作業中': 'working',
+  '完了': 'completed',
+}
+
 
 const openStatus = async (application) => {
-  const res = await axios.get(
-    `/application/${application.id}/status/edit`
-  )
-
   statusForm.value.application_id = application.id
-  statusForm.value.status_id = res.data.application.status_id
-  statuses.value = res.data.statuses
+  statusForm.value.status = statusMap[application.status] || ''
 
+  if (application.working_at) {
+    statusForm.value.date = application.working_at
+  } else if (application.completed_at) {
+    statusForm.value.date = application.completed_at
+  } else {
+    statusForm.value.date = application.created_at
+  }
+  //statusForm.value.date = dayjs.tz(statusForm.value.date,'Asia/Tokyo').format('YYYY-MM-DDTHH:mm')
   showStatusModal.value = true
 }
 
 const submitStatus = async () => {
+
+  const url = `/applications/${statusForm.value.application_id}/status`
+
   await axios.put(
-    `/application/${statusForm.value.application_id}/status`,
+    url,
     { 
-      status_id: statusForm.value.status_id,
+      status: statusForm.value.status,
+      date: statusForm.value.date || new Date().toISOString().slice(0, 10),
     }
   )
 
