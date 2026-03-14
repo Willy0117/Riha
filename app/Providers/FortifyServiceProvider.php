@@ -84,7 +84,9 @@ class FortifyServiceProvider extends ServiceProvider
                     'username' => 'required|string',
                     'password' => 'required|string',
                 ]);
-                $user = \App\Models\User::where('username', $request->username)->first();
+                $user = \App\Models\User::where('username', $request->username)
+                                        ->orWhere('email', $request->username)
+                                        ->first();
             }
 
             if ($user && Hash::check($request->password, $user->password)) {
