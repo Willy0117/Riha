@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\TenantController;
 use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\BankCategoryController;
 use App\Http\Controllers\InsuranceSimulationController;
+use App\Models\Organization;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -31,5 +32,22 @@ Route::get('/zipcode/{zip}', function ($zip) {
     );
 
     return $response->json();
+});
+
+// Autocomplete用
+Route::get('/organizations/search', function (Request $request) {
+
+    $keyword = $request->q;
+
+    return Organization::query()
+        ->where('name', 'like', "%{$keyword}%")
+        ->orderBy('name')
+        ->limit(20)
+        ->get(['id', 'name', 'abbr'])
+        ->map(fn ($o) => [
+            'id' => $o->id,
+            'name' => $o->name,
+            'label' => $o->name . ($o->abbr ? ' (' . $o->abbr . ')' : ''),
+        ]);
 });
 

@@ -131,6 +131,9 @@ Route::middleware([
     //Route::post('applications/pdf-generate', [ApplicationController::class, 'pdfGenerate'])->name('applications.pdfGenerate');
     Route::get('applications/pdf-generate', [ApplicationController::class, 'pdfGenerate'])->name('applications.pdfGenerate');
 
+    Route::get('applications/fax', [ApplicationController::class, 'fax'])->name('applications.fax');
+    Route::post('applications/faxstore', [ApplicationController::class, 'faxstore'])->name('applications.faxstore');
+
     Route::resource('applications', ApplicationController::class);
 
     Route::get('/compose-image', [\App\Http\Controllers\PrintController::class, 'composeImage'])->name('composeImage');

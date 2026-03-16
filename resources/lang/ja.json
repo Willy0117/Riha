@@ -28,6 +28,7 @@
   "update": "更 新",
   "cancel": "キャンセル",
   "deleted": "削 除",
+  "PDFpreview": "PDFプレビュー",
   "actions": {
     "action": "操 作",
     "save": "保 存",
@@ -209,6 +210,7 @@
   "approve": "承認",
   "reject": "却下",
   "applications": {
+    "apply_type": "申込経路",
     "poem": "名前の詩 新規申込",
     "list": "申込一覧",
     "code": "受注コード",
@@ -237,10 +239,14 @@
     "status": "状態",
     "signaturePad": "手書き漢字",
     "clear": "クリア",
+    "document": "参照",
     "documents": "アップロードファイル",
     "uploads": "pngファイルをアップロードする",
     "print": "印刷",
     "delivery": "納品",
+    "fax": "PDF(Fax)申込",
+    "pdfUploads": "PDFファイルをアップロードする（最大10MBまで）",
+    "organization": "得意先",
     "send": "申込内容を送信"   
   },
 

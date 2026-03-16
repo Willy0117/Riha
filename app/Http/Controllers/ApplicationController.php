@@ -37,7 +37,7 @@ class ApplicationController extends Controller
 
         $allowedSorts = 
         [
-            'created_at', 'gender', 'order_code', 'id', 'name', 'age_at_death', 'delivery_date', 'deceased_furigana', 'status'
+            'apply_type','created_at', 'gender', 'order_code', 'id', 'name', 'age_at_death', 'delivery_date', 'deceased_furigana', 'status'
         ];
 
         $sortBy  = in_array($request->input('sort_by'), $allowedSorts)
@@ -138,7 +138,94 @@ class ApplicationController extends Controller
 
     public function store(Request $request, PdfService $pdfService, FileService $fileService)
     {
-//        dd($request->all());
+        $data = $request->validate([
+            'last_name'     => 'required|string',
+            'first_name'     => 'required|string',
+            'deceased_furigana' => 'required|string',
+            'gender'            => 'required|string',
+            'chief_mourner_name'=> 'nullable|string',
+            'age_at_death'      => 'nullable|integer',
+            'relationship_to_deceased' => 'nullable|string',
+            'delivery_date'     => 'required|string',
+            'funeral_datetime'  => 'required|string',
+            'spouse_status'     => 'nullable|string',
+            'children_count'    => 'nullable|integer',
+            'grandchildren_count'=> 'nullable|integer',
+            'staff_name'        => 'required|string',
+            'bg_color'          => 'nullable|string',
+            'text_color'        => 'nullable|string',
+            'traits'            => 'nullable|array',
+            'special_notes'     => 'nullable|string',
+            'remarks'           => 'nullable|string',
+            'canvas'            => 'nullable|string',
+        ]);
+                   
+        $data['apply_type'] = 'web';
+
+        $user = auth()->user();
+        $data['organization_id'] = $user->organization_id;
+
+        // ファイルパス初期化
+        $file_path = null;
+        $thumbnail_path = null;
+        $pdfPath = null;
+        $thumbPath = null;
+
+        // DBトランザクション内で処理
+        DB::transaction(function () use (
+            $request,
+            $data,
+            $pdfService,
+            $fileService,
+            $user,
+            &$file_path,
+            &$thumbnail_path,
+            &$pdfPath,
+            &$thumbPath
+        ) {
+            // Application保存
+            $application = Application::create($data);
+
+            // Canvas画像
+            if ($request->filled('canvas')) {
+                [$file_path, $thumbnail_path] =
+                    $fileService->storeBase64Image($request->canvas, 'poem/canvas');
+
+                $application->documents()->create([
+                    'type' => 'canvas',
+                    'file_path' => $file_path,
+                    'thumbnail_path' => $thumbnail_path,
+                ]);
+            }
+
+            // PDF生成用ユーザー表示
+            $tel = $application->organization->tel ?? '';
+            $application->user = $user->name . ' ' . $tel;
+
+            // PDF生成
+            $pdfData = $pdfService->createApplicationPdf($application, $file_path);
+
+            $pdfPath = 'poem/pdf/' . $application->order_code . '.pdf';
+            if (!Storage::put($pdfPath, $pdfData)) {
+                throw new \Exception('PDF保存失敗');
+            }
+
+            $thumbPath = $fileService->createThumbnail($pdfPath, 'poem/pdf');
+
+            $application->documents()->create([
+                'type' => 'pdf',
+                'file_path' => $pdfPath,
+                'thumbnail_path' => $thumbPath,
+            ]);
+        });
+
+        // 成功時リダイレクト
+        return redirect()->route('applications.index')
+            ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
+    }
+/*
+    public function store(Request $request, PdfService $pdfService, FileService $fileService)
+    {
 
         $data = $request->validate([
             'last_name'     => 'required|string',
@@ -157,9 +244,9 @@ class ApplicationController extends Controller
             'bg_color'          => 'nullable|string',
             'text_color'        => 'nullable|string',
             'traits'            => 'nullable|array',
-            'special_note'      => 'nullable|string',
+            'special_notes'     => 'nullable|string',
             'remarks'           => 'nullable|string',
-            'canvas'            => 'nullable|string',
+            'canvas'            => 'nullable|string|max:5000000',
         ]);
 
         $data['organization_id'] = auth()->user()->organization_id;
@@ -234,7 +321,7 @@ class ApplicationController extends Controller
         return redirect()->route('applications.index')
             ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
     }
-
+*/
     public function edit(Request $request)
     {
 
@@ -279,7 +366,96 @@ class ApplicationController extends Controller
             ],
         ]);
     }
-    
+
+
+    public function fax(Request $request)
+    {
+        $user = Auth::user();
+        $now = Carbon::now();
+
+        // 納期計算
+        if ($now->hour < 15) {
+            $delivery = $now->copy()->addHours(3);
+        } else {
+            $delivery = $now->copy()->addDay()->setTime(12, 0);
+        }
+
+        // 30分丸め
+        $minute = $delivery->minute;
+
+        if ($minute > 0 && $minute <= 30) {
+            $delivery->setMinute(30);
+        } elseif ($minute > 30) {
+            $delivery->addHour()->setMinute(0);
+        }
+
+        $delivery->setSecond(0);
+
+        $defaultFuneral = Carbon::today()
+            ->addDays(2)
+            ->setTime(12, 0);
+
+        return Inertia::render('Applications/Fax', [
+            'defaultFuneralDatetime' => $defaultFuneral->format('Y-m-d\TH:i'),
+            'minFuneralDatetime' => Carbon::today()
+                ->addDays(2)
+                ->setTime(0, 0)
+                ->format('Y-m-d\TH:i'),
+            'application_date' => $now->format('Y-m-d\TH:i'),
+            'delivery_date' => $delivery->format('Y-m-d\TH:i'),
+            'user' => [
+                'hall_name' => $user->hall_name,
+                'tel' => $user->tel,
+            ],
+        ]);
+    }
+
+    public function faxstore(Request $request, PdfService $pdfService, FileService $fileService)
+    {
+        DB::transaction(function () use ($request, $fileService) {
+
+            $data = $request->validate([
+                'delivery_date' => 'required|string',
+                'last_name' => 'required|string',
+                'first_name' => 'required|string',
+                'deceased_furigana' => 'required|string',
+                'staff_name' => 'required|string',
+                'organization_id' => 'required|integer',
+                'pdf' => 'required|file|mimes:pdf|max:10240',
+                'remarks'           => 'nullable|string',
+            ]);
+
+            $data['apply_type'] = 'fax';
+
+            unset($data['pdf']);
+
+            $application = Application::create($data);
+
+            if ($request->hasFile('pdf')) {
+
+                [$file_path, $thumbnail_path] =
+                    $fileService->storeUploadedFile(
+                        $request->file('pdf'),
+                        'poem/pdf'
+                    );
+
+                $application->documents()->create([
+                    'type' => 'pdf',
+                    'file_path' => $file_path,
+                    'thumbnail_path' => $thumbnail_path,
+                ]);
+            }
+
+        });
+   
+
+
+        return redirect()->route('applications.index')
+            ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
+    }
+
+
+
     protected function sendCompletedMails(Member $member, $preUser, $corp, $agent = null): void
     {
 

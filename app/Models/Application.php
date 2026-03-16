@@ -38,6 +38,7 @@ class Application extends Model
         'working_at',
         'completed_at',
         'status',
+        'apply_type',
     ];
 
     /*

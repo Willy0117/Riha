@@ -49,6 +49,7 @@ const form = useForm({
     // --- その他項目 ---
     traits: [],
     special_notes: '',
+    remarks: '',
     canvas: null, // ここに手書き画像を格納    
 });
 
@@ -342,7 +343,7 @@ onMounted(() => {
 
             <div class="col-span-6">
                 <InputLabel for="remarks" :value="t('registers.note')" />
-                <textarea id="remarks" v-model="form.note" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" rows="2"></textarea>
+                <textarea id="remarks" v-model="form.remarks" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" rows="2"></textarea>
             </div>
         </template>
 

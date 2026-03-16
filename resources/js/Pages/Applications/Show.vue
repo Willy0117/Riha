@@ -21,10 +21,6 @@ import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentDuplicate
 const { t } = useI18n()
 
 const props = defineProps({
-  defaultFuneralDatetime: String,
-  minFuneralDatetime: String,
-  application_date: String,
-  delivery_date: String,
   user: Object,
   application: Object,
 })
@@ -33,7 +29,7 @@ const form = useForm({
     application_date: props.application_date,
     delivery_date: props.application?.delivery_date,
     staff_name: props.application?.staff_name,
-    funeral_datetime: props.application?.defaultFuneralDatetime,
+    funeral_datetime: props.application?.funeral_datetime,
     text_color: props.application?.text_color,
     bg_color: props.application?.bg_color,
     last_name: props.application?.last_name,
@@ -51,6 +47,7 @@ const form = useForm({
     // --- その他項目 ---
     traits: props.application?.traits,
     special_notes: props.application?.special_notes,
+    remarks: props.application?.remarks,
     canvas: props.application?.canvas, // ここに手書き画像を格納    
 });
 
@@ -88,7 +85,6 @@ const getTextImageUrl = (color) => {
                 <TextInput
                     v-model="form.delivery_date"
                     type="datetime-local"
-                    :min="minFuneralDatetime"
                     class="mt-1 block w-full bg-[#ddd5bc]"
                     readonly
                 />
@@ -100,7 +96,6 @@ const getTextImageUrl = (color) => {
                 <TextInput
                     v-model="form.funeral_datetime"
                     type="datetime-local"
-                    :min="minFuneralDatetime"
                     class="mt-1 block w-full"
                     />
             </div>
@@ -148,15 +143,24 @@ const getTextImageUrl = (color) => {
             </div>             
             <div class="col-span-6 sm:col-span-1">
                 <div class="space-y-2">
-                    <div class="border-2 border-gray-400 rounded-lg bg-white">
-                    <img
-                        v-if="application.canvas_document"
-                        :src="application.canvas_document.url"
-                    />
+
+                    <div class="border-2 border-gray-300 rounded-lg bg-gray-50 
+                                w-40 h-40 flex items-center justify-center overflow-hidden">
+
+                        <img
+                            v-if="application.canvas_document"
+                            :src="application.canvas_document.url"
+                            class="w-full h-full object-contain"
+                        />
+
+                        <div v-else class="text-gray-400 text-sm">
+                            画像なし
+                        </div>
+
                     </div>
 
                 </div>
-            </div>   
+            </div> 
             <!-- 性別 -->
             <div class="col-span-6 sm:col-span-1">
                 <InputLabel value="性別" />
@@ -297,7 +301,7 @@ const getTextImageUrl = (color) => {
 
             <div class="col-span-6">
                 <InputLabel for="remarks" :value="t('registers.note')" />
-                <textarea id="remarks" v-model="form.note" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" rows="2"></textarea>
+                <textarea id="remarks" v-model="form.remarks" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" rows="2"></textarea>
             </div>
         </template>
 

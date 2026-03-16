@@ -6,6 +6,7 @@ return [
     'required_if' => ':attribute が未入力またはファイルが選択されていません。',
 
     'attributes' => [
+        'organization_id' => '得意先',
         'deceased_name' => '故人名',
         'last_name' => '姓',
         'first_name' => '名',

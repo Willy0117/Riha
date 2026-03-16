@@ -112,21 +112,25 @@
       <table class="min-w-full table-auto border-collapse border border-gray-300 text-sm">
         <thead>
           <tr class="bg-gray-200">
-            <th class="px-3 py-2">
+            <!--th class="px-3 py-2">
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
-            </th>
+            </th -->
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('id')">
               {{ t('applications.code') }}
               <span v-if="form.sort_by==='id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th v-if="isSuperAdmin">{{ t('tenant') }}</th>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('apply_type')">
+              {{ t('applications.apply_type') }}
+              <span v-if="form.sort_by==='apply_type'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">
               {{ t('applications.name') }}
               <span v-if="form.sort_by==='name'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('furigana')">
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('deceased_furigana')">
               {{ t('applications.furigana') }}
-              <span v-if="form.sort_by==='furigana'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+              <span v-if="form.sort_by==='deceased_furigana'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('age_at_death')">
               {{ t('applications.age_at_death') }}
@@ -148,15 +152,15 @@
               {{ t('applications.status') }}
               <span v-if="form.sort_by==='status'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 text-center">{{ t('actions') }}</th>
+            <th class="px-3 py-2 text-center">{{ t('actions.action') }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="application in applications.data" :key="application.id" class="odd:bg-white even:bg-gray-100">
 
-            <td class="px-3 py-2">
+            <!-- td class="px-3 py-2">
               <input type="checkbox" :value="application.id" v-model="selectedIds" />
-            </td>
+            </td -->
             <td>
               <span v-if="application.pdf_documents?.length">
                 <button
@@ -173,6 +177,7 @@
             <td v-if="isSuperAdmin">
               {{ tenants.find(t => t.id === application.tenant_id)?.name || '-' }}
             </td>            
+            <td class="px-3 py-2">{{ application.apply_type ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.fullname ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.deceased_furigana ?? '-' }}</td>
             <td class="px-3 py-2 text-right">{{ application.age_at_death ?? '-' }}</td>
@@ -188,8 +193,9 @@
               </span>
             </td>
             <td class="px-3 py-2 text-center flex justify-center space-x-1">
-              <Link :href="route('applications.show', { application: application.id, ...persistQuery() })" class="text-blue-500 hover:text-blue-700">
-                <PencilIcon class="w-4 h-4"/>
+              <Link :href="route('applications.show', { application: application.id, ...persistQuery() })"
+                class="text-blue-500 hover:text-blue-700 flex items-center space-x-1 text-sm px-2 py-1">
+                <DocumentIcon class="w-4 h-4"/><span>{{ t('applications.document') }}</span>
               </Link>
               <button
                 @click="openUpload(application)"
@@ -220,7 +226,7 @@
         @close="previewPdf = null"
       >
         <template #title>
-          PDF プレビュー
+          {{ t('PDFpreview') }}
         </template>
 
         <template #content>
@@ -362,7 +368,7 @@ import axios from 'axios'
 import { Link, router } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch} from 'vue'
 import { useI18n } from 'vue-i18n'
-import { PrinterIcon, PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
+import { PrinterIcon, PlusIcon, DocumentIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
 import { Inertia } from '@inertiajs/inertia'
 import dayjs from 'dayjs'
 

@@ -68,19 +68,16 @@ class OrganizationController extends Controller
     {
         $search = $request->input('q');
 
-        $menus = Menu::query()
-            ->when(auth()->user()->tenant_id, fn($q, $tenantId) => 
-                $q->where('tenant_id', $tenantId)
-            )
+        $organizations = Organization::query()
             ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
-            ->orderBy('serving_date', 'desc')
+            ->orderBy('id', 'asc')
             ->limit(20)
             ->get()
             ->map(fn($m) => [
                 'id' => $m->id,
-                'label' => "{$m->name} ({$m->serving_date})"
+                'label' => "{$m->name} {$m->abbr}"
             ]);
 
-        return response()->json($menus);
+        return response()->json($organizations);
     }
 }

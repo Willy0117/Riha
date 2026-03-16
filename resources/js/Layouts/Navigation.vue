@@ -189,6 +189,12 @@ const showAccessControl = computed(() => {
         <span v-if="!collapsed" class="ml-2">{{ t('applications.list') }}</span>
       </Link>        
 
+      <Link :href="route('applications.fax')"
+            class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+            :class="isActive('applications.fax') ? 'bg-gray-300 font-semibold' : ''">
+        <CubeIcon class="w-5 h-5"/>
+        <span v-if="!collapsed" class="ml-2">{{ t('applications.fax') }}</span>
+      </Link>        
     
 
 
