@@ -136,10 +136,13 @@ class PdfService
         $pdf->SetXY(65, 224);
         $pdf->MultiCell(120, 8, $data['remarks'] ?? 'なし');
 
-        $canvasPath = Storage::disk($this->disk)->path($canvasFilePath);
+        if ($canvasFilePath) {
 
-        if ($canvasFilePath && file_exists($canvasPath)) {
-            $pdf->Image($canvasPath, 150, 108, 32);
+            $canvasPath = Storage::disk($this->disk)->path($canvasFilePath);
+
+            if (file_exists($canvasPath)) {
+                $pdf->Image($canvasPath, 150, 108, 32);
+            }
         }
         // PDFデータを文字列で返す
         return $pdf->Output('', 'S'); // 'S'で文字列取得

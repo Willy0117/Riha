@@ -140,6 +140,7 @@ class ApplicationController extends Controller
     public function store(Request $request, PdfService $pdfService, FileService $fileService)
     {
         $data = $request->validate([
+            'organization_id' => 'required|integer',
             'last_name'     => 'required|string',
             'first_name'     => 'required|string',
             'deceased_furigana' => 'required|string',
@@ -221,108 +222,11 @@ class ApplicationController extends Controller
         });
 
         // 成功時リダイレクト
-        return redirect()->route('applications.index')
+        return redirect()->route('admin.applications.index')
             ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
     }
-/*
-    public function store(Request $request, PdfService $pdfService, FileService $fileService)
-    {
-
-        $data = $request->validate([
-            'last_name'     => 'required|string',
-            'first_name'     => 'required|string',
-            'deceased_furigana' => 'required|string',
-            'gender'            => 'required|string',
-            'chief_mourner_name'=> 'nullable|string',
-            'age_at_death'      => 'nullable|integer',
-            'relationship_to_deceased' => 'nullable|string',
-            'delivery_date'     => 'required|string',
-            'funeral_datetime'  => 'required|string',
-            'spouse_status'     => 'nullable|string',
-            'children_count'    => 'nullable|integer',
-            'grandchildren_count'=> 'nullable|integer',
-            'staff_name'        => 'required|string',
-            'bg_color'          => 'nullable|string',
-            'text_color'        => 'nullable|string',
-            'traits'            => 'nullable|array',
-            'special_notes'     => 'nullable|string',
-            'remarks'           => 'nullable|string',
-            'canvas'            => 'nullable|string|max:5000000',
-        ]);
-
-        $data['organization_id'] = auth()->user()->organization_id;
-
-        $pdfPath = null;
-        $thumbPath = null;
-
-        try {
-
-            DB::beginTransaction();
-
-            // Application保存
-            $application = Application::create($data);
-
-            $file_path = '';
-
-            if ($request->filled('canvas')) {
-
-                [$file_path, $thumbnail_path] =
-                    $fileService->storeBase64Image(
-                        $request->canvas,
-                        'poem/canvas'
-                    );
-
-                $application->documents()->create([
-                    'type' => 'canvas',
-                    'file_path' => $file_path,
-                    'thumbnail_path' => $thumbnail_path,
-                ]);
-
-            }
-
-            $application->user = Auth::user()->name . ' ' . ($application->organization->tel ?? '');
-
-            // PDF生成
-            $pdfData = $pdfService->createApplicationPdf($application, $file_path);
-
-            $pdfPath = 'poem/pdf/' . $application->order_code . '.pdf';
-
-            if (!Storage::put($pdfPath, $pdfData)) {
-                throw new \Exception('PDF保存失敗');
-            }
-            // サムネイル
-            $thumbPath = $fileService->createThumbnail($pdfPath, 'poem/pdf');
-
-            // DB登録
-            $application->documents()->create([
-                'type' => 'pdf',
-                'file_path' => $pdfPath,
-                'thumbnail_path' => $thumbPath,
-            ]);
-
-            DB::commit();
-
-        } catch (\Throwable $e) {
-
-            DB::rollBack();
-
-            if ($pdfPath && Storage::exists($pdfPath)) {
-                Storage::delete($pdfPath);
-            }
-
-            if ($thumbPath && Storage::exists($thumbPath)) {
-                Storage::delete($thumbPath);
-            }
-
-            throw $e;
-        }
-   
 
 
-        return redirect()->route('applications.index')
-            ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
-    }
-*/
     public function edit(Request $request)
     {
 
@@ -331,7 +235,8 @@ class ApplicationController extends Controller
     public function show(Request $request, Application $application)
     {
         $application->load([
-            'canvasDocument'
+            'organization',
+            'canvasDocument',
         ]);
 
         $user = Auth::user();
@@ -354,7 +259,7 @@ class ApplicationController extends Controller
         $per_page = $request->input('per_page') ?? 20;
 
 
-        return Inertia::render('Applications/Show', [
+        return Inertia::render('Admin/Applications/Show', [
             'user'        => $user,  
             'application' => $application,
             'filter' => [
@@ -396,7 +301,7 @@ class ApplicationController extends Controller
             ->addDays(2)
             ->setTime(12, 0);
 
-        return Inertia::render('Applications/Fax', [
+        return Inertia::render('Admin/Applications/Fax', [
             'defaultFuneralDatetime' => $defaultFuneral->format('Y-m-d\TH:i'),
             'minFuneralDatetime' => Carbon::today()
                 ->addDays(2)

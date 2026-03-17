@@ -1,5 +1,5 @@
 <script setup>
-import AppLayout from '@/Layouts/AppLayout.vue';
+import AppLayout from '@/Layouts/Admin/AppLayout.vue';
 
 import { useForm } from '@inertiajs/vue3';
 import ActionMessage from '@/Components/ActionMessage.vue';
@@ -15,6 +15,7 @@ import { Inertia } from '@inertiajs/inertia';
 import { ref, onMounted } from 'vue';
 import Vue3SignaturePad from 'vue3-signature-pad'
 import dayjs from 'dayjs';
+import Autocomplete from '@/Components/OpenCartAutocomplete.vue'
 
 const { t } = useI18n()
 
@@ -50,7 +51,8 @@ const form = useForm({
     traits: [],
     special_notes: '',
     remarks: '',
-    canvas: null, // ここに手書き画像を格納    
+    canvas: null, // ここに手書き画像を格納 
+    organization_id: 0,
 });
 
 const canvasPad = ref(null);
@@ -81,7 +83,7 @@ const submit = () => {
     if (!canvasPad.value.isEmpty()) {
         form.canvas = canvasPad.value.toDataURL(); // PNG base64
     }
-    form.post(route('applications.store'), {
+    form.post(route('admin.applications.store'), {
         preserveScroll: true,
     });
 };
@@ -123,33 +125,46 @@ onMounted(() => {
     </ActionMessage>
     <FormSection @submitted="submit">
         <template #form>
-            <div class="col-span-6 sm:col-span-2">
-                <InputLabel for="delivery_date" :value="t('registers.delivery_date')" />
-                <TextInput
-                    v-model="form.delivery_date"
-                    type="datetime-local"
-                    :min="minFuneralDatetime"
-                    class="mt-1 block w-full bg-[#ddd5bc]"
-                    readonly
-                />
-            </div>
-        
-            <!-- 申込基本情報 -->
-            <div class="col-span-6 sm:col-span-2">
-                <InputLabel for="funeral" :value="t('registers.funeral_datetime')" />
-                <TextInput
-                    v-model="form.funeral_datetime"
-                    type="datetime-local"
-                    :min="minFuneralDatetime"
-                    class="mt-1 block w-full"
+            <div class="col-span-6">
+            <div class="grid grid-cols-12 gap-4">
+                <div class="col-span-6 sm:col-span-3">
+                    <InputLabel for="delivery_date" :value="t('registers.delivery_date')" />
+                    <TextInput
+                        v-model="form.delivery_date"
+                        type="datetime-local"
+                        :min="minFuneralDatetime"
+                        class="mt-1 block w-full bg-[#ddd5bc]"
+                        readonly
                     />
+                </div>
+            
+                <!-- 申込基本情報 -->
+                <div class="col-span-6 sm:col-span-3">
+                    <InputLabel for="funeral" :value="t('registers.funeral_datetime')" />
+                    <TextInput
+                        v-model="form.funeral_datetime"
+                        type="datetime-local"
+                        :min="minFuneralDatetime"
+                        class="mt-1 block w-full"
+                        />
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <InputLabel for="organization_id" :value="t('applications.organization')" />
+                    <Autocomplete
+                        v-model="form.organization_id"
+                        :placeholder="t('applications.organization')"
+                        apiUrl="/api/organizations/search"
+                        class="mt-1 block w-full"
+                    />
+                    <InputError :message="form.errors.organization_id" class="mt-2" />
+                </div>
+                <div class="col-span-6 sm:col-span-3">
+                    <InputLabel for="staff_name" :value="t('registers.staff_name')" />
+                    <TextInput id="staff_name" v-model="form.staff_name" type="text" class="mt-1 block w-full" />
+                    <InputError :message="form.errors.staff_name" class="mt-2" />
+                </div>
             </div>
-            <div class="col-span-6 sm:col-span-2">
-                <InputLabel for="staff_name" :value="t('registers.staff_name')" />
-                <TextInput id="staff_name" v-model="form.staff_name" type="text" class="mt-1 block w-full" />
-                <InputError :message="form.errors.staff_name" class="mt-2" />
             </div>
-
             <!-- 喪主様情報 -->
             <div class="col-span-6 sm:col-span-2 border-gray-300">
                 <InputLabel for="chief_mourner_name" :value="t('registers.chief_mourner_name')" />

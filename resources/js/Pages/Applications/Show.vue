@@ -77,7 +77,7 @@ const getTextImageUrl = (color) => {
 
 <template>
   <AppLayout>
-  <template #header>{{ t('applications.poem') }}</template>
+  <template #header>{{ t('applications.document') }}</template>
     <FormSection @submitted="submit">
         <template #form>
             <div class="col-span-6 sm:col-span-2">

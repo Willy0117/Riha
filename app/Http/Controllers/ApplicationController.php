@@ -203,7 +203,7 @@ class ApplicationController extends Controller
             $application->user = $user->name . ' ' . $tel;
 
             // PDF生成
-            $pdfData = $pdfService->createApplicationPdf($application, $file_path);
+            $pdfData = $pdfService->createApplicationPdf($application, $file_path ?? null);
 
             $pdfPath = 'poem/pdf/' . $application->order_code . '.pdf';
             if (!Storage::put($pdfPath, $pdfData)) {

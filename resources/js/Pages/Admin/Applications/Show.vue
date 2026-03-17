@@ -1,5 +1,5 @@
 <script setup>
-import AppLayout from '@/Layouts/AppLayout.vue';
+import AppLayout from '@/Layouts/Admin/AppLayout.vue';
 
 import { useForm, router } from '@inertiajs/vue3';
 import ActionMessage from '@/Components/ActionMessage.vue';
@@ -48,8 +48,11 @@ const form = useForm({
     traits: props.application?.traits,
     special_notes: props.application?.special_notes,
     remarks: props.application?.remarks,
-    canvas: props.application?.canvas, // ここに手書き画像を格納    
+    canvas: props.application?.canvas,     
+    organization: props.application.organization,    
 });
+
+console.log(form);
 
 const persistQuery = () => {
   return { ...props.filters }
@@ -77,10 +80,10 @@ const getTextImageUrl = (color) => {
 
 <template>
   <AppLayout>
-  <template #header>{{ t('applications.poem') }}</template>
+  <template #header>{{ t('applications.document') }}</template>
     <FormSection @submitted="submit">
         <template #form>
-            <div class="col-span-6 sm:col-span-2">
+            <div class="col-span-6 sm:col-span-1">
                 <InputLabel for="delivery_date" :value="t('registers.delivery_date')" />
                 <TextInput
                     v-model="form.delivery_date"
@@ -91,7 +94,7 @@ const getTextImageUrl = (color) => {
             </div>
         
             <!-- 申込基本情報 -->
-            <div class="col-span-6 sm:col-span-2">
+            <div class="col-span-6 sm:col-span-1">
                 <InputLabel for="funeral" :value="t('registers.funeral_datetime')" />
                 <TextInput
                     v-model="form.funeral_datetime"
@@ -99,10 +102,19 @@ const getTextImageUrl = (color) => {
                     class="mt-1 block w-full"
                     />
             </div>
-            <div class="col-span-6 sm:col-span-2">
+
+            <div class="col-span-6 sm:col-span-1">
+                <InputLabel for="organization" :value="t('applications.organization')" />
+                <TextInput id="organization" v-model="form.organization.name" type="text" class="mt-1 block w-full" />
+            </div>
+            <div class="col-span-6 sm:col-span-1">
+                <InputLabel for="organization" :value="t('applications.organization')" />
+                <TextInput id="abbr" v-model="form.organization.abbr" type="text" class="mt-1 block w-full" />
+            </div>
+
+            <div class="col-span-6 sm:col-span-1">
                 <InputLabel for="staff_name" :value="t('registers.staff_name')" />
                 <TextInput id="staff_name" v-model="form.staff_name" type="text" class="mt-1 block w-full" />
-                <InputError :message="form.errors.staff_name" class="mt-2" />
             </div>
 
             <!-- 喪主様情報 -->
