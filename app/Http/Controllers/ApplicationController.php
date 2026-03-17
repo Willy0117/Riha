@@ -728,9 +728,12 @@ class ApplicationController extends Controller
 
     public function uploadDocument(Request $request, Application $application, FileService $fileService)
     {
+        \Log::info($request);
+
         $request->validate([
             'document' => 'required|file|mimes:png|max:10240',
         ]);
+
 
         [$file_path, $thumbnail_path] =
             $fileService->storeUploadedFile(
@@ -744,12 +747,13 @@ class ApplicationController extends Controller
             'thumbnail_path' => $thumbnail_path,
         ]);
 
-
         return response()->json([
             'success' => true,
             'file_url' => Storage::url($file_path),
             'thumbnail_url' => $thumbnail_path ? Storage::url($thumbnail_path) : null,
         ]);
+
+
     }
 
 }

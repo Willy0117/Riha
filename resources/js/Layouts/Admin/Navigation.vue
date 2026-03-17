@@ -81,6 +81,25 @@
         </button>
         <transition name="slide-fade">
           <div v-show="openSubMenu === 'member' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link :href="route('admin.applications.create')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.applications.create') ? 'bg-gray-300 font-semibold' : ''">
+              <CubeIcon class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('applications.poem') }}</span>
+            </Link>        
+            <Link :href="route('admin.applications.index')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.applications.index') ? 'bg-gray-300 font-semibold' : ''">
+              <CubeIcon class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('applications.list') }}</span>
+            </Link>        
+
+            <Link :href="route('admin.applications.fax')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.applications.fax') ? 'bg-gray-300 font-semibold' : ''">
+              <CubeIcon class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('applications.fax') }}</span>
+            </Link> 
             <Link
               :href="route('admin.member.index', { status_id: 1 })"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"

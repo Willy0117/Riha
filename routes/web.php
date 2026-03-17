@@ -16,6 +16,9 @@ use App\Http\Controllers\ApplicationController;
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
 
+
+Route::get('/compose-image', [\App\Http\Controllers\PrintController::class, 'composeImage'])->name('composeImage');
+
 Route::prefix('admin')->name('admin.')->group(function () {
 
     Route::middleware('guest:admin')->group(function () {
@@ -45,6 +48,36 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('permissions/assign', [\App\Http\Controllers\Admin\PermissionController::class, 'assign'])->name('permissions.assign');
         // user
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        
+        Route::resource(
+            'applications',
+            \App\Http\Controllers\Admin\ApplicationController::class
+        )->only(['index','show','create','store']);
+
+        Route::post(
+            'applications/{application}/upload-document',
+            [\App\Http\Controllers\Admin\ApplicationController::class, 'uploadDocument']
+        )->name('applications.uploadDocument');
+
+        Route::get(
+            'applications/{application}/print-document',
+            [\App\Http\Controllers\Admin\ApplicationController::class, 'printDocument']
+        )->name('applications.printDocument');
+
+        Route::put(
+            'applications/{application}/status',
+            [\App\Http\Controllers\Admin\ApplicationController::class, 'updateStatus']
+        )->name('applications.updateStatus');
+
+        Route::get(
+            'applications/fax',
+            [\App\Http\Controllers\Admin\ApplicationController::class, 'fax']
+        )->name('applications.fax');
+
+        Route::post(
+            'applications/faxstore',
+            [\App\Http\Controllers\Admin\ApplicationController::class, 'faxstore']
+        )->name('applications.faxstore');
 
         Route::prefix('member')->name('member.')->group(function () {
             Route::get('/', [AdminMemberController::class, 'index'])->name('index');
@@ -135,8 +168,6 @@ Route::middleware([
     Route::post('applications/faxstore', [ApplicationController::class, 'faxstore'])->name('applications.faxstore');
 
     Route::resource('applications', ApplicationController::class);
-
-    Route::get('/compose-image', [\App\Http\Controllers\PrintController::class, 'composeImage'])->name('composeImage');
 
 
 });

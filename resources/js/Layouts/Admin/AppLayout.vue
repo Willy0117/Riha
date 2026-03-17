@@ -78,7 +78,8 @@
 </template>
 
 <script setup>
-import Navigation from './Navigation.vue'
+import Navigation from '@/Layouts/Admin/Navigation.vue'
+
 import { router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { ArrowRightOnRectangleIcon, GlobeAltIcon } from '@heroicons/vue/24/outline'

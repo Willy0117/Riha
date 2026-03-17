@@ -86,22 +86,7 @@ class Application extends Model
     {
         return 'P' . str_pad($this->id, 8, '0', STR_PAD_LEFT);
     }
-    /*
-    |--------------------------------------------------------------------------
-    | Global Scope（SaaS安全対策）
-    |--------------------------------------------------------------------------
-    */
-    protected static function booted(): void
-    {
-        static::addGlobalScope('organization', function (Builder $builder) {
-            if (Auth::check()) {
-                $builder->where(
-                    'organization_id',
-                    Auth::user()->organization_id
-                );
-            }
-        });
-    }
+
         // JSON化時に自動で fullname を含める
     protected $appends = ['fullname', 'order_code'];
 

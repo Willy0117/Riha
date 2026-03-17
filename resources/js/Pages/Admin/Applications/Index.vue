@@ -124,6 +124,10 @@
               {{ t('applications.apply_type') }}
               <span v-if="form.sort_by==='apply_type'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('organization_id')">
+              {{ t('applications.organization') }}
+              <span v-if="form.sort_by==='organization_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">
               {{ t('applications.name') }}
               <span v-if="form.sort_by==='name'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
@@ -178,6 +182,7 @@
               {{ tenants.find(t => t.id === application.tenant_id)?.name || '-' }}
             </td>            
             <td class="px-3 py-2">{{ application.apply_type ?? '-' }}</td>
+            <td class="px-3 py-2">{{ application.organization?.name ?? '-' }} {{ application.organization?.abbr ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.fullname ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.deceased_furigana ?? '-' }}</td>
             <td class="px-3 py-2 text-right">{{ application.age_at_death ?? '-' }}</td>
@@ -193,7 +198,7 @@
               </span>
             </td>
             <td class="px-3 py-2 text-center flex justify-center space-x-1">
-              <Link :href="route('applications.show', { application: application.id, ...persistQuery() })"
+              <Link :href="route('admin.applications.show', { application: application.id, ...persistQuery() })"
                 class="text-blue-500 hover:text-blue-700 flex items-center space-x-1 text-sm px-2 py-1">
                 <DocumentIcon class="w-4 h-4"/><span>{{ t('applications.document') }}</span>
               </Link>
@@ -474,7 +479,7 @@ const persistQuery = () => ({
 
 const submitSearch = () => {
   console.log(persistQuery())
-  router.get(route('applications.index'), { ...persistQuery(), page: 1 }, {
+  router.get(route('admin.applications.index'), { ...persistQuery(), page: 1 }, {
     preserveState: true,
     replace: true,
     onSuccess: () => resetSelectedIds()
@@ -483,7 +488,7 @@ const submitSearch = () => {
 
 // ページ番号クリック
 const goPage = (page) => {
-  router.get(route('applications.index'), { ...persistQuery(), page }, {
+  router.get(route('admin.applications.index'), { ...persistQuery(), page }, {
     preserveState: true,
     replace: true,
     onSuccess: () => resetSelectedIds()
@@ -500,10 +505,10 @@ const sortBy = (field) => {
 // 行単位削除
 const deleteapplication = (application_id) => {
   if (!confirm(t('confirm_delete'))) return
-  router.delete(route('applications.destroy', application_id), {
+  router.delete(route('admin.applications.destroy', application_id), {
     preserveState: true,
     onSuccess: () => {
-      router.get(route('applications.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
+      router.get(route('admin.applications.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
     }
   })
 }
@@ -517,7 +522,7 @@ const bulkDelete = () => {
       preserveState: true,
       onSuccess: () => {
         // 削除後に検索条件・ページを保持して再取得
-        router.get(route('applications.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
+        router.get(route('admin.applications.index'), { ...persistQuery(), page: props.applications.current_page }, { preserveState: true })
       }
     }
   )
@@ -614,7 +619,7 @@ const openStatus = async (application) => {
 
 const submitStatus = async () => {
 
-  const url = `/applications/${statusForm.value.application_id}/status`
+  const url = `/admin/applications/${statusForm.value.application_id}/status`
 
   await axios.put(
     url,
@@ -687,14 +692,12 @@ const submitUpload = async () => {
     return alert('アップするファイルを選択してください')
 
   const formData = new FormData()
-  formData.append('document', file.value)
+  formData.append('document', file.value)   // ← controller と一致
+  console.log(formData);
 
-  for (const pair of formData.entries()) {
-    console.log(pair[0], pair[1])
-  }
   try {
     await axios.post(
-      `/applications/${uploadForm.value.application_id}/upload-document`,
+      `/admin/applications/${uploadForm.value.application_id}/upload-document`,
       formData,
     )
 
@@ -709,7 +712,7 @@ const submitUpload = async () => {
 
 const openPrint = (application) => {
   Inertia.visit(
-    route('applications.printDocument', {
+    route('admin.applications.printDocument', {
       application: application.id,...persistQuery(), 
     })
   )
