@@ -63,24 +63,4 @@ class OrganizationController extends Controller
         //
     }
 
-    
-    public function autocomplete(Request $request)
-    {
-        $search = $request->input('q');
-
-        $menus = Menu::query()
-            ->when(auth()->user()->tenant_id, fn($q, $tenantId) => 
-                $q->where('tenant_id', $tenantId)
-            )
-            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
-            ->orderBy('serving_date', 'desc')
-            ->limit(20)
-            ->get()
-            ->map(fn($m) => [
-                'id' => $m->id,
-                'label' => "{$m->name} ({$m->serving_date})"
-            ]);
-
-        return response()->json($menus);
-    }
 }

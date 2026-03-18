@@ -166,7 +166,7 @@ watch(
 
     // ここがBの最低条件：IDだけで復元
     try {
-      const res = await axios.get(`${props.apiUrl}/${val}`)
+      const res = await axios.get(`${props.fetchUrl}/${val}`)
       keyword.value = res.data.label
     } catch {
       keyword.value = ''

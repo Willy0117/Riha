@@ -15,10 +15,12 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, HasProfilePhoto, Notifiable, TwoFactorAuthenticatable, HasRoles;
 
     protected $fillable = [
+        'username',
         'name',
         'email',
         'password',
         'tenant_id',
+        'organization_id',
     ];
 
     protected $hidden = [
@@ -45,6 +47,11 @@ class User extends Authenticatable
     public function tenant()
     {
         return $this->belongsTo(Tenant::class);
+    }
+    // Organization リレーション
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
     }
 
     /**

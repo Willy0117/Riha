@@ -38,6 +38,7 @@ const form = useForm({
     remarks: '',
     organization_id: '',
     pdf: null,
+    gender: '',
 });
 
 const submit = () => {
@@ -154,8 +155,22 @@ const handleDrop = (e) => {
                 <InputError :message="form.errors.first_name" class="mt-2" />
             </div>
             <!-- 性別 -->
-            <div class="col-span-6 sm:col-span-2">
+            <div class="col-span-6 sm:col-span-1">
+                <InputLabel value="性別" />
+                <div class="mt-2 flex gap-6">
+                    <label class="flex items-center gap-2">
+                        <input type="radio" v-model="form.gender" value="男"
+                              class="text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-sm">男</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="radio" v-model="form.gender" value="女"
+                              class="text-indigo-600 focus:ring-indigo-500">
+                        <span class="text-sm">女</span>
+                    </label>
+                </div>
             </div>
+
             <div class="col-span-6  sm:col-span-2">
                 <InputLabel for="deceased_name" :value="t('registers.furigana')" />
                     <TextInput

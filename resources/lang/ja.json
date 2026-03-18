@@ -29,6 +29,7 @@
   "cancel": "キャンセル",
   "deleted": "削 除",
   "PDFpreview": "PDFプレビュー",
+  "role": "権限",
   "actions": {
     "action": "操 作",
     "save": "保 存",
@@ -54,6 +55,7 @@
     "select_tenant": "選択してください"
   }, 
   "users": {
+    "username": "ID",
     "user_list": "ユーザー一覧",
     "add_user": "ユーザー追加",
     "users_list": "ユーザー一覧",
@@ -61,6 +63,8 @@
     "edit_user": "ユーザー編集",
     "name": "名前",
     "email": "メールアドレス",
+    "confirm_password": "パスワードをもう一度",
+    "organization": "所属先",
     "user has been created.": "ユーザーを作成しました。",
     "user has been updated.": "ユーザーを更新しました。",
     "user has been deleted.": "ユーザーを削除しました。"

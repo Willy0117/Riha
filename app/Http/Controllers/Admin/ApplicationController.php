@@ -329,6 +329,7 @@ class ApplicationController extends Controller
                 'organization_id' => 'required|integer',
                 'pdf' => 'required|file|mimes:pdf|max:10240',
                 'remarks'           => 'nullable|string',
+                'gender'            => 'required|string',
             ]);
 
             $data['apply_type'] = 'fax';
@@ -356,7 +357,7 @@ class ApplicationController extends Controller
    
 
 
-        return redirect()->route('applications.index')
+        return redirect()->route('admin.applications.index')
             ->with('success', '申込を受け付けました。今、しばらくお待ちください。');
     }
 

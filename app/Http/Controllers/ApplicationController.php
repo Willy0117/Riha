@@ -423,6 +423,7 @@ class ApplicationController extends Controller
                 'organization_id' => 'required|integer',
                 'pdf' => 'required|file|mimes:pdf|max:10240',
                 'remarks'           => 'nullable|string',
+                'gender'            => 'required|string',
             ]);
 
             $data['apply_type'] = 'fax';

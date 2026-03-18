@@ -48,11 +48,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('permissions/assign', [\App\Http\Controllers\Admin\PermissionController::class, 'assign'])->name('permissions.assign');
         // user
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
-        
-        Route::resource(
-            'applications',
-            \App\Http\Controllers\Admin\ApplicationController::class
-        )->only(['index','show','create','store']);
+
 
         Route::post(
             'applications/{application}/upload-document',
@@ -78,6 +74,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'applications/faxstore',
             [\App\Http\Controllers\Admin\ApplicationController::class, 'faxstore']
         )->name('applications.faxstore');
+
+        Route::resource(
+            'applications',
+            \App\Http\Controllers\Admin\ApplicationController::class
+        )->only(['index','show','create','store']);
 
         Route::prefix('member')->name('member.')->group(function () {
             Route::get('/', [AdminMemberController::class, 'index'])->name('index');

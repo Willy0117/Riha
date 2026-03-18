@@ -51,3 +51,12 @@ Route::get('/organizations/search', function (Request $request) {
         ]);
 });
 
+Route::get('/organizations/{id}', function ($id) {
+    $o = \App\Models\Organization::findOrFail($id);
+
+    return [
+        'id' => $o->id,
+        'name' => $o->name,
+        'label' => $o->name . ($o->abbr ? ' (' . $o->abbr . ')' : ''),
+    ];
+});
