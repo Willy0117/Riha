@@ -123,7 +123,7 @@
               {{ t('members.progress') }}
               <span v-if="form.sort_by==='progress_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 text-center">{{ t('actions') }}</th>
+            <th class="px-3 py-2 text-center">{{ t('actions.action') }}</th>
           </tr>
         </thead>
         <tbody>
@@ -135,7 +135,7 @@
             <td v-if="isSuperAdmin">
               {{ tenants.find(t => t.id === member.tenant_id)?.name || '-' }}
             </td>            
-            <td class="px-3 py-2">{{ member.full_name ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.company_name ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.tel ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.full_address ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.created_at ? dayjs(member.created_at).format('YYYY/MM/DD') : '' }}</td>
@@ -208,11 +208,13 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 import axios from 'axios'
-import { Link, router } from '@inertiajs/vue3'
+import { Link, usePage } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch} from 'vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
+
+const page = usePage()
 
 const props = defineProps({
   members: Object,
@@ -227,9 +229,31 @@ const props = defineProps({
     })
   }
 })
+
 console.log(props.members)
 
 const { t } = useI18n()
+
+const show = ref(false)
+const message = ref('')
+let timer = null
+
+watch(
+  () => page.props.flash.success,
+  (val) => {
+    if (val) {
+      message.value = val
+      show.value = true
+
+      if (timer) clearTimeout(timer)
+
+      timer = setTimeout(() => {
+        show.value = false
+      }, 3000)
+    }
+  },
+  { immediate: true }
+)
 
 const isSuperAdmin = computed(() =>
   props.user?.roles?.some(r => r.name.toLowerCase() === 'super admin')

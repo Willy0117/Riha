@@ -48,7 +48,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('permissions/assign', [\App\Http\Controllers\Admin\PermissionController::class, 'assign'])->name('permissions.assign');
         // user
         Route::resource('users', \App\Http\Controllers\Admin\UserController::class);
+        // admin
+        Route::resource('admins', \App\Http\Controllers\Admin\AdminController::class);
 
+        // organization
+        Route::resource('members', \App\Http\Controllers\Admin\MemberController::class);
+        // organization
+        Route::resource('organizations', \App\Http\Controllers\Admin\OrganizationController::class);
 
         Route::post(
             'applications/{application}/upload-document',

@@ -183,7 +183,114 @@
           </div>
         </transition>
       </div>
+      <!-- Membes サブメニュー -->
+      <div class="mt-2">
+        <button
+          @click="toggleSubMenu('members')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <UsersIcon class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">{{ t('member') }}</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'members' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
 
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'members' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.members.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
+              :class="isActive('admin.members.index') ? 'bg-gray-200 font-semibold' : ''"
+            >
+              <UserIcon class="w-4 h-4 mr-1"/>
+              {{ t('member') }}
+            </Link>
+          </div>
+        </transition>
+      </div>      
+      <!-- Organizations サブメニュー -->
+      <div class="mt-2">
+        <button
+          @click="toggleSubMenu('organizations')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <UsersIcon class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">{{ t('organization') }}</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'organizations' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'organizations' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.organizations.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
+              :class="isActive('admin.organizations.index') ? 'bg-gray-200 font-semibold' : ''"
+            >
+              <UserIcon class="w-4 h-4 mr-1"/>
+              {{ t('organization') }}
+            </Link>
+          </div>
+        </transition>
+      </div>      
+      <!-- Admins サブメニュー -->
+      <div class="mt-2">
+        <button
+          @click="toggleSubMenu('admins')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <UsersIcon class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">{{ t('admin') }}</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'admins' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'admins' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.admins.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
+              :class="isActive('admin.admins.index') ? 'bg-gray-200 font-semibold' : ''"
+            >
+              <UserIcon class="w-4 h-4 mr-1"/>
+              {{ t('admin') }}
+            </Link>
+          </div>
+        </transition>
+      </div>
       <!-- Users サブメニュー -->
       <div class="mt-2">
         <button

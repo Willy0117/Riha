@@ -7,12 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Member extends Model
 {
     protected $fillable = [
-        'name',
+        'first_name',
+        'last_name',
         'tel',
         'status_id',
-        'name_kana',
-        'name_prefix',
-        'name_suffix',
+        'company_name',
         'postal_code',
         'address1',
         'address2',
@@ -36,22 +35,15 @@ class Member extends Model
     {
         return $this->hasOne(BankAccount::class);
     }
-
     /* =====================
      |  表示用ラベル
      * ===================== */
     public function getFullNameAttribute()
     {
-        return trim(
-            ($this->name_prefix ?? '') .
-            ($this->name ?? '') .
-            ($this->name_suffix ?? '')
-        );
-    }
-
-    public function documents()
-    {
-        return $this->hasMany(OrganizationDocument::class);
+        return collect([
+            $this->last_name,
+            $this->first_name,
+        ])->filter()->implode('');
     }
 
     public function getFullAddressAttribute()

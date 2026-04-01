@@ -67,6 +67,10 @@
       <!-- コンテンツ -->
       <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
         <slot />
+
+        <Toast />
+
+        <LoadingOverlay />
       </main>
     </div>
     </div>
@@ -79,6 +83,8 @@
 
 <script setup>
 import Navigation from '@/Layouts/Admin/Navigation.vue'
+import Toast from '@/Components/Toast.vue'
+import LoadingOverlay from '@/Components/LoadingOverlay.vue'
 
 import { router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
