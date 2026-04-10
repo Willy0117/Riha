@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <template #header>{{ t('role_list') }}</template>
+    <template #header>{{ t('roles.list') }}</template>
 
     <!-- 検索トリガーボタン -->
     <div dir="rtl">
@@ -32,7 +32,7 @@
 
           <div class="p-4 space-y-3">
             <!-- 検索フォーム -->
-            <input v-model="form.name" type="text" placeholder="Role Name" class="border rounded px-3 py-2 w-full" />
+            <input v-model="form.name" type="text" :placeholder="t('roles.name')" class="border rounded px-3 py-2 w-full" />
 
             <div class="flex justify-end space-x-2 mt-4">
               <button @click="submitSearch(); openDrawer = false"
@@ -49,9 +49,13 @@
       </div>
 
       <!-- per_page + Add Role -->
-      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
+      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2 text-sm">
         <div class="flex items-center gap-2">
-          <select v-model.number="form.per_page" @change="submitSearch" class="border rounded px-3 py-2 h-10">
+          <select
+            v-model.number="form.per_page"
+            @change="submitSearch"
+            class="border rounded px-3 py-2 w-16 h-10"
+          >
             <option v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}</option>
           </select>
 
@@ -60,7 +64,7 @@
             class="px-4 h-10 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-1"
           >
             <PlusIcon class="w-4 h-4"/>
-            <span>{{ t('add_role') }}</span>
+            <span>{{ t('roles.add') }}</span>
           </Link>
         </div>
 
@@ -75,16 +79,16 @@
       </div>
 
       <!-- Role 一覧テーブル -->
-      <table class="min-w-full table-auto border-collapse border border-gray-300">
+      <table class="min-w-full table-auto border-collapse border border-gray-300 text-sm">
         <thead>
           <tr class="bg-gray-200">
             <th class="px-3 py-2">
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">{{ t('name') }}
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">{{ t('roles.name') }}
               <span v-if="form.sort==='name'">{{ form.direction==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2">{{ t('permissions') }}</th>
+            <th class="px-3 py-2">{{ t('permissions.permission') }}</th>
             <th class="px-3 py-2">{{ t('updated_at') }}</th>
             <th class="px-3 py-2 text-center">{{ t('actions') }}</th>
           </tr>

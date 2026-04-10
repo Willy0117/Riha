@@ -119,9 +119,18 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
 
 Route::get('/test-mail', function () {
-    \Mail::raw('SES Production Test', function ($message) {
+    $pdfPath = 'poem/pdf/P00000002.pdf';
+    $filePath = Storage::path($pdfPath);
+
+    // 確認（最初だけ）
+    if (!file_exists($filePath)) {
+        dd('ファイルが存在しない', $filePath);
+    }
+
+    \Mail::raw('PDF添付テストです', function ($message) use ($filePath) {
         $message->to('dev@coo-net.co.jp')
-                ->subject('SES OK');
+                ->subject('PDF添付テスト')
+                ->attach($filePath);
     });
 
     return 'sent';

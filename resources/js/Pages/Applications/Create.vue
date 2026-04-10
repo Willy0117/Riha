@@ -12,7 +12,7 @@ import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 import { useI18n } from 'vue-i18n'
 import { Inertia } from '@inertiajs/inertia';
-import { ref, onMounted } from 'vue';
+import { ref, onMounted,computed } from 'vue';
 import Vue3SignaturePad from 'vue3-signature-pad'
 import dayjs from 'dayjs';
 
@@ -50,7 +50,9 @@ const form = useForm({
     traits: [],
     special_notes: '',
     remarks: '',
-    canvas: null, // ここに手書き画像を格納    
+    canvas: null, // ここに手書き画像を格納
+    allow_text: props.user.allow_text_color,
+    allow_bg: props.user.allow_background_color,
 });
 
 const canvasPad = ref(null);
@@ -112,6 +114,19 @@ onMounted(() => {
   setInterval(updateDeliveryDate, 60 * 1000); // 1分ごとに更新
 });
 
+const displayTextColors = computed(() => {
+    if (form.allow_text) {
+        return [text_colors[0]];
+    }
+    return text_colors;
+});
+
+const displayColors = computed(() => {
+    if (form.allow_bg) {
+        return [colors[0]];
+    }
+    return colors;
+});
 
 </script>
 
@@ -292,8 +307,7 @@ onMounted(() => {
             <div class="col-span-6 sm:col-span-3">
                 <p class="">{{ t('registers.bg_color') }}</p>
                 <div class="flex flex-wrap gap-4">
-
-                    <div v-for="color in colors"
+                    <div v-for="color in displayColors"
                         :key="'bg-'+color"
                         @click="form.bg_color = color"
                         class="cursor-pointer">
@@ -303,13 +317,12 @@ onMounted(() => {
                             : 'hover:scale-105'"
                         />
                     </div>
-
                 </div>
             </div>    
-            <div class="col-span-6 sm:col-span-3">
+            <div v-if="form.allow_text" class="col-span-6 sm:col-span-3">
                 <p class="">{{ t('registers.text_color') }}</p>
                 <div class="flex flex-wrap gap-4">
-                    <div v-for="color in text_colors"
+                    <div v-for="color in displayTextColors"
                         :key="'text_'+color"
                         @click="form.text_color = color"
                         class="cursor-pointer">

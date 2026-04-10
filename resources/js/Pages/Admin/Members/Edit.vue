@@ -1,6 +1,7 @@
 <template>
   <AppLayout>
-    <template #header>{{ t('members.edit') }}</template>
+    <template #header>{{ member ? t('members.edit') : t('members.update') }}</template>
+    
     <div class="max-w-5xl mx-auto bg-white p-8 rounded shadow">
       <form @submit.prevent="submitForm" class="space-y-8" @keydown.enter="focusNext">
         <!-- 2カラム -->
@@ -13,11 +14,11 @@
               <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
                   <!-- 会社名 -->
                   <TextInput
-                    v-model="form.company_name"
+                    v-model="form.name"
                     class="flex-1"
                     placeholder="〇〇株式会社"
                   />
-                  <InputError :message="form.errors?.company_name" />
+                  <InputError :message="form.errors?.name" />
               </div>
             </div>
 
@@ -139,20 +140,24 @@
           </div>
         </div>        
 
-      <div class="6">
-        <PrimaryButton
-          type="button" class="ml-auto"
-          @click="submitForm"
-        >
-        {{ t('save') }}
-        </PrimaryButton>
-
-        <SecondaryButton type="button">
+        <div class="flex justify-between items-center">
+          
+          <!-- 左：キャンセル -->
+          <SecondaryButton type="button">
             <Link :href="route('admin.members.index')">
-            {{ t('members.cancel') }}
+              {{ t('members.cancel') }}
             </Link>
-        </SecondaryButton>
-      </div>
+          </SecondaryButton>
+
+          <!-- 右：保存 -->
+          <PrimaryButton
+            type="button"
+            @click="submitForm"
+          >
+            {{ page.props.member ? t('update') : t('create') }}
+          </PrimaryButton>
+
+        </div>
       </form>
     </div>
   </AppLayout>
@@ -178,6 +183,7 @@ import { useI18n } from 'vue-i18n'
 const { t } = useI18n()
 
 const page = usePage()
+
 const bankInput = ref(null)
 
 watch(
@@ -189,16 +195,10 @@ watch(
 )
 
 console.log(page.props) // ← ここで form が見える
-const history_certificate_name =
-  page.props.files?.history_certificate?.name ?? null
-
-const mail_address_certificate_name =
-  page.props.files?.mail_address_certificate?.name ?? null
-
 
 const form = useForm({
   id: page.props.form?.id ?? '',
-  company_name: page.props.form?.company_name ?? '',
+  name: page.props.form?.name ?? '',
   last_name: page.props.form?.last_name ?? '',
   first_name: page.props.form?.first_name ?? '',
 
@@ -300,15 +300,7 @@ function selectCandidate(candidate, field) {
 }
 
 const onAddressZipInput = (e) => {
-  form.corp.postal_code = normalizeZip(e.target.value)
-}
-
-const onPostZipInput = (e) => {
-  form.mail.postal_code = normalizeZip(e.target.value)
-}
-
-const onAgentZipInput = (e) => {
-  form.agent.postal_code = normalizeZip(e.target.value)
+  form.postal_code = normalizeZip(e.target.value)
 }
 
 useZipcode(

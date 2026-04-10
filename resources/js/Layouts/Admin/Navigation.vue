@@ -162,7 +162,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
             >
               <BuildingOfficeIcon class="w-4 h-4 mr-1"/>
-              {{ t('tenants') }}
+              {{ t('navigations.tenants') }}
             </Link>
             <Link
               v-if="can('manage roles')"
@@ -170,7 +170,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
             >
               <UsersIcon class="w-4 h-4 mr-1"/>
-              {{ t('roles') }}
+              {{ t('navigations.roles') }}
             </Link>
             <Link
               v-if="can('manage permissions')"
@@ -178,7 +178,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
             >
               <TicketIcon class="w-4 h-4 mr-1"/>
-              {{ t('permissions') }}
+              {{ t('navigations.permissions') }}
             </Link>
           </div>
         </transition>
@@ -340,7 +340,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
 import {
   HomeIcon,
@@ -359,10 +359,11 @@ const collapsed = ref(false)
 const openSubMenu = ref(null)
 
 const toggleCollapse = () => (collapsed.value = !collapsed.value)
-const toggleSubMenu = (menu) => (openSubMenu.value = openSubMenu.value === menu ? null : menu)
+//const toggleSubMenu = (menu) => (openSubMenu.value = openSubMenu.value === menu ? null : menu)
 
 const { props } = usePage()
-const user = props.auth.user
+
+const user = props.auth.admin ?? props.auth.user
 
 // i18n
 import { useI18n } from 'vue-i18n'
@@ -373,7 +374,61 @@ const hasApiFeatures = true
 const showAccessControl = true
 const can = (permission) => true
 
-// ページURLに応じて初期サブメニューを決定
+// 例外マッピング
+const groupMap = {
+  tenants: 'access',
+  roles: 'access',
+  permissions: 'access',
+}
+
+// 有効なメニュー（安全対策）
+const validMenus = ['member', 'users', 'access']
+
+// 自動判定
+const detectMenu = () => {
+  const current = route().current()
+  if (!current) return null
+
+  const parts = current.split('.')
+  if (parts.length < 2) return null
+
+  let key = parts[1]
+
+  if (groupMap[key]) {
+    key = groupMap[key]
+  }
+
+  if (validMenus.includes(key)) {
+    return key
+  }
+
+  return null
+}
+
+// 初期化
+onMounted(() => {
+  // localStorage優先
+  const saved = localStorage.getItem('openMenu')
+
+  if (saved) {
+    openSubMenu.value = saved
+  } else {
+    openSubMenu.value = detectMenu()
+  }
+})
+
+// 状態保存
+watch(openSubMenu, (val) => {
+  if (val) {
+    localStorage.setItem('openMenu', val)
+  }
+})
+
+// トグル
+const toggleSubMenu = (menu) => {
+  openSubMenu.value = openSubMenu.value === menu ? null : menu
+}
+/*
 onMounted(() => {
   if (page.url.startsWith('/admin/member') ) {
     openSubMenu.value = 'member'
@@ -387,7 +442,7 @@ onMounted(() => {
     openSubMenu.value = 'users'
   }
 })
-
+*/
 
 </script>
 

@@ -38,9 +38,10 @@ class MemberController extends Controller
 
         $allowedSorts = [
             'id',
-            'company_name',
-            'address',
             'name',
+            'address',
+            'tel',
+            'email',
             'created_at',
         ];
 
@@ -52,10 +53,17 @@ class MemberController extends Controller
         | members 単体で完結するソート
         |--------------------------------------------------------------------------
         */
-
-        $query->orderBy("members.{$sortBy}", $sortDir);
-
-
+        if ($sortBy === 'address') {
+            $query->orderByRaw("
+                CONCAT_WS(' ',
+                    members.address1,
+                    members.address2,
+                    members.address3
+                ) {$sortDir}
+            ");
+        } else {
+            $query->orderBy("members.{$sortBy}", $sortDir);
+        }
         // =====================
         // ページング + 整形
         // =====================
@@ -110,7 +118,7 @@ class MemberController extends Controller
     {
         // persistQuery() 用に現在のクエリを保持
         $queryParams = $request->only([
-            'company_name',
+            'name',
             'name',
             'tel',
             'per_page',
@@ -161,7 +169,7 @@ class MemberController extends Controller
             ],
             // 検索条件をそのまま渡す
             'filters' => $request->only([
-                'company_name', 'name', 'tel', 'per_page', 'sort_by', 'sort_dir', 'page'
+                'name', 'name', 'tel', 'per_page', 'sort_by', 'sort_dir', 'page'
             ]),            
         ]);
     }
@@ -173,7 +181,7 @@ class MemberController extends Controller
         // Inertia に渡す
         return Inertia::render('Admin/Members/Edit', [
             'form' => $member,
-            'filters' => $request->only(['company_name', 'name', 'tel', 'per_page', 'sort_by', 'sort_dir']),
+            'filters' => $request->only(['name', 'name', 'tel', 'per_page', 'sort_by', 'sort_dir']),
         ]);
     }
 
@@ -181,12 +189,17 @@ class MemberController extends Controller
     public function update(Request $request, Member $member)
     {
         $data = $request->validate([
-            'company_name' => 'required|string',
+            'name' => 'required|string',
+            'postal_code'  => 'nullable|string|regex:/^\d{3}-\d{4}$/',
             'address1'  => 'required|string',
             'address2'  => 'required|string',
-            'first_name' => 'required|string',
-            'last_name'  => 'required|string',
-            'tel'  => 'required|string',
+            'address3'  => 'nullable|string',
+            'position'  => 'nullable|string',
+            'first_name'=> 'nullable|string',
+            'last_name' => 'nullable|string',
+            'tel'    => 'required|string|regex:/^0\d{1,4}-\d{1,4}-\d{3,4}$/',
+            'fax'    => 'nullable|string|regex:/^0\d{1,4}-\d{1,4}-\d{3,4}$/',
+            'mobile' => 'nullable|string|regex:/^0[5789]0-\d{4}-\d{4}$/',
         ]);
 
         $member->update($data);
@@ -216,14 +229,14 @@ class MemberController extends Controller
         $search = $request->input('q');
 
         $members = Member::query()
-            ->when($search, fn($q) => $q->where('company_name', 'like', "%{$search}%"))
+            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
             ->when($search, fn($q) => $q->where('representative', 'like', "%{$search}%"))
-            ->orderBy('company_name', 'desc')
+            ->orderBy('name', 'desc')
             ->limit(20)
             ->get()
             ->map(fn($m) => [
                 'id' => $m->id,
-                'label' => "{$m->company_name} ({$m->representative})"
+                'label' => "{$m->name} ({$m->representative})"
             ]);
 
         return response()->json($members);

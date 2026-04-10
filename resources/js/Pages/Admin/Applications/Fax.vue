@@ -42,7 +42,7 @@ const form = useForm({
 });
 
 const submit = () => {
-    form.post(route('applications.faxstore'), {
+    form.post(route('admin.applications.faxstore'), {
         preserveScroll: true,
         forceFormData: true
     });
@@ -233,7 +233,7 @@ const handleDrop = (e) => {
 
         <template #actions>       
             <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                {{ t('registers.send') }}
+                {{ t('create') }}
             </PrimaryButton>
         </template>
     </FormSection>

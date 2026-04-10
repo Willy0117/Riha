@@ -21,12 +21,13 @@ class AdminController extends Controller
      */
     public function index(Request $request)
     {
+
         $currentUser = auth('admin')->user();
 
         $query = Admin::with(['roles']);
 
-        // テナント絞り込み（Super Admin / Admin は全件）
-        if (! $currentUser->hasRole(['Super Admin', 'Admin'])) {
+        // テナント絞り込み（super_admin / Admin は全件）
+        if (! $currentUser->hasRole(['super_admin', 'admin'])) {
             $query->where('tenant_id', $currentUser->tenant_id);
         }
 
@@ -84,7 +85,7 @@ class AdminController extends Controller
     {
         $currentUser = auth('admin')->user();
 
-        $roles = $currentUser->hasRole('Super Admin')
+        $roles = $currentUser->hasRole('super_admin')
             ? Role::all()
             : Role::where('tenant_id', $currentUser->tenant_id)->get();
 
@@ -97,7 +98,7 @@ class AdminController extends Controller
             return $role;
         });
 
-        $availableTenants = $currentUser->hasRole('Super Admin')
+        $availableTenants = $currentUser->hasRole('super_admin')
             ? Tenant::all()
             : [];
 
@@ -141,22 +142,24 @@ class AdminController extends Controller
      */
     public function edit(Admin $admin)
     {
-        $currentUser = auth('admin')->user(); // ← 修正ここ
+        $currentUser = auth('admin')->user();
 
-        $roles = $currentUser->hasRole('Super Admin')
-            ? Role::all()
-            : Role::where('tenant_id', $currentUser->tenant_id)->get();
+        $rolesQuery = Role::where('guard_name', 'admin');
+
+        $roles = $currentUser->hasRole('super_admin', 'admin')
+            ? $rolesQuery->get()
+            : $rolesQuery->where('tenant_id', $currentUser->tenant_id)->get();
 
         $tenants = Tenant::all()->keyBy('id');
 
-        $roles = $roles->map(function($role) use ($tenants) {
+        $roles = $roles->map(function ($role) use ($tenants) {
             $role->tenant_name = $role->tenant_id
-                ? ($tenants[$role->tenant_id]->name ?? '(Global)')
+                ? ($tenants->get($role->tenant_id)?->name ?? '(Global)')
                 : '(Global)';
             return $role;
         });
 
-        $availableTenants = $currentUser->hasRole('Super Admin')
+        $availableTenants = $currentUser->hasRole('super_admin', 'admin')
             ? Tenant::all()
             : [];
 
@@ -179,16 +182,22 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => "required|string|email|max:255|unique:admins,email,{$admin->id}",
             'password' => 'nullable|string|confirmed|min:4',
+            'tenant_id' => 'nullable|exists:tenants,id',
+            'role_id' => 'required|exists:roles,id',
         ]);
 
         $admin->name = $validated['name'];
         $admin->email = $validated['email'];
+        $admin->tenant_id = $validated['tenant_id'] ?? null;
 
         if ($request->filled('password')) {
             $admin->password = Hash::make($validated['password']);
         }
 
         $admin->save();
+
+        // role更新（これが重要）
+        $admin->syncRoles([$validated['role_id']]);
 
         return redirect()->route('admin.admins.index')
             ->with('success', __('Admin updated successfully.'));

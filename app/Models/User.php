@@ -13,6 +13,8 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasProfilePhoto, Notifiable, TwoFactorAuthenticatable, HasRoles;
+    
+    protected $guard_name = 'web';
 
     protected $fillable = [
         'username',
@@ -59,7 +61,10 @@ class User extends Authenticatable
      */
     public function tenantRoles()
     {
-        return $this->roles()->where('tenant_id', $this->tenant_id);
+        if ($this->isSuperAdmin()) {
+            return $this->roles();
+        }
+        return $this->roles()->where('roles.tenant_id', $this->tenant_id); 
     }
 
     /**
@@ -67,7 +72,17 @@ class User extends Authenticatable
      */
     public function tenantPermissions()
     {
-        return $this->permissions()->where('tenant_id', $this->tenant_id);
+        if ($this->isSuperAdmin()) {
+            return $this->getAllPermissions();
+        }
+
+        return $this->getAllPermissions()
+            ->where('tenant_id', $this->tenant_id);
+    }
+
+    public function isSuperAdmin()
+    {
+        return $this->hasRole('super_admin');
     }
 }
 

@@ -1,12 +1,16 @@
 <template>
   <AppLayout>
-    <template #header>{{ t('permission_list') }}</template>
+    <template #header>{{ t('permissions.permission_list') }}</template>
 
     <div class="p-6">
       <!-- per_page + Add Permission -->
       <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
         <div class="flex items-center gap-2">
-          <select v-model.number="form.per_page" @change="submitSearch" class="border rounded px-3 py-2 h-10">
+          <select
+            v-model.number="form.per_page"
+            @change="submitSearch"
+            class="border rounded px-3 py-2 w-16 h-10"
+          >
             <option v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}</option>
           </select>
 
@@ -15,7 +19,7 @@
             class="px-4 h-10 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-1"
           >
             <PlusIcon class="w-4 h-4"/>
-            <span>{{ t('add_permission') }}</span>
+            <span>{{ t('permissions.add_permission') }}</span>
           </Link>
         </div>
 
@@ -30,7 +34,7 @@
       </div>
 
       <!-- Permission 一覧テーブル -->
-      <table class="min-w-full table-auto border-collapse border border-gray-300">
+      <table class="min-w-full table-auto border-collapse border border-gray-300 text-sm">
         <thead>
           <tr class="bg-gray-200">
             <th class="px-3 py-2">

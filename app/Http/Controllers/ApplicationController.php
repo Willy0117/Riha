@@ -97,6 +97,10 @@ class ApplicationController extends Controller
     public function create(Request $request)
     {
         $user = Auth::user();
+
+        $allowTextColor = $user->organization->allow_text_color ?? 0;
+        $allowBackgroundColor = $user->organization->allow_background_color ?? 0;
+
         $now = Carbon::now();
 
         // 納期計算
@@ -132,6 +136,9 @@ class ApplicationController extends Controller
             'user' => [
                 'hall_name' => $user->hall_name,
                 'tel' => $user->tel,
+                'allow_text_color' => $allowTextColor,
+                'allow_background_color' => $allowBackgroundColor,
+
             ],
         ]);
     }

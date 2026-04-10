@@ -35,7 +35,7 @@ class OrganizationController extends Controller
 
         $allowedSorts = 
         [
-            'apply_type','created_at', 'gender', 'order_code', 'id', 'name', 'age_at_death', 'delivery_date', 'deceased_furigana', 'status'
+            'email','created_at', 'fax', 'id', 'name', 'tel'
         ];
 
         $sortBy  = in_array($request->input('sort_by'), $allowedSorts)
@@ -46,7 +46,7 @@ class OrganizationController extends Controller
 
         $per_page = $request->input('per_page') ?? 20;
 
-        $query = Organization::query();
+        $query = Organization::query()->with('member');
         
         if ($name !== '') {
             $keywords = preg_split('/\s+/', $name);
@@ -62,13 +62,21 @@ class OrganizationController extends Controller
         if ($sortBy === 'name') {
             $query->orderBy('last_name', $sortDir)
                 ->orderBy('first_name', $sortDir);
+        } elseif ($sortBy === 'address') {
+            $query->orderByRaw("
+                CONCAT_WS(' ',
+                    members.address1,
+                    members.address2,
+                    members.address3
+                ) {$sortDir}
+            ");
         } else {
             $query->orderBy($sortBy, $sortDir);
         }
 
         $organizations = $query
-            ->when($request->filled('oganization_date'), fn($q) =>
-                $q->whereDate('oganization_date', $oganizationDate)
+            ->when($request->filled('organization_date'), fn($q) =>
+                $q->whereDate('organization_date', $organizationDate)
             )
             ->when($request->filled('delivery_date'), fn($q) =>
                 $q->whereDate('delivery_date', $deliveryDate)
@@ -79,9 +87,11 @@ class OrganizationController extends Controller
         return Inertia::render('Admin/Organizations/Index', [
             'user' => $user,
             'organizations' => $organizations,
-            'filter' => [
-                'per_page'      => $per_page,
-                'name'          => $name,
+            'filters' => [
+                'name'      => $name,
+                'per_page'  => $per_page,
+                'sort_by'   => $request->sort_by ?? 'created_at',  // ← 初期値
+                'sort_dir'  => $request->sort_dir ?? 'desc',       // ← 初期値
             ],
         ]);
 
@@ -107,13 +117,16 @@ class OrganizationController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'last_name'     => 'required|string',
+            'name'           => 'required|string',
+            'last_name'      => 'required|string',
             'first_name'     => 'required|string',
+            'address1'       => 'required|string',
+            'address2'       => 'required|string',
+            'tel'            => 'required|string',
+            'member_id'      => 'required|integer',
         ]);
-
-        $user = auth()->user();
-        // Oganization保存
-        $oganization = Oganization::create($data);
+        // Organization保存
+        $organization = Organization::create($data);
 
         // 成功時リダイレクト
         return redirect()->route('admin.organizations.index')
@@ -123,8 +136,11 @@ class OrganizationController extends Controller
 
     public function edit(Request $request, Organization $organization)
     {
-
         $user = auth('admin')->user();
+
+        $organization->load('member');
+
+        $organization->member_name = $organization->member?->name ?? '';
 
         $name = trim((string) $request->input('name'));
 
@@ -154,21 +170,27 @@ class OrganizationController extends Controller
         ]);
     }
 
-    public function update(Request $request)
+    public function update(Request $request, Organization $organization)
     {
         $data = $request->validate([
-            'company_name'   => 'required|string',
-            'last_name'      => 'required|string',
-            'first_name'     => 'required|string',
-            'address1'       => 'required|string',
-            'address2'       => 'required|string',
-            'tel'            => 'required|string',
-            'first_name'     => 'required|string',
-        ]);
+            'name'         => 'required|string',
+            'abbr'         => 'nullable|string',
+            'address1'     => 'required|string',
+            'address2'     => 'required|string',
+            'address3'     => 'nullable|string',
+            'last_name'    => 'nullable|string',
+            'first_name'   => 'nullable|string',
+            'tel'          => 'required|string',
+            'fax'          => 'nullable|string',
+            'mobile'       => 'nullable|string',
+            'postal_code'  => 'nullable|string',
+            'member_id'    => 'required|integer',
+            'allow_text_color' => 'required|integer',
+            'allow_background_color' => 'required|integer',
 
-        $user = auth()->user();
-           // Oganization保存
-        $oganization = Oganization::update($data);
+        ]);
+           // Organization保存
+        $organization->update($data);
 
         // 成功時リダイレクト
         return redirect()->route('admin.organizations.index')
@@ -259,10 +281,10 @@ class OrganizationController extends Controller
         $member->save();
     }
 
-    public function printDocument(Request $request, Oganization $organization)
+    public function printDocument(Request $request, Organization $organization)
     {
         // ---------------------------
-        // 1. OganizationDocuments の取得
+        // 1. OrganizationDocuments の取得
         //    type = 'poem' の PNG のみ
         // ---------------------------
         $documents = $organization->documents()
@@ -294,7 +316,7 @@ class OrganizationController extends Controller
         // 3. Inertia に渡す
         // ---------------------------
         return inertia('Organizations/PrintDocument', [
-            'oganization' => $oganization,
+            'organization' => $organization,
             'documents'   => $documents,
             'filters'     => $filters, // Vue 側で検索条件として使える
         ]);
@@ -308,7 +330,7 @@ class OrganizationController extends Controller
         ]);
     }
 
-    public function updateStatus(Request $request, Oganization $oganization)
+    public function updateStatus(Request $request, Organization $organization)
     {
         $data = [
             'status' => $request->status,
@@ -322,12 +344,12 @@ class OrganizationController extends Controller
             $data['completed_at'] = $request->date;
         }
 
-        $oganization->update($data);
+        $organization->update($data);
         
         return response()->json(['success' => true]);
     }
 
-    public function uploadDocument(Request $request, Oganization $oganization, FileService $fileService)
+    public function uploadDocument(Request $request, Organization $organization, FileService $fileService)
     {        
         $request->validate([
             'document' => 'required|file|mimes:png|max:10240',
@@ -339,7 +361,7 @@ class OrganizationController extends Controller
                 'poem/png'
             );
 
-        $oganization->documents()->create([
+        $organization->documents()->create([
             'type' => 'png',
             'file_path' => $file_path,
             'thumbnail_path' => $thumbnail_path,

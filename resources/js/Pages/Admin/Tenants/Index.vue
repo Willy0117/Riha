@@ -1,6 +1,6 @@
 <template>
   <AppLayout>
-    <template #header>{{ t('tenant_list') }}</template>
+    <template #header>{{ t('tenants.tenant_list') }}</template>
 
     <!-- 検索トリガーボタン -->
     <div dir="rtl">
@@ -32,10 +32,10 @@
 
           <div class="p-4 space-y-3">
             <!-- 検索フォーム -->
-            <input v-model="form.name" type="text" :placeholder="t('tenant name')" class="border rounded px-3 py-2 w-full" />
+            <input v-model="form.name" type="text" :placeholder="t('tenants.name')" class="border rounded px-3 py-2 w-full" />
             <input v-model="form.contact_email" type="text" :placeholder="t('email')" class="border rounded px-3 py-2 w-full" />
-            <input v-model="form.contact_phone" type="text" :placeholder="t('phone')" class="border rounded px-3 py-2 w-full" />
-            <input v-model="form.address" type="text" :placeholder="t('address')" class="border rounded px-3 py-2 w-full" />
+            <input v-model="form.contact_phone" type="text" :placeholder="t('tenants.tel')" class="border rounded px-3 py-2 w-full" />
+            <input v-model="form.address" type="text" :placeholder="t('tenants.address')" class="border rounded px-3 py-2 w-full" />
 
             <div class="flex justify-end space-x-2 mt-4">
               <button @click="submitSearch(); openDrawer = false"
@@ -52,7 +52,7 @@
       </div>
 
       <!-- per_page + Add Tenant -->
-      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
+      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2 text-sm">
         <div class="flex items-center gap-2">
           <select
             v-model.number="form.per_page"
@@ -67,7 +67,7 @@
             class="px-4 h-10 bg-green-500 text-white rounded hover:bg-green-600 flex items-center space-x-1"
           >
             <PlusIcon class="w-4 h-4"/>
-            <span>{{ t('add_tenant') }}</span>
+            <span>{{ t('tenants.add_tenant') }}</span>
           </Link>
         </div>
 
@@ -88,20 +88,20 @@
             <th class="px-3 py-2">
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">{{ t('name') }}
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">{{ t('tenants.name') }}
               <span v-if="form.sort==='name'">{{ form.direction==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('contact_email')">{{ t('email') }}
               <span v-if="form.sort==='contact_email'">{{ form.direction==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('contact_phone')">{{ t('phone') }}
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('contact_phone')">{{ t('tenants.tel') }}
               <span v-if="form.sort==='contact_phone'">{{ form.direction==='asc'?'▲':'▼' }}</span>
             </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('address')">{{ t('address') }}
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('address')">{{ t('tenants.address') }}
               <span v-if="form.sort==='address'">{{ form.direction==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2">{{ t('updated_at') }}</th>
-            <th class="px-3 py-2 text-center">{{ t('actions') }}</th>
+            <th class="px-3 py-2 text-center">{{ t('actions.action') }}</th>
           </tr>
         </thead>
         <tbody>

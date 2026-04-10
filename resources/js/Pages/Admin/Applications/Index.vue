@@ -1,12 +1,6 @@
 <template>
   <AppLayout>
     <template #header>{{ t('applications.list') }}</template>
-    <div
-      v-if="showSuccess"
-      class="mb-4 rounded-md border border-green-300 bg-green-100 px-4 py-3 text-green-800 shadow"
-    >
-      {{ props.flash.success }}
-    </div>
     <div dir="rtl">
       <!-- 検索 トリガーボタン -->
         <div class="relative size-4 ...">
@@ -83,7 +77,7 @@
         </aside>
       </div>       
 
-      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
+      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2 text-sm">
 
         <!-- per_page + add -->
         <div class="flex items-center gap-2">
@@ -119,7 +113,6 @@
               {{ t('applications.code') }}
               <span v-if="form.sort_by==='id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
-            <th v-if="isSuperAdmin">{{ t('tenant') }}</th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('apply_type')">
               {{ t('applications.apply_type') }}
               <span v-if="form.sort_by==='apply_type'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
@@ -178,9 +171,6 @@
                 {{ application.order_code }}
               </span>
             </td>
-            <td v-if="isSuperAdmin">
-              {{ tenants.find(t => t.id === application.tenant_id)?.name || '-' }}
-            </td>            
             <td class="px-3 py-2">{{ application.apply_type ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.organization?.name ?? '-' }} {{ application.organization?.abbr ?? '-' }}</td>
             <td class="px-3 py-2">{{ application.fullname ?? '-' }}</td>
@@ -377,16 +367,21 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 import axios from 'axios'
-import { Link, router } from '@inertiajs/vue3'
+import { Link, router, usePage } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch} from 'vue'
 import { useI18n } from 'vue-i18n'
 import { PrinterIcon, PlusIcon, DocumentIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon} from '@heroicons/vue/24/outline'
 import { Inertia } from '@inertiajs/inertia'
 import dayjs from 'dayjs'
 
+const page = usePage()
+
+console.log(page)
+
+const user = page.props.auth.admin ?? page.props.auth.user
+
 const props = defineProps({
   applications: Object,
-  user: Object,
   tenants: Array,
   statusOptions: Array,
   filters: {
@@ -396,34 +391,11 @@ const props = defineProps({
       per_page: 20, sort_by: 'created_at', sort_dir: 'desc', page: 1
     })
   },
-  flash: {
-        type: Object,
-        default: () => ({ success: null })
-    }
 })
 
 console.log(props.applications)
 
 const { t } = useI18n()
-
-const showSuccess = ref(false)
-
-watch(
-  () => props.flash.success,
-  (val) => {
-    if (val) {
-      showSuccess.value = true
-      setTimeout(() => {
-        showSuccess.value = false
-      }, 4000)
-    }
-  },
-  { immediate: true }
-)
-
-const isSuperAdmin = computed(() =>
-  props.user?.roles?.some(r => r.name.toLowerCase() === 'super admin')
-)
 
 // 検索フォーム・per_page・sort・sort_dirを reactive で管理
 const openDrawer = ref(false)

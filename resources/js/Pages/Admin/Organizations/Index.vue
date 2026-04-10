@@ -89,23 +89,23 @@
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('organization_id')">
-              {{ t('organizations.organization') }}
+              {{ t('organizations.member') }}
               <span v-if="form.sort_by==='organization_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">
-              {{ t('name') }}
+              {{ t('organizations.name') }}
               <span v-if="form.sort_by==='name'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('tel')">
-              {{ t('tel') }}
+              {{ t('organizations.tel') }}
               <span v-if="form.sort_by==='tel'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('fax')">
-              {{ t('fax') }}
+              {{ t('organizations.fax') }}
               <span v-if="form.sort_by==='fax'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('email')">
-              {{ t('email') }}
+              {{ t('organizations.email') }}
               <span v-if="form.sort_by==='email'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2">{{ t('updated_at') }}</th>
@@ -117,7 +117,7 @@
             <td class="px-3 py-2">
               <input type="checkbox" :value="organization.id" v-model="selectedIds" />
             </td>
-            <td class="px-3 py-2">{{ organization.organization?.name ?? '-' }} {{ organization.organization?.abbr ?? '-' }}</td>
+            <td class="px-3 py-2">{{ organization.member?.name ?? '-' }} {{ organization.member?.abbr ?? '-' }}</td>
             <td class="px-3 py-2">{{ organization.name }}</td>
             <td class="px-3 py-2">{{ organization.tel }}</td>
             <td class="px-3 py-2">{{ organization.fax }}</td>
@@ -147,29 +147,40 @@
 <script setup>
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
-import { Link, router } from '@inertiajs/vue3'
+import { Link, usePage, router } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch, onMounted, watchEffect } from 'vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import { PlusIcon, PencilIcon, TrashIcon, DocumentDuplicateIcon, MagnifyingGlassIcon } from '@heroicons/vue/24/outline'
 
+const page = usePage()
+
 const props = defineProps({
-  users: Object,
   organizations: Object,
-  filters: Object
+  tenants: Array,
+  filters: {
+    type: Object,
+    default: () => ({
+      name: '', tel: '', tenant_id: '', status_id: 1,
+      per_page: 20, sort_by: 'created_at', sort_dir: 'desc', page: 1
+    })
+  }
 })
 
+console.log(props)
+
 const { t } = useI18n()
+
 const openDrawer = ref(false)
 
 const form = reactive({
-  name: props.filters?.name || '',
-  email: props.filters?.email || '',
-  tenant_id: props.filters?.tenant_id || '',
-  per_page: props.filters?.per_page || 20,
-  sort_by: props.filters?.sort_by || 'id',
-  sort_dir: props.filters?.sort_dir || 'desc'
+  name: props.filters.name,
+  tenant_id: props.filters.tenant_id,
+  per_page: props.filters.per_page || 20,
+  sort_by: props.filters.sort_by,   // ← 初期値を必ずセット
+  sort_dir: props.filters.sort_dir,    // ← 初期値を必ずセット
 })
+
 const selectedIds = ref([])
 
 const toggleSelectAll = (checked) => {
@@ -183,12 +194,10 @@ const selectAll = computed({
 watch(() => props.organizations?.current_page, () => resetSelectedIds())
 
 const persistQuery = () => ({
-  code: form.code,
   name: form.name,
-  email: form.email,
   tenant_id: form.tenant_id,
   per_page: form.per_page,
-  sort_by: form.sort,
+  sort_by: form.sort_by,
   sort_dir: form.sort_dir,
   page: props.organizations?.current_page
 })
@@ -198,7 +207,12 @@ watchEffect(() => {
 });
 
 const submitSearch = () => {
-  router.get(route('admin.organizations.index'), { ...persistQuery(), page: 1 }, { preserveState: true, replace: true, onSuccess: resetSelectedIds })
+  console.log(persistQuery())
+  router.get(route('admin.organizations.index'), { ...persistQuery(), page: 1 }, {
+    preserveState: true,
+    replace: true,
+    onSuccess: () => resetSelectedIds()
+  })
 }
 
 const goPage = (page) => {
@@ -206,8 +220,8 @@ const goPage = (page) => {
 }
 
 const sortBy = (field) => {
-  if (form.sort === field) form.sort_dir = form.sort_dir==='asc'?'desc':'asc'
-  else { form.sort = field; form.sort_dir = 'asc' }
+  if (form.sort_by === field) form.sort_dir = form.sort_dir==='asc'?'desc':'asc'
+  else { form.sort_by = field; form.sort_dir = 'asc' }
   submitSearch()
 }
 

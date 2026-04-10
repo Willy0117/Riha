@@ -24,6 +24,8 @@ class Organization extends Model
         'mobile',
         'fax',
         'email',
+        'allow_text_color',
+        'allow_background_color',
     ];
 
     /* ===== 表示用 ===== */
@@ -40,6 +42,11 @@ class Organization extends Model
     public function documents()
     {
         return $this->hasMany(OrganizationDocument::class);
+    }
+
+    public function member()
+    {
+        return $this->belongsTo(Member::class);
     }
 
     public function getFullAddressAttribute()

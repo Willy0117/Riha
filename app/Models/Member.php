@@ -11,7 +11,7 @@ class Member extends Model
         'last_name',
         'tel',
         'status_id',
-        'company_name',
+        'name',
         'postal_code',
         'address1',
         'address2',

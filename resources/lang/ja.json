@@ -31,6 +31,8 @@
   "PDFpreview": "PDFプレビュー",
   "role": "権限",
   "member": "請求先",
+  "allow": "選択できる",
+  "disallow": "選択できない",
   "actions": {
     "action": "操 作",
     "save": "保 存",
@@ -50,8 +52,11 @@
   },  
   "tenants" : {
     "tenant": "テナント",
+    "tenant_list": "テナント",
     "tenant_id": "テナント",
-    "tenant name": "テナント名",
+    "name": "テナント名",
+    "tel": "TEL",
+    "address": "住所",
     "add_tenant": "テナント追加",
     "select_tenant": "選択してください"
   }, 
@@ -108,17 +113,20 @@
     "branch_code": "支店コード"
   },
   "roles": {
+    "edit": "権限編集",
+    "create": "権限追加",
     "role": "権限",
-    "role_list": "権限一覧",
-    "add_role": "権限追加"
-
+    "list": "権限一覧",
+    "name": "名前",
+    "add": "権限追加"
   },
   "permissions": {
     "permission": "パーミッション",
     "permission_list": "パーミッション一覧",
+    "edit": "パーミッション編集",
+    "create": "パーミッション追加",
     "add_permission": "パーミッション追加"
   },
-
 
   "confirm": "'決定",
 
@@ -127,12 +135,29 @@
   "add_admin": "管理者追加",
   "create_admin": "管理者追加",
   "edit_admin": "管理者編集",
+  "organizations":{
+    "organization": "得意先,営業所",
+    "member": "請求先",
+    "list": "得意先一覧",
+    "add": "得意先追加",
+    "create": "得意先追加",
+    "edit": "得意先編集",
+    "name":"名前",
+    "tel":"TEL",
+    "fax":"FAX",
+    "address":"住所",
+    "email":"メールアドレス"
+  },
   "organization": "得意先",
   "organization_list": "得意先一覧",
   "add_organization": "得意先追加",
   "create_organization": "得意先追加",
   "edit_organization": "得意先編集",
-
+  "admins": {
+    "edit":"管理者編集",
+    "update":"更新",
+    "create":"管理者作成"
+  },
   "masters": "マスター",
   "api_tokens": "APIトークン",
   "password": "パスワード",
@@ -161,16 +186,15 @@
   "approved": "承認済み",
   "no_applications": "申込はまだありません",
   "members": {
-    "name": "申請者名",
-    "member": "会員",
-    "detail": "会員情報",
-    "member_list": "会員一覧",
+    "name": "会社名",
+    "member": "請求先",
+    "detail": "請求先情報",
+    "member_list": "請求先一覧",
     "member_created": "会員を作成しました。",
     "member_updated": "会員情報を更新しました。",
     "member_deleted": "会員を削除しました。",
     "selected_members_deleted": "選択した会員を削除しました。",
-    "edit": "会員編集",
-    "type": "会社区分",
+    "edit": "請求先編集",
     "agent": "申請区分",
     "member_code": "会員ID",
     "company_name": "会社名",
@@ -273,7 +297,7 @@
     "address1": "市町村区",
     "address2": "番地",
     "address3": "建物名",
-    "tel": "電話番号",
+    "tel": "TEL",
     "fax": "FAX",
     "mobile": "携帯番号",
     "email": "メールアドレス",
@@ -302,6 +326,7 @@
     "special_notes": "故人様に対する特記事項（お人柄など）",
     "note": "備考欄",
     "PDF": "申込書作成",
+    "abbr": "支店、営業所",
     "send": "申込内容を送信"   
   },
   "enter_reject_reason": "却下理由を入力してください",

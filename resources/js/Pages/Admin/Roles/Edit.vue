@@ -1,14 +1,14 @@
 <template>
   <AppLayout>
     <template #header>
-      {{ role ? t('edit_role') : t('create_role') }}
+      {{ role ? t('roles.edit') : t('roles.create') }}
     </template>
 
     <div class="p-6">
       <form @submit.prevent="submitForm" class="space-y-6">
         <!-- Role Name -->
         <div>
-          <label class="block mb-1 font-medium">{{ t('role_name') }}</label>
+          <label class="block mb-1 font-medium">{{ t('roles.name') }}</label>
           <input
             v-model="form.name"
             type="text"
@@ -20,7 +20,7 @@
 
         <!-- Permissions MultiSelect -->
         <div>
-          <label class="block mb-1 font-medium">{{ t('permissions') }}</label>
+          <label class="block mb-1 font-medium">{{ t('permissions.permission') }}</label>
           <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 max-h-96 overflow-y-auto border rounded p-2">
             <div v-for="permission in permissions" :key="permission.id" class="mb-2">
               <label :for="'perm-' + permission.id" class="inline-flex items-center space-x-2">

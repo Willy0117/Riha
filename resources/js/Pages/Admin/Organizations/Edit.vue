@@ -6,78 +6,48 @@
 
     <div class="p-6 bg-white rounded shadow">
       <form @submit.prevent="submitForm" class="space-y-8">
-        <!-- 2カラム -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!--  ここから会社情報　-->
-
-          <!-- 左カラム：会社情報 -->
-          <div class="space-y-4">
-            <h3 class="text-lg font-semibold mb-2">{{ t('registers.organization') }}</h3>
-
-              <div>
-              <InputLabel :value="t('registers.company_name')" /> 
-
-              <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-                <div class="flex-1">
-                  <!-- 前 -->
-                  <select
-                    v-model="form.company_type_prefix"
-                    class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
-                  >
-                    <option v-for="type in companyTypes" :key="type.value" :value="type.value">
-                      {{ type.label }}
-                    </option>
-                  </select>
-
-                </div>
-                <div class="flex-1">
-                  <!-- 会社名 -->
-                  <TextInput
-                    v-model="form.name"
-                    class="flex-1"
-                    placeholder="〇〇商事"
-                  />
-                  <InputError :message="form.errors.name" class="mt-2" />
-                </div>
-                <div class="flex-1">
-                <!-- 後 -->
-                  <select
-                    v-model="form.company_type_suffix"
-                    class="w-full border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 px-3 py-2"
-                  >
-                    <option v-for="type in companyTypes" :key="type.value" :value="type.value">
-                      {{ type.label }}
-                    </option>
-                  </select>
-                </div>
-              </div>
-              <p class="text-xs text-gray-500 mt-1">
-                例）株式会社〇〇商事 ／ 〇〇商事株式会社
-              </p>
-            </div>  
+        <div class="mb-4 grid grid-cols-2 gap-x-1 gap-y-3 items-start">
+          <div class="flex-1">
+            <InputLabel for="member_id" :value="t('member')" />
+            <Autocomplete
+              v-model="form.member_id"
+              :placeholder="t('member')"
+              apiUrl="/api/members/search"
+              :initialItem="{
+                id: form.member_id,
+                label: form.member_name,
+              }"
+              class="mt-1 block w-full"
+            />
+            <InputError :message="form.errors.member_id" class="mt-2" />
           </div>
-
-         <!-- 右カラム：代表者/担当者 -->
-          <div class="space-y-4">
-            <h3 class="text-lg font-semibold mb-2">代表者</h3>
-            <div>
-             <InputLabel value="代表者名" />
-              <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-                <div class="flex-1">
-                  <TextInput v-model="form.rep_last_name"
-                    class="w-full" :placeholder="t('registers.last_name')" />
-                    <InputError :message="form.errors.rep_last_name" class="mt-2" />
-                </div>
-
-                <div class="flex-1">  
-                  <TextInput v-model="form.rep_first_name"
-                    class="w-full" :placeholder="t('registers.first_name')" />
-                    <InputError :message="form.errors.rep_first_name" class="mt-2" />
-                </div>
-              </div>
-            </div>
+          <div class="flex-1">
           </div>
         </div>
+        <div class="mb-4 grid grid-cols-2 gap-x-1 gap-y-3 items-start">
+          <div class="flex-1">
+              <InputLabel :value="t('registers.company_name')" /> 
+              <!-- 会社名 -->
+              <TextInput
+                v-model="form.name"
+                class="w-full"
+                placeholder="〇〇商事"
+              />
+              <InputError :message="form.errors.name" class="mt-2" />
+          </div>
+          <div class="flex-1">
+              <InputLabel :value="t('registers.abbr')" /> 
+              <!-- 会社名 -->
+              <TextInput
+                v-model="form.abbr"
+                class="w-full"
+                placeholder="〇〇支店、営業所"
+              />
+              <InputError :message="form.errors.abbr" class="mt-2" />
+          </div>
+        </div>        
+ 
+        <div>
         <div>
           <InputLabel :value="t('registers.zip_code')" />
           <TextInput
@@ -88,7 +58,6 @@
             @keydown.enter.prevent
           />
           <InputError :message="form.errors.postal_code" class="mt-2" />
-
           <ul v-if="candidates.length > 1" class="border rounded bg-white">
             <li
               v-for="candidate in candidates"
@@ -100,8 +69,8 @@
             </li>
           </ul>
           <InputError :message="form.errors.postal_code" class="mt-2" />
-
-          <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
+        </div>
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
             <div class="flex-1">
               <InputLabel :value="t('registers.address1')" />
               <TextInput v-model="form.address1"
@@ -121,17 +90,17 @@
             </div>
           </div>
 
-          <div class="mb-4 grid grid-cols-4 gap-x-1 gap-y-3 items-start">
+          <div class="mb-4 grid grid-cols-3 gap-x-1 gap-y-3 items-start">
             <div class="w-full">
               <InputLabel :value="t('registers.tel')" />
               <TextInput
                 v-model="form.tel"
-                maxlength="12"
+                maxlength="20"
                 @input="e => onPhoneInput('corp', 'tel', e)"
                 placeholder="03-1234-5678"
               />
-              <p v-if="form.tel && form.tel.length !== 12"
-                class="text-xs text-red-500 mt-1">
+              <p v-if="form.tel"
+                class="text-xs text-gray-500 mt-1">
                 電話番号は 03-1234-5678 の形式で入力してください
               </p>
             </div>
@@ -140,12 +109,12 @@
               <InputLabel :value="t('registers.fax')" />
               <TextInput
                 v-model="form.fax"
-                maxlength="12"
+                maxlength="20"
                 @input="e => onPhoneInput('corp', 'fax', e)"
                 placeholder="03-1234-5678"
               />
-              <p v-if="form.fax && form.fax.length !== 12"
-                class="text-xs text-red-500 mt-1">
+              <p v-if="form.fax"
+                class="text-xs text-gray-500 mt-1">
                 FAX番号は 03-1234-5678 の形式で入力してください
               </p>
             </div>
@@ -155,47 +124,34 @@
                 v-model="form.mobile"
                 class="w-full"
                 placeholder="090-xxxx-xxxx"
-                maxlength="13"
+                maxlength="20"
                 @input="e => onPhoneInput('corp', 'mobile', e)"
               />
-              <p v-if="form.mobile && form.mobile.length !== 13"
-                class="text-xs text-red-500 mt-1">
+              <p v-if="form.mobile"
+                class="text-xs text-gray-500 mt-1">
                 携帯電話は 090-1234-5678 の形式で入力してください
-              </p>
-            </div>
-            <div class="w-full">
-              <InputLabel>
-                {{ t('registers.email') }}
-                <span v-if="form.is_agent" class="text-red-500 ml-1">*</span>
-              </InputLabel>
-
-              <TextInput
-                v-model="form.email"
-                class="w-full"
-              />
-
-              <p
-                v-if="form.errors.email"
-                class="text-red-500 text-sm mt-1"
-              >
-                {{ form.errors.email }}
               </p>
             </div>
           </div>
         </div>
-        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-end">
-          <!-- 肩書き -->
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
           <div class="flex-1">
-            <div>
-              <InputLabel :value="t('registers.position')" />
-              <TextInput v-model="form.position" class="w-full" />
-            </div>
-            <p v-if="form.mobile && form.mobile.length !== 13"
-                class="text-xs text-red-500 mt-1">
-                携帯電話は 090-1234-5678 の形式で入力してください
+            <InputLabel>
+              {{ t('registers.email') }}
+              <span v-if="form.is_agent" class="text-red-500 ml-1">*</span>
+            </InputLabel>
+
+            <TextInput
+              v-model="form.email" class="w-full"
+            />
+
+            <p
+              v-if="form.errors.email"
+              class="text-red-500 text-sm mt-1"
+            >
+              {{ form.errors.email }}
             </p>
           </div>
-          <!-- 氏名 -->
           <div class="flex-[2]">
             <div>
               <InputLabel :value="t('registers.staff')" />
@@ -208,9 +164,58 @@
             </div>
           </div>
         </div>
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
+          <div class="flex-1">
+            <InputLabel>{{ t('applications.text_color') }}</InputLabel>
+            <div class="inline-flex rounded-md shadow-sm">
+              <!-- 禁止ボタン -->
+              <button
+                type="button"
+                @click="form.allow_text_color = 0"
+                :class="form.allow_text_color === 0 ? 'bg-white border-indigo-600 text-indigo-600 z-10' : 'bg-gray-50 border-gray-300 text-gray-500'"
+                class="relative inline-flex items-center px-4 py-2 text-sm font-medium border rounded-l-md justify-center transition"
+              >
+                {{ t('disallow') }}
+              </button>
+              <!-- 有効ボタン -->
+              <button
+                type="button"
+                @click="form.allow_text_color = 1"
+                :class="form.allow_text_color === 1 ? 'bg-white border-indigo-600 text-indigo-600 z-10' : 'bg-gray-50 border-gray-300 text-gray-500'"
+                class="relative inline-flex items-center px-4 py-2 text-sm font-medium border -ml-px rounded-r-md justify-center transition"
+              >
+                {{ t('allow') }}
+              </button>
+            </div>
+          </div>
+          <div class="flex-1">
+            <InputLabel>{{ t('applications.bg_color') }}</InputLabel>
+            <div class="inline-flex rounded-md shadow-sm">
+              <!-- 禁止ボタン -->
+              <button
+                type="button"
+                @click="form.allow_background_color = 0"
+                :class="form.allow_background_color === 0 ? 'bg-white border-indigo-600 text-indigo-600 z-10' : 'bg-gray-50 border-gray-300 text-gray-500'"
+                class="relative inline-flex items-center px-4 py-2 text-sm font-medium border rounded-l-md justify-center transition"
+              >
+                {{ t('disallow') }}
+              </button>
+              <!-- 有効ボタン -->
+              <button
+                type="button"
+                @click="form.allow_background_color = 1"
+                :class="form.allow_background_color === 1 ? 'bg-white border-indigo-600 text-indigo-600 z-10' : 'bg-gray-50 border-gray-300 text-gray-500'"
+                class="relative inline-flex items-center px-4 py-2 text-sm font-medium border -ml-px rounded-r-md justify-center transition"
+              >
+                {{ t('allow') }}
+              </button>
+            </div>
+          </div>
+          <div class="flex-1"></div>
+        </div>
         <div class="flex justify-end">
           <PrimaryButton :disabled="form.processing">
-            {{ organization ? t('update') : t('create') }}
+            {{ props.organization ? t('update') : t('create') }}
           </PrimaryButton>
         </div>
       </form>
@@ -224,39 +229,47 @@ import { Link, router, useForm,usePage } from '@inertiajs/vue3';
 import { Inertia } from '@inertiajs/inertia';
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue';
+import Autocomplete from '@/Components/OpenCartAutocomplete.vue'
+
 import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import Autocomplete from '@/Components/Autocomplete.vue'
 import axios from 'axios'
 import { useZipcode } from '@/composables/useZipcode'
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
-
+const test = ref('1')
 const page = usePage()
 
 console.log(page.props) // ← ここで form が見える
 
+const props = defineProps({
+  organization: Object,
+  filter: Object,
+})
+
+
 const form = useForm({
-  id:page.props.organization?.organization_id ?? '',
-  company_type_prefix: page.props.organization?.name_prefix ?? '株式会社',
-  name: page.props.organization?.name ?? '',
-  company_type_suffix: page.props.organization?.name_suffix ?? '',
-  rep_last_name: page.props.organization?.first_name ?? '',
-  rep_first_name: page.props.organization?.last_name ?? '',
-  postal_code: page.props.organization?.postal_code ?? '',
-  address1: page.props.organization?.address1 ?? '',
-  address2: page.props.organization?.address2 ?? '',
-  address3: page.props.organization?.address3 ?? '',
-  tel: page.props.organization?.tel ?? '',
-  fax: page.props.organization?.fax ?? '',
-  mobile: page.props.organization?.mobile ?? '',
-  email: page.props.organization?.email ?? '',
-  position: page.props.organization?.position ?? '代表取締役',
-  last_name: page.props.organization?.last_name ?? '',
-  first_name: page.props.organization?.first_name ?? '',
+  id:props.organization?.id ?? '',
+  name: props.organization?.name ?? '',
+  postal_code: props.organization?.postal_code ?? '',
+  address1: props.organization?.address1 ?? '',
+  address2: props.organization?.address2 ?? '',
+  address3: props.organization?.address3 ?? '',
+  tel: props.organization?.tel ?? '',
+  fax: props.organization?.fax ?? '',
+  mobile: props.organization?.mobile ?? '',
+  email: props.organization?.email ?? '',
+  cc_email: props.organization?.cc_email ?? '',
+  bcc_email: props.organization?.bcc_email ?? '',
+  last_name: props.organization?.last_name ?? '',
+  first_name: props.organization?.first_name ?? '',
+  member_id:props.organization?.member_id ?? '',
+  member_name:props.organization?.member_name ?? '',
+  allow_text_color:props.organization?.allow_text_color ?? 1,
+  allow_background_color:props.organization?.allow_background_color ?? 1,
 });
 
 
@@ -294,6 +307,7 @@ const onPhoneInput = (target, field, e) => {
 }
 
 
+
 const normalizeKana = (value) => {
   if (!value) return ''
 
@@ -305,7 +319,6 @@ const normalizeKana = (value) => {
   // 全角カタカナ・長音・全角スペースのみ
   return value.replace(/[^\u30A0-\u30FFー　]/g, '')
 }
-
 
 //〒番号関係
 const candidates = ref([])
@@ -346,27 +359,9 @@ const onAddressZipInput = (e) => {
   form.postal_code = normalizeZip(e.target.value)
 }
 
-
 useZipcode(
   toRef(form, 'postal_code'),
   toRef(form, 'address1')
 )
-
-// prefixまたはsuffixが入ったらもう一方は消す
-watch(
-  () => form.company_type_prefix,
-  (val) => {
-    if (val) form.company_type_suffix = ''
-  }
-)
-
-watch(
-  () => form.company_type_suffix,
-  (val) => {
-    if (val) form.company_type_prefix = ''
-  }
-)
-
-
 </script>
 

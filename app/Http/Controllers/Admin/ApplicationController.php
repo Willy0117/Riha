@@ -15,12 +15,16 @@ use TCPDF_FONTS;
 use setasign\Fpdi\Tcpdf\Fpdi;
 use Carbon\Carbon;
 use App\Models\Application;
+use App\Models\Tenant;
+use App\Models\Organization; 
+
 use Imagick;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\UploadedFile;
 use App\Mail\MemberRegistrationCompleted;
 use App\Mail\AgentRegistrationCompleted;
 use App\Mail\PreRegisterMail;
+use App\Mail\SendPdfMail;
 
 use App\Services\FileService;
 use App\Services\PdfService;
@@ -30,7 +34,9 @@ class ApplicationController extends Controller
 {
     public function index(Request $request) 
     {
-        $user = Auth::user();
+        $currentUser = auth('admin')->user();
+
+        $tenants = Tenant::all()->keyBy('id');
 
         $name = trim((string) $request->input('name'));
         $applicationDate = $request->input('application_date');
@@ -81,8 +87,8 @@ class ApplicationController extends Controller
             ->withQueryString();
 
         return Inertia::render('Admin/Applications/Index', [
-            'user' => $user,
             'applications' => $applications,
+            'tenants' => $tenants,
             'statusOptions' => Status::options(),
             'filter' => [
                 'per_page'      => $per_page,
@@ -234,12 +240,13 @@ class ApplicationController extends Controller
 
     public function show(Request $request, Application $application)
     {
+
+        $user = Auth::user();
+
         $application->load([
             'organization',
             'canvasDocument',
         ]);
-
-        $user = Auth::user();
 
         $name = trim((string) $request->input('name'));
         $applicationDate = $request->input('application_date');
@@ -257,7 +264,6 @@ class ApplicationController extends Controller
         $sortDir = $request->input('sort_dir') === 'asc' ? 'asc' : 'desc';
 
         $per_page = $request->input('per_page') ?? 20;
-
 
         return Inertia::render('Admin/Applications/Show', [
             'user'        => $user,  
@@ -351,6 +357,12 @@ class ApplicationController extends Controller
                     'file_path' => $file_path,
                     'thumbnail_path' => $thumbnail_path,
                 ]);
+
+                $organization = Organization::find($request->organization_id);
+                $application->setRelation('organization', $organization);
+
+                $this->sendCompletedMails($application, $file_path);
+
             }
 
         });
@@ -362,54 +374,39 @@ class ApplicationController extends Controller
     }
 
 
-
-    protected function sendCompletedMails(Member $member, $preUser, $corp, $agent = null): void
+    protected function sendCompletedMails($application, $pdfPath)
     {
+        $toMail = $application->organization->email;
 
-        $toUser = filter_var($preUser->email, FILTER_VALIDATE_EMAIL)
-            ? $preUser->email
-            : null;
-
-        $toCorp = filter_var($corp['email'] ?? null, FILTER_VALIDATE_EMAIL)
-            ? $corp['email']
-            : null;
-
-        // 本人／代理人宛
-        if ($toUser) {
-            try {
-                $data = $agent ?? $corp; // 代理人がいれば agent、それ以外は member
-                Mail::to($toUser)
-                    ->send(new MemberRegistrationCompleted($data));
-
-                $member->user_mail_sent_at = now();
-
-            } catch (\Throwable $e) {
-                Log::error('SES user mail send failed', [
-                    'member_id' => $member->id ?? null,
-                    'to' => $toUser,
-                    'error' => $e->getMessage(),
+        try {
+            // フルパス取得
+            $filePath = Storage::path($pdfPath);
+            // ファイル存在チェック
+            if (!file_exists($filePath)) {
+                Log::error('PDF not found', [
+                    'path' => $filePath,
+                    'user_id' => $user->id ?? null,
                 ]);
+                return false;
             }
+
+            // メール送信
+            Mail::to($toMail)
+                ->send(new SendPdfMail($application,$filePath));
+
+            return true;
+
+        } catch (\Exception $e) {
+
+            Log::error('Mail send failed', [
+                'message' => $e->getMessage(),
+                'user_id' => $application->id ?? null,
+                'email' => $toMail ?? null,
+                'path' => $pdfPath,
+            ]);
+
+            return false;
         }
-
-        // corp 宛（agent の場合のみ or mail がある場合）
-        if ($toCorp) {
-            try {
-                Mail::to($toCorp)
-                    ->send(new AgentRegistrationCompleted($corp));
-
-                $member->corp_mail_sent_at = now();
-
-            } catch (\Throwable $e) {
-                Log::error('SES corp mail send failed', [
-                    'member_id' => $member->id ?? null,
-                    'to' => $toCorp,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-        }
-        //メール送信結果をDBへ保存    
-        $member->save();
     }
 
     public function printDocument(Request $request, Application $application)

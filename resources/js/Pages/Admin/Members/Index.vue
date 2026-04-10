@@ -99,29 +99,29 @@
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
             <th v-if="isSuperAdmin">{{ t('tenant') }}</th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('company_name')">
-              {{ t('members.company_name') }}
-              <span v-if="form.sort_by==='company_name'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('name')">
+              {{ t('members.name') }}
+              <span v-if="form.sort_by==='name'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('tel')">
               {{ t('members.tel') }}
               <span v-if="form.sort_by==='tel'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('fax')">
+              {{ t('members.fax') }}
+              <span v-if="form.sort_by==='fax'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('address')">
               {{ t('members.address') }}
               <span v-if="form.sort_by==='address'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
+            <th class="px-3 py-2 cursor-pointer" @click="sortBy('email')">
+              {{ t('members.email') }}
+              <span v-if="form.sort_by==='email'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
+            </th>
             <th class="px-3 py-2 cursor-pointer" @click="sortBy('created_at')">
               {{ t('updated_at') }}
               <span v-if="form.sort_by==='created_at'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <th class="px-3 py-2 text-center cursor-pointer" @click="sortBy('status_id')">
-              {{ t('members.status') }}
-              <span v-if="form.sort_by==='status_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>  
-            <th v-if="props.filters?.status_id == 1" class="px-3 py-2 text-center cursor-pointer" @click="sortBy('progress_id')">
-              {{ t('members.progress') }}
-              <span v-if="form.sort_by==='progress_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
             </th>
             <th class="px-3 py-2 text-center">{{ t('actions.action') }}</th>
           </tr>
@@ -135,18 +135,12 @@
             <td v-if="isSuperAdmin">
               {{ tenants.find(t => t.id === member.tenant_id)?.name || '-' }}
             </td>            
-            <td class="px-3 py-2">{{ member.company_name ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.name ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.tel ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.fax ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.full_address ?? '-' }}</td>
+            <td class="px-3 py-2">{{ member.email ?? '-' }}</td>
             <td class="px-3 py-2">{{ member.created_at ? dayjs(member.created_at).format('YYYY/MM/DD') : '' }}</td>
-            <td class="px-3 py-2">
-              <span
-                class="cursor-pointer text-blue-600 hover:underline"
-                @click="openStatus(member)"
-              >
-                {{ member.status?.name }}
-              </span>
-            </td>
             <td class="px-3 py-2 text-center flex justify-center space-x-1">
               <Link :href="route('admin.member.edit', { member: member.id, ...persistQuery() })" class="text-blue-500 hover:text-blue-700">
                 <PencilIcon class="w-4 h-4"/>
@@ -208,7 +202,7 @@ import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 
 import axios from 'axios'
-import { Link, usePage } from '@inertiajs/vue3'
+import { Link, usePage, router } from '@inertiajs/vue3'
 import { ref, reactive, computed, watch} from 'vue'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
@@ -224,7 +218,7 @@ const props = defineProps({
   filters: {
     type: Object,
     default: () => ({
-      company_name: '', tel: '', tenant_id: '', status_id: 1,
+      name: '', tel: '', tenant_id: '', status_id: 1,
       per_page: 20, sort_by: 'created_at', sort_dir: 'desc', page: 1
     })
   }
@@ -296,7 +290,6 @@ watch(() => props.members.current_page, () => {
 // persistQueryに各検索項目を追加
 const persistQuery = () => ({
   tenant_id: form.tenant_id,
-  company_name: form.company_name,
   name: form.name,
   status_id: form.status_id,
   per_page: form.per_page,

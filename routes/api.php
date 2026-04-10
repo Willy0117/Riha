@@ -8,6 +8,7 @@ use App\Http\Controllers\Api\BankController;
 use App\Http\Controllers\Api\BankCategoryController;
 use App\Http\Controllers\InsuranceSimulationController;
 use App\Models\Organization;
+use App\Models\Member;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -58,5 +59,31 @@ Route::get('/organizations/{id}', function ($id) {
         'id' => $o->id,
         'name' => $o->name,
         'label' => $o->name . ($o->abbr ? ' (' . $o->abbr . ')' : ''),
+    ];
+});
+// Autocomplete用
+Route::get('/members/search', function (Request $request) {
+
+    $keyword = $request->q;
+
+    return Member::query()
+        ->where('name', 'like', "%{$keyword}%")
+        ->orderBy('name')
+        ->limit(20)
+        ->get(['id', 'name'])
+        ->map(fn ($o) => [
+            'id' => $o->id,
+            'name' => $o->name,
+            'label' => $o->name,
+        ]);
+});
+
+Route::get('/members/{id}', function ($id) {
+    $o = \App\Models\Member::findOrFail($id);
+
+    return [
+        'id' => $o->id,
+        'name' => $o->name,
+        'label' => $o->name,
     ];
 });

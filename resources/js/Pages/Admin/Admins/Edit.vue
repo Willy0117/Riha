@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <template #header>
-      {{ admin ? t('edit_admin') : t('create_admin') }}
+      {{ admin ? t('admins.edit') : t('admins.create') }}
     </template>
 
     <div class="p-6 max-w-2xl mx-auto bg-white rounded shadow">
@@ -62,7 +62,7 @@
             v-model="form.tenant_id"
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
           >
-            <option :value="null" disabled>{{ t('select_tenant') }}</option>
+            <option value="" >{{ t('select_tenant') }}</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
               {{ tenant.name }}
             </option>
@@ -71,7 +71,6 @@
         </div>
 
         <!-- Role -->
-<!--
         <div>
           <InputLabel for="role_id" :value="t('role')" />
           <select
@@ -79,18 +78,18 @@
             v-model="form.role_id"
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
           >
-            <option :value="null" disabled>{{ t('select_role') }}</option>
+            <option value="" >{{ t('select_role') }}</option>
             <option v-for="role in roles" :key="role.id" :value="role.id">
               {{ role.name }} - {{ role.tenant_name }}
             </option>
           </select>
           <InputError :message="form.errors.role_id" class="mt-2" />
         </div>
--->
+
         <!-- 保存 -->
         <div class="flex justify-end">
           <PrimaryButton :disabled="form.processing">
-            {{ admin ? t('update') : t('create') }}
+            {{ admin ? t('admins.update') : t('admins.create') }}
           </PrimaryButton>
         </div>
 
@@ -101,7 +100,7 @@
 
 <script setup>
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm,usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Autocomplete from '@/Components/OpenCartAutocomplete.vue'
@@ -114,6 +113,9 @@ import Checkbox from '@/Components/Checkbox.vue';
 
 const { t } = useI18n()
 
+const page = usePage()
+
+const inertiaProps = page.props
 
 const props = defineProps({
   admin: { type: Object, default: () => ({}) },
@@ -122,10 +124,17 @@ const props = defineProps({
   selected_role: { type: Number, default: null }
 })
 
+const user = inertiaProps.auth.admin ?? inertiaProps.auth.user
+
+console.log('admin',inertiaProps.auth.admin)
+
+console.log('user',inertiaProps.auth.user)
+
+console.log(user)
 
 // Super Admin 判定
-const isAdminOrSuper = Array.isArray(props.admin?.roles) &&
-  props.admin.roles.some(r => ['super admin', 'admin'].includes(r.name.toLowerCase()));
+const isSuperAdmin =
+  user?.roles?.some(r => ['super_admin', 'admin'].includes(r))
 
 const form = useForm({
   name: props.admin?.name || '',

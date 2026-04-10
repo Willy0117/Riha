@@ -14,6 +14,8 @@ class Admin extends Authenticatable
 {
     use HasApiTokens, HasFactory, HasProfilePhoto, Notifiable, TwoFactorAuthenticatable, HasRoles;
 
+    protected $guard_name = 'admin';
+
     protected $fillable = [
         'name',
         'email',
@@ -50,9 +52,15 @@ class Admin extends Authenticatable
     /**
      * ログインユーザーの tenant_id でフィルターしたロールを取得
      */
+    /**
+     * ログインユーザーの tenant_id でフィルターしたロールを取得
+     */
     public function tenantRoles()
     {
-        return $this->roles()->where('tenant_id', $this->tenant_id);
+        if ($this->isSuperAdmin()) {
+            return $this->roles();
+        }
+        return $this->roles()->where('roles.tenant_id', $this->tenant_id); 
     }
 
     /**
@@ -60,7 +68,18 @@ class Admin extends Authenticatable
      */
     public function tenantPermissions()
     {
-        return $this->permissions()->where('tenant_id', $this->tenant_id);
+        if ($this->isSuperAdmin()) {
+            return $this->getAllPermissions();
+        }
+
+        return $this->getAllPermissions()
+            ->where('tenant_id', $this->tenant_id);
     }
+
+    public function isSuperAdmin()
+    {
+        return $this->hasRole('super_admin');
+    }
+    
 }
 
