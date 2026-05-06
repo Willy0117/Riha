@@ -5,8 +5,8 @@ import { useI18n } from 'vue-i18n'
 
 // Heroicons
 import {
-  HomeIcon,
-  UserIcon,
+  HomeIcon, DocumentCurrencyYenIcon,
+  UserIcon, DocumentIcon,
   ServerIcon,
   UsersIcon,
   PlusIcon,
@@ -71,6 +71,12 @@ onMounted(() => {
   }
   if (page.url.startsWith('/users')) {
     openSubMenu.value = 'users'
+  }
+  if (page.url.startsWith('/reports')) {
+    openSubMenu.value = 'reports'
+  }
+  if (page.url.startsWith('/exams')) {
+    openSubMenu.value = 'exams'
   }
 })
 
@@ -176,31 +182,99 @@ const showAccessControl = computed(() => {
         <HomeIcon class="w-5 h-5"/>
         <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
       </Link>
-      <Link :href="route('applications.create')"
+
+      <div class="mt-2">
+        <button
+          @click="toggleSubMenu('exams')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <UsersIcon class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">{{ t('exams.application') }}</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'exams' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'exams' && !collapsed" class="pl-6 mt-1 space-y-1">     
+            <Link :href="route('exams.create')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('exams.create') ? 'bg-gray-300 font-semibold' : ''">
+              <CubeIcon class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('applications.create') }}</span>
+            </Link>        
+       
+         </div>   
+        </transition>
+      </div>
+      <div class="mt-2">
+        <button
+          @click="toggleSubMenu('reports')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <UsersIcon class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">{{ t('rehabs.self_report') }}</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'reports' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'reports' && !collapsed" class="pl-6 mt-1 space-y-1">     
+            <Link :href="route('reports.index')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('reports.index') ? 'bg-gray-300 font-semibold' : ''">
+              <CubeIcon class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('rehabs.list') }}</span>
+            </Link>
+          
+            <Link :href="route('reports.create')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('reports.create') ? 'bg-gray-300 font-semibold' : ''">
+              <CubeIcon class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('exams.reports') }}</span>
+            </Link>
+        
+         </div>   
+        </transition>
+      </div>
+      <Link :href="route('pdf-uploads.create')"
             class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('applications.create') ? 'bg-gray-300 font-semibold' : ''">
-        <CubeIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('applications.poem') }}</span>
-      </Link>        
-      <Link :href="route('applications.index')"
+            :class="isActive('pdf-uploads.create') ? 'bg-gray-300 font-semibold' : ''">
+        <DocumentIcon class="w-5 h-5"/>
+        <span v-if="!collapsed" class="ml-2">{{ t('instructors.update') }}</span>
+      </Link>
+
+      <Link :href="route('pdf-uploads.index')"
             class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('applications.index') ? 'bg-gray-300 font-semibold' : ''">
-        <CubeIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('applications.list') }}</span>
-      </Link>        
-
-      <Link :href="route('applications.fax')"
+            :class="isActive('pdf-uploads') ? 'bg-gray-300 font-semibold' : ''">
+        <DocumentIcon class="w-5 h-5"/>
+        <span v-if="!collapsed" class="ml-2">{{ t('credit_acquisition') }}</span>
+      </Link>
+      <Link :href="route('annual-fees.index')"
             class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('applications.fax') ? 'bg-gray-300 font-semibold' : ''">
-        <CubeIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('applications.fax') }}</span>
-      </Link>        
-    
-
-
- 
- 
-
+            :class="isActive('annual-fees') ? 'bg-gray-300 font-semibold' : ''">
+        <DocumentCurrencyYenIcon class="w-5 h-5"/>
+        <span v-if="!collapsed" class="ml-2">{{ t('annual_fees.annual_fee') }}</span>
+      </Link>
     </nav>
   </aside>
       <!-- モバイルオーバーレイ -->

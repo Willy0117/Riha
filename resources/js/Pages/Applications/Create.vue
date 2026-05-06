@@ -19,64 +19,21 @@ import dayjs from 'dayjs';
 const { t } = useI18n()
 
 const props = defineProps({
-  defaultFuneralDatetime: String,
-  minFuneralDatetime: String,
-  application_date: String,
-  delivery_date: String,
   user: Object,
+  member: Object,
   flash: Object, 
 })
 
 const form = useForm({
-    application_date: props.application_date,
-    delivery_date: props.delivery_date,
-    staff_name: '',
-    funeral_datetime: props.defaultFuneralDatetime,
-    text_color: 'brown',
-    bg_color: 'none',
-    last_name: '',
-    first_name: '',
-    deceased_furigana: '',
-    age_at_death: '', // 満 歳
-    gender: '',
-    // --- 配偶者・家族情報 ---
-    spouse_status: '', // 有・無・死別
-    children_count: 0,
-    grandchildren_count: 0,
-    // --- 喪主様情報 ---
-    chief_mourner_name: '', // 喪主様お名前
-    relationship_to_deceased: '', // 故人様とのご関係
-    // --- その他項目 ---
-    traits: [],
-    special_notes: '',
-    remarks: '',
-    canvas: null, // ここに手書き画像を格納
-    allow_text: props.user.allow_text_color,
-    allow_bg: props.user.allow_background_color,
+    last_name: props.member?.last_name ?? '',
+    first_name: props.member?.first_name ?? '',
+    gender:  props.member?.gender ?? '',
 });
 
 const canvasPad = ref(null);
 
 const clearPad = () => {
   canvasPad.value?.clearSignature()
-}
-
-const traitsOptions = [
-    '優しい', '明朗', '温和', '誠実', '思いやり', '面倒見良い', '忍耐強い',
-    '親切', '真面目', '努力家', '積極的', '責任感が強い', '世話好き'
-];
-
-const colors = ['none','green','pink','blue','orange']
-
-const getImageUrl = (color) => {
-  const fileName = color === 'none' ? 'none_thumb.png' : `${color}_thumb.png`;
-  return `/images/color/bg-color/${fileName}`;
-}
-
-const text_colors = ['brown','green','pink','blue','orange','yellow']
-
-const getTextImageUrl = (color) => {
-  return `/images/color/text/${color}_thumb.png`;
 }
 
 const submit = () => {
@@ -87,52 +44,12 @@ const submit = () => {
         preserveScroll: true,
     });
 };
-const updateDeliveryDate = () => {
-  let now = dayjs(); // 現在時刻
-  let delivery;
-
-  if (now.hour() < 15) {
-    delivery = now.add(3, 'hour');
-  } else {
-    delivery = now.add(1, 'day').hour(12).minute(0);
-  }
-
-  // 30分丸め
-  const minute = delivery.minute();
-  if (minute > 0 && minute <= 30) {
-    delivery = delivery.minute(30);
-  } else if (minute > 30) {
-    delivery = delivery.add(1, 'hour').minute(0);
-  }
-  delivery = delivery.second(0);
-
-  form.delivery_date = delivery.format('YYYY-MM-DDTHH:mm'); // datetime-local 用
-};
-
-onMounted(() => {
-  updateDeliveryDate();
-  setInterval(updateDeliveryDate, 60 * 1000); // 1分ごとに更新
-});
-
-const displayTextColors = computed(() => {
-    if (form.allow_text) {
-        return [text_colors[0]];
-    }
-    return text_colors;
-});
-
-const displayColors = computed(() => {
-    if (form.allow_bg) {
-        return [colors[0]];
-    }
-    return colors;
-});
 
 </script>
 
 <template>
   <AppLayout>
-  <template #header>{{ t('applications.poem') }}</template>
+  <template #header>{{ t('applications.create') }}</template>
     <ActionMessage :on="props.flash.success">
         {{ props.flash.success }}
     </ActionMessage>

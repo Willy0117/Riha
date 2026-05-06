@@ -1,146 +1,26 @@
 <template>
   <AppLayout>
     <template #header>{{ member ? t('members.edit') : t('members.update') }}</template>
-    
-    <div class="max-w-5xl mx-auto bg-white p-8 rounded shadow">
-      <form @submit.prevent="submitForm" class="space-y-8" @keydown.enter="focusNext">
-        <!-- 2カラム -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <!-- 左カラム：会社情報 -->
-          <div class="space-y-2">
-            <div class="sm:items-start">
-              <InputLabel :value="t('registers.company_name')" /> 
+    <form @submit.prevent="submit" class="w-full">
 
-              <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
-                  <!-- 会社名 -->
-                  <TextInput
-                    v-model="form.name"
-                    class="flex-1"
-                    placeholder="〇〇株式会社"
-                  />
-                  <InputError :message="form.errors?.name" />
-              </div>
-            </div>
+      <TabGroup v-model="activeTab" :tabs="tabs" v-slot="{ activeTab }">
 
-          </div>
-         <!-- 右カラム：代表者/担当者 -->
-        </div>
-<!--  ここまでが会社情報　-->
-        <div>
-          <InputLabel :value="t('registers.zip_code')" />
-          <TextInput
-            v-model="form.postal_code"
-            placeholder="000-0000"
-            maxlength="8"
-            @input="onAddressZipInput"
-            @keydown.enter.prevent
-          />
-
-          <ul v-if="candidates.length > 1" class="border rounded bg-white">
-            <li
-              v-for="candidate in candidates"
-              :key="candidate.label"
-              class="p-2 hover:bg-gray-100 cursor-pointer"
-              @click="selectCandidate(candidate, 'corp.address1')"
-            >
-              {{ candidate.label }}
-            </li>
-          </ul>
-          <InputError :message="form.errors.postal_code" />
+        <div v-if="activeTab === 'basic'">
+          <MemberForm v-model="form.member" />
         </div>
 
-        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
-            <div class="flex-1">
-              <InputLabel :value="t('registers.address1')" />
-              <TextInput v-model="form.address1"
-                class="w-full"
-              />
-              <InputError :message="form.errors.address1" />
-            </div>
-            <div class="flex-1">
-              <InputLabel :value="t('registers.address2')" />
-              <TextInput v-model="form.address2"
-                class="w-full" />
-              <InputError :message="form.errors.address2" />
-            </div>
-            <div class="flex-1">
-              <InputLabel :value="t('registers.address3')" />
-              <TextInput v-model="form.address3" class="w-full" />
-            </div>
+        <div v-if="activeTab === 'address'">
+          <AddressForm v-model="form.member" />
         </div>
-        <div class="mb-4 grid grid-cols-4 gap-x-1 gap-y-3 sm:flex-row sm:items-start">
-            <div>
-              <InputLabel :value="t('registers.tel')" />
-              <TextInput
-                v-model="form.tel"
-                maxlength="20"
-                @input="e => onPhoneInput('corp', 'tel', e)"
-                placeholder="03-1234-5678"
-              />
-              <InputError :message="form.errors.tel" />
-              <p v-if="form.tel"
-                class="text-xs text-gray-500 mt-1">
-                電話番号は 03-1234-5678 の形式で入力してください
-              </p>
-            </div>
 
-            <div>
-              <InputLabel :value="t('registers.fax')" />
-              <TextInput
-                v-model="form.fax"
-                maxlength="20"
-                @input="e => onPhoneInput('corp', 'fax', e)"
-                placeholder="03-1234-5678"
-              />
-              <p v-if="form.fax" class="text-xs text-gray-500 mt-1">
-                FAX番号は 03-1234-5678 の形式で入力してください
-              </p>
-            </div>
-            <div>
-              <InputLabel :value="t('registers.mobile')" />
-              <TextInput
-                v-model="form.mobile"
-                class="w-full"
-                placeholder="090-xxxx-xxxx"
-                maxlength="20"
-                @input="e => onPhoneInput('corp', 'mobile', e)"
-              />
-              <p v-if="form.mobile"
-                class="text-xs text-gray-500 mt-1">
-                携帯電話は 090-1234-5678 の形式で入力してください
-              </p>
-            </div>
-            <div v-if="form.is_agent">
-              <InputLabel>
-                {{ t('registers.email') }}
-              </InputLabel>
-
-              <TextInput v-model="form.email" class="w-full" />
-              <InputError :value="form.errors.email" />
-            </div>
+        <div v-if="activeTab === 'affiliation'">
+          <AddressForm v-model="form.member" />
         </div>
-        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-start">
-          <!-- 肩書き -->
-          <div class="flex-1">
-              <InputLabel :value="t('registers.position')" class="h-5" />
-              <TextInput v-model="form.position" class="w-full" />
-          </div>
-          <!-- 氏名 -->
-          <div class="flex-1">
-              <InputLabel value="代表者名" class="h-5" />
-              <TextInput v-model="form.last_name"
-                    class="w-full" />
-              <InputError :message="form.errors.last_name" />
-          </div>          
-          <div class="flex-1">
-              <InputLabel value="　" class="h-5" />
-              <TextInput v-model="form.first_name"
-                  class="w-full" />
-              <InputError :message="form.errors.first_name" />
-          </div>
-        </div>        
 
-        <div class="flex justify-between items-center">
+      </TabGroup>
+      
+
+        <div class="flex justify-between items-center mt-6">
           
           <!-- 左：キャンセル -->
           <SecondaryButton type="button">
@@ -154,12 +34,11 @@
             type="button"
             @click="submitForm"
           >
-            {{ page.props.member ? t('update') : t('create') }}
+            {{ props.member ? t('update') : t('create') }}
           </PrimaryButton>
 
         </div>
-      </form>
-    </div>
+    </form>
   </AppLayout>
 </template>
 
@@ -169,15 +48,17 @@ import { Link, router, useForm,usePage } from '@inertiajs/vue3';
 import { Inertia } from '@inertiajs/inertia';
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue';
-import InputLabel from '@/Components/InputLabel.vue';
-import TextInput from '@/Components/TextInput.vue';
+import MemberForm from './Components/MemberForm.vue'
+import AddressForm from './Components/AddressForm.vue'
+import TabGroup from '@/Components/TabGroup.vue';
+
 import InputError from '@/Components/InputError.vue';
+import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import Autocomplete from '@/Components/Autocomplete.vue'
-import RegisterStep from '@/Components/RegisterStep.vue'    
-import axios from 'axios'
-import { useZipcode } from '@/composables/useZipcode'
+import TextInput from '@/Components/TextInput.vue';
+import Checkbox from '@/Components/Checkbox.vue';
+
 import { useI18n } from 'vue-i18n'
 
 const { t } = useI18n()
@@ -185,6 +66,14 @@ const { t } = useI18n()
 const page = usePage()
 
 const bankInput = ref(null)
+
+const activeTab = ref('basic')
+
+const tabs = [
+  { id: 'basic', label: '基本情報' },
+  { id: 'address', label: '住所' },
+  { id: 'affiliation', label: '所属' }
+]
 
 watch(
   () => page.props.errors,
@@ -194,24 +83,35 @@ watch(
   { deep: true }
 )
 
-console.log(page.props) // ← ここで form が見える
+const props = defineProps({
+  member: Object,
+
+})
 
 const form = useForm({
-  id: page.props.form?.id ?? '',
-  name: page.props.form?.name ?? '',
-  last_name: page.props.form?.last_name ?? '',
-  first_name: page.props.form?.first_name ?? '',
-
-  postal_code: page.props.form?.postal_code ?? '',
-  address1: page.props.form?.address1 ?? '',
-  address2: page.props.form?.address2 ?? '',
-  address3: page.props.form?.address3 ?? '',
-  tel: page.props.form?.tel ?? '',
-  fax: page.props.form?.fax ?? '',
-  mobile: page.props.form?.mail?.mobile ?? '',
-  email: page.props.form?.email ?? '',
-  position: page.props.form?.position ?? '代表取締役',
-
+  member: {
+    id: props.member?.id ?? '',
+    last_name: props.member?.last_name ?? '',
+    first_name: props.member?.first_name ?? '',
+    last_name: props.member?.last_name_kana ?? '',
+    first_name: props.member?.first_name_kana ?? '',
+    gender: props.member?.gender ?? 'male',
+    birthdate: props.member?.birthdate,
+    email: props.member?.email ?? '',
+    member_status: props.member?.member_status,
+    member_type: props.member?.member_type ?? '',
+    join_date: props.member?.join_date,
+    leave_date: props.member?.leave_date,
+    personal_email: props.member?.personal_email,
+    errors: {}
+  },
+  postal_code: props.member?.postal_code ?? '',
+  address1: props.member?.address1 ?? '',
+  address2: props.member?.address2 ?? '',
+  address3: props.member?.address3 ?? '',
+  tel: props.member?.tel ?? '',
+  fax: props.member?.fax ?? '',
+  mobile: props.member?.mail?.mobile ?? '',
 });
 
 const errors = ref({})
@@ -230,84 +130,6 @@ const submitForm = () => {
   }
 }
 
-const normalizePhone = (value) => {
-  if (!value) return ''
-
-  // 全角数字 → 半角
-  value = value.replace(/[０-９]/g, s =>
-    String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
-  )
-
-  // 全角ハイフン → 半角
-  value = value.replace(/[ー－―]/g, '-')
-
-  // 数字とハイフン以外を除去
-  return value.replace(/[^0-9-]/g, '')
-}
-
-/**
- */
-const onPhoneInput = (field, e) => {
-  form[field] = normalizePhone(e.target.value)
-}
-
-
-const normalizeKana = (value) => {
-  if (!value) return ''
-
-  // ひらがな → カタカナ
-  value = value.replace(/[\u3041-\u3096]/g, s =>
-    String.fromCharCode(s.charCodeAt(0) + 0x60)
-  )
-
-  // 全角カタカナ・長音・全角スペースのみ
-  return value.replace(/[^\u30A0-\u30FFー　]/g, '')
-}
-
-//〒番号関係
-const candidates = ref([])
-/*
- * 郵便番号正規化
- * ・全角数字 → 半角
- * ・全角ハイフン → 半角
- * ・数字とハイフン以外を除去
- */
-const normalizeZip = (value) => {
-  if (!value) return ''
-
-  // 全角数字 → 半角
-  value = value.replace(/[０-９]/g, s =>
-    String.fromCharCode(s.charCodeAt(0) - 0xFEE0)
-  )
-
-  // 全角ハイフン → 半角
-  value = value.replace(/[ー－―]/g, '-')
-
-  // 数字とハイフン以外を除去
-  return value.replace(/[^0-9-]/g, '')
-}
-/**
- * 住所候補選択
- * @param {Object} candidate
- * @param {String} field  formのキー名
- */
-function selectCandidate(candidate, field) {
-  if (!candidate || !field) return
-  if (!(field in form)) return
-
-  form[field] = candidate.label
-  candidates.value = []
-}
-
-const onAddressZipInput = (e) => {
-  form.postal_code = normalizeZip(e.target.value)
-}
-
-useZipcode(
-  toRef(form, 'postal_code'),
-  toRef(form, 'address1')
-)
-
 const focusNext = (e) => {
 
   if (e.isComposing) return
@@ -321,3 +143,9 @@ const focusNext = (e) => {
   }
 }
 </script>
+<style>
+.input-field {
+  @apply w-full rounded-md border border-gray-300 px-3 py-2 text-sm
+         shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500;
+}
+</style>

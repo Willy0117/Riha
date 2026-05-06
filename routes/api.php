@@ -9,6 +9,19 @@ use App\Http\Controllers\Api\BankCategoryController;
 use App\Http\Controllers\InsuranceSimulationController;
 use App\Models\Organization;
 use App\Models\Member;
+use App\Models\Exam;
+use App\Models\PdfUpload;
+
+
+
+Route::get('/dashboard/stats', function () {
+    return response()->json([
+        'examCount' => Exam::where('created_at', '>=', now()->startOfMonth())->count(),
+        'pdfCount'  => PdfUpload::where('status', 'pending')
+            ->where('created_at', '>=', now()->startOfMonth())->count(),
+    ]);
+});
+
 
 Route::get('/user', function (Request $request) {
     return $request->user();

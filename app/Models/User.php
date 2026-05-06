@@ -40,10 +40,10 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
-    
+
     public function member()
     {
-        return $this->hasOne(Member::class);
+        return $this->belongsTo(Member::class);
     }
     // Tenant リレーション
     public function tenant()
@@ -51,11 +51,12 @@ class User extends Authenticatable
         return $this->belongsTo(Tenant::class);
     }
     // Organization リレーション
+/*
     public function organization()
     {
         return $this->belongsTo(Organization::class);
     }
-
+*/
     /**
      * ログインユーザーの tenant_id でフィルターしたロールを取得
      */

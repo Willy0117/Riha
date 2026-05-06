@@ -55,39 +55,47 @@ class FileService
     /**
      * サムネイル生成
      */
-    public function createThumbnail(string $path, string $dir): string
+    public function createThumbnail(string $path, string $dir): ?string
     {
-        $fullPath = Storage::disk($this->disk)->path($path);
+        try {
+            $fullPath = Storage::disk($this->disk)->path($path);
 
-        $thumbDir = $dir.'/thumbnails';
+            $thumbDir = $dir.'/thumbnails';
 
-        $thumbName = pathinfo($path, PATHINFO_FILENAME).'_thumb.png';
+            $thumbName = pathinfo($path, PATHINFO_FILENAME).'_thumb.png';
 
-        $thumbPath = $thumbDir.'/'.$thumbName;
+            $thumbPath = $thumbDir.'/'.$thumbName;
 
-        $thumbFullPath = Storage::disk($this->disk)->path($thumbPath);
+            $thumbFullPath = Storage::disk($this->disk)->path($thumbPath);
 
-        if (!file_exists(dirname($thumbFullPath))) {
-            mkdir(dirname($thumbFullPath), 0755, true);
+            if (!file_exists(dirname($thumbFullPath))) {
+                mkdir(dirname($thumbFullPath), 0755, true);
+            }
+
+            $imagick = new Imagick();
+
+            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+
+            if ($ext === 'pdf') {
+                $imagick->setResolution(150,150);
+                $imagick->readImage($fullPath.'[0]');
+            } else {
+                $imagick->readImage($fullPath);
+            }
+
+            $imagick->setImageFormat('png');
+
+            $imagick->thumbnailImage(150, 150, true);
+
+            $imagick->writeImage($thumbFullPath);
+
+            $imagick->clear();
+            $imagick->destroy();
+
+            return $thumbPath;
+        } catch (\Exception $e) {
+            \Log::error('Thumbnail error: '.$e->getMessage());
+            return null;
         }
-
-        $imagick = new Imagick();
-
-        $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
-
-        if ($ext === 'pdf') {
-            $imagick->setResolution(150,150);
-            $imagick->readImage($fullPath.'[0]');
-        } else {
-            $imagick->readImage($fullPath);
-        }
-
-        $imagick->setImageFormat('png');
-
-        $imagick->thumbnailImage(150, 150, true);
-
-        $imagick->writeImage($thumbFullPath);
-
-        return $thumbPath;
     }
 }

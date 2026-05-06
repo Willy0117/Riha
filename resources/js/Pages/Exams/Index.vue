@@ -1,11 +1,6 @@
 <template>
   <AppLayout>
-    <!-- ページタイトルをヘッダーに -->
-    <template #header>
-      <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-        {{ t('exam_application_list') }}
-      </h2>
-    </template>
+    <template #header>{{ t('exam_application_list') }}</template>
 
     <div class="p-6">
       <div class="overflow-x-auto bg-white shadow rounded-lg">
@@ -41,7 +36,7 @@
                 </button>
 
                 <!-- 詳細 -->
-                <Link :href="route('exam.applications.show', item.id)"
+                <Link :href="route('exams.show', item.id)"
                         class="text-blue-600 hover:text-blue-900">
                     <MagnifyingGlassIcon class="w-5 h-5" />
                 </Link>

@@ -25,15 +25,44 @@ class Member extends Model
         'full_name',
         'full_address',
     ];
-
+    
+    public function user()
+    {
+        return $this->hasOne(User::class);
+    }
     public function status()
     {
         return $this->belongsTo(Status::class);
     }
+
+    public function updateCycles()
+    {
+        return $this->hasMany(InstructorUpdateCycle::class);
+    }
     
+    public function latestCycle()
+    {
+        return $this->hasOne(InstructorUpdateCycle::class)
+            ->latestOfMany('end_date');
+    }
+
+    public function pdfUploads()
+    {
+        return $this->hasMany(PdfUpload::class);
+    }
+
+    public function reports()
+    {
+        return $this->hasMany(Report::class);
+    }
+
     public function bankAccount()
     {
         return $this->hasOne(BankAccount::class);
+    }
+    public function roles()
+    {
+        return $this->hasMany(MemberRole::class);
     }
     /* =====================
      |  表示用ラベル

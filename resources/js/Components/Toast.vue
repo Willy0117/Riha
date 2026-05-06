@@ -10,6 +10,23 @@ const type = ref('success') // success or error
 let timer = null
 
 watch(
+  () => page.props.flash.success ?? page.props.flash.error,
+  (val) => {
+    if (!val) return
+
+    message.value = val
+    type.value = page.props.flash.error ? 'error' : 'success'
+    show.value = true
+
+    if (timer) clearTimeout(timer)
+
+    timer = setTimeout(() => {
+      show.value = false
+    }, 3000)
+  }
+)
+/*
+watch(
   () => page.props.flash,
   (flash) => {
     if (flash?.success || flash?.error) {
@@ -35,6 +52,7 @@ watch(
   },
   { immediate: true }
 )
+*/
 </script>
 
 <template>

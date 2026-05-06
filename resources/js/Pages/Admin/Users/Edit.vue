@@ -99,20 +99,20 @@
           <InputError :message="form.errors.role_id" class="mt-2" />
         </div>
 -->
-        <!-- organization -->
+        <!-- member -->
         <div>
-          <InputLabel for="organization_id" :value="t('users.organization')" />
+          <InputLabel for="member_id" :value="t('users.member')" />
           <Autocomplete
-            v-model="form.organization_id"
-            :placeholder="t('applications.organization')"
-            apiUrl="/api/organizations/search"
+            v-model="form.member_id"
+            :placeholder="t('applications.member')"
+            apiUrl="/api/members/search"
             :initialItem="{
-              id: form.organization_id,
-              label: form.organization_name,
+              id: form.member_id,
+              label: form.member_name,
             }"
             class="mt-1 block w-full"
           />
-          <InputError :message="form.errors.organization_id" class="mt-2" />
+          <InputError :message="form.errors.member_id" class="mt-2" />
         </div>
 
         <!-- 保存 -->
@@ -163,8 +163,8 @@ const form = useForm({
   password_confirmation: '',
   role_id: props.selected_role || null,
   tenant_id: props.user?.tenant_id || null,
-  organization_id: props.user?.organization_id || null,
-  organization_name: props.user?.organization?.name || null,
+  member_id: props.user?.member_id || null,
+  member_name: props.user?.member?.name || null,
 })
 
 const submit = () => {

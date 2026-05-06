@@ -64,8 +64,13 @@
       </header>
 
       <!-- コンテンツ -->
-      <main class="flex-1 p-6">
+      <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
         <slot />
+
+        <Toast />
+
+        <LoadingOverlay />
+
       </main>
     </div>
   </div>
@@ -78,6 +83,9 @@
 
 <script setup>
 import Navigation from './Navigation.vue'
+import Toast from '@/Components/Toast.vue'
+import LoadingOverlay from '@/Components/LoadingOverlay.vue'
+
 import { router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
 import { ArrowRightOnRectangleIcon, GlobeAltIcon } from '@heroicons/vue/24/outline'

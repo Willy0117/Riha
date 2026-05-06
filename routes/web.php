@@ -10,8 +10,18 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\SetLocaleController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\MemberController as AdminMemberController;
+use App\Http\Controllers\Admin\InstructorMemberController as AdminInstructorMemberController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
+use App\Http\Controllers\Admin\AnnualFeeController as AdminAnnualFeeController;
+use App\Http\Controllers\Admin\PdfUploadController as AdminPdfUploadController;
+use App\Http\Controllers\Admin\MemberImportController;
+
 use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\PdfUploadController;
+use App\Http\Controllers\RehabApplicationController;
+use App\Http\Controllers\ExamController;
+use App\Http\Controllers\ReportController;
+use App\Http\Controllers\AnnualFeeController;
 
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
@@ -56,6 +66,16 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // organization
         Route::resource('organizations', \App\Http\Controllers\Admin\OrganizationController::class);
 
+        Route::resource('annual-fees', \App\Http\Controllers\Admin\AnnualFeeController::class);
+
+        // exams　指導士試験申込
+        Route::put(
+            'exams/{exam}/status',
+            [\App\Http\Controllers\Admin\ExamController::class, 'updateStatus']
+        )->name('exams.updateStatus');
+
+        Route::resource('exams', \App\Http\Controllers\Admin\ExamController::class);
+
         Route::post(
             'applications/{application}/upload-document',
             [\App\Http\Controllers\Admin\ApplicationController::class, 'uploadDocument']
@@ -86,7 +106,40 @@ Route::prefix('admin')->name('admin.')->group(function () {
             \App\Http\Controllers\Admin\ApplicationController::class
         )->only(['index','show','create','store']);
 
+        Route::get('pdf-uploads', [AdminPdfUploadController::class, 'index'])->name('pdf-uploads.index');
+        Route::post('pdf-uploads/{pdf}/approve', [AdminPdfUploadController::class, 'approve'])->name('pdf-uploads.approve');
+        Route::post('pdf-uploads/{pdf}/reject', [AdminPdfUploadController::class, 'reject'])->name('pdf-uploads.reject');
+        Route::get('pdf-uploads/{pdf}/view', [AdminPdfUploadController::class, 'view'])->name('pdf-uploads.view');
+        Route::get('pdf-uploads/{pdf}/thumbnail', [AdminPdfUploadController::class, 'thumbnail'])->name('pdf-uploads.thumbnail');
+        // 指導士会員一覧
+        Route::get('instructorMembers', [AdminInstructorMemberController::class, 'index'])
+            ->name('instructorMembers.index');
+
+        // 指導士会員詳細（PDF一覧）
+        Route::get('instructorMembers/{member}', [AdminInstructorMemberController::class, 'show'])
+            ->name('instructorMembers.show');
+        // インストラクター更新サイクルの審査結果送信
+        Route::post('instructorUpdateCycles/{cycle}/review',[AdminInstructorUpdateCycleController::class, 'review']
+            )->name('instructorUpdateCycles.review');
+        // PDF承認 / Reject
+        Route::post('pdf/{upload}/approve', [PdfUploadController::class, 'approve'])
+            ->name('pdf.approve');
+
+        Route::post('pdf/{upload}/reject', [PdfUploadController::class, 'reject'])
+                ->name('pdf.reject');
+        // 管理画面で一覧表示
+        Route::get('/rehab-applications', [RehabApplicationController::class, 'index'])
+            ->name('admin.rehab.index');
+        Route::post('/rehab-applications/{application}/reject', [RehabApplicationController::class, 'reject'])
+            ->name('rehab.reject');
+        Route::post('/rehab-applications/{application}/approve', [RehabApplicationController::class, 'approve'])
+            ->name('rehab.approve');
+
         Route::prefix('member')->name('member.')->group(function () {
+            Route::get('/import', [MemberImportController::class, 'index'])->name('import');
+
+            Route::post('/import', [MemberImportController::class, 'store'])->name('import.store');
+
             Route::get('/', [AdminMemberController::class, 'index'])->name('index');
             Route::get('/pdf/{id}', [AdminMemberController::class, 'pdfPreview'])->name('pdf.preview');
             Route::get('/{member}', [AdminMemberController::class, 'show'])->name('show');
@@ -183,7 +236,39 @@ Route::middleware([
     Route::get('applications/fax', [ApplicationController::class, 'fax'])->name('applications.fax');
     Route::post('applications/faxstore', [ApplicationController::class, 'faxstore'])->name('applications.faxstore');
 
+   // PDFを会員が閲覧
+    Route::get('/pdf-uploads/{pdf}/view', [PdfUploadController::class, 'view'])->name('pdf-uploads.view');
+    // サムネイルを返す
+    Route::get('/pdf-uploads/{pdf}/thumbnail', [PdfUploadController::class, 'thumbnail'])->name('pdf-uploads.thumbnail');
+
     Route::resource('applications', ApplicationController::class);
+
+    Route::resource('pdf-uploads', PdfUploadController::class);
+    
+    Route::resource('exams', ExamController::class);
+    Route::resource('reports', ReportController::class);
+
+    Route::resource('annual-fees', AnnualFeeController::class);
+    // ----------------------------------------
+    // ユーザー向け
+    // ----------------------------------------
+
+    // 自己申告フォーム
+    Route::get('/rehab-apply', [RehabApplicationController::class, 'create'])
+        ->name('rehab.create');
+
+    // 自己申告フォーム保存
+    Route::post('/rehab-apply', [RehabApplicationController::class, 'store'])
+        ->name('rehab.store');
+
+    // PDFアップロード画面
+    Route::get('/rehab-apply/files', [RehabApplicationController::class, 'editFiles'])
+        ->name('rehab.files.edit');
+
+    // PDF個別アップロード
+    Route::post('/rehab-apply/files', [RehabApplicationController::class, 'uploadPdf'])
+        ->name('rehab.files.upload');
+
 
 
 });

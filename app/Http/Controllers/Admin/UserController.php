@@ -21,7 +21,7 @@ class UserController extends Controller
      */
     public function index(Request $request)
     {
-        $query = User::with(['roles', 'organization']);
+        $query = User::with(['roles', 'member']);
 
         // テナント絞り込み（Super Admin は全件表示）
         if (! $request->user()->hasRole('Super Admin|Admin')) {
@@ -66,7 +66,7 @@ class UserController extends Controller
                 'name'      => $request->input('name'),
                 'email'     => $request->input('email'),
                 'role'      => $request->input('role'),
-                'organization_id'  => $request->input('organization_id'),
+                'member_id'  => $request->input('member_id'),
                 'per_page'  => $perPage, // ← ここが重要！
                 'sort_by'   => $request->input('sort_by'),
                 'sort_dir'  => $request->input('sort_dir'),
@@ -115,7 +115,7 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|confirmed|min:8',
             'username' => 'required|stringt|max:20',
-            'organization_id' => 'required|integer',
+            'member_id' => 'required|integer',
         ]);
 
         // Super Admin は tenant_id を選択可能、tenant_admin は自分の tenant_id に固定
@@ -126,7 +126,7 @@ class UserController extends Controller
 */
         $user = User::create([
             'username' => $required->username,
-            'organization_id' => $required->organization_id,
+            'member_id' => $required->member_id,
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
@@ -146,7 +146,7 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        $user->load('organization');
+        $user->load('member');
 
         $currentUser = auth()->user();
 
@@ -182,7 +182,7 @@ class UserController extends Controller
             'email' => "required|string|email|max:255|unique:users,email,{$user->id}",
             'password' => 'nullable|string|confirmed|min:4',
             'username' => 'required|string|max:20',
-            'organization_id' => 'required|integer',
+            'member_id' => 'required|integer',
         ]);
 /*
         $tenantId = $currentUser->hasRole('Super Admin')
@@ -192,7 +192,7 @@ class UserController extends Controller
         $user->name = $request->name;
         $user->email = $request->email;
         $user->username = $request->username;
-        $user->organization_id = $request->organization_id;
+        $user->member_id = $request->member_id;
 
         // パスワードが入力されていれば更新
         if ($request->filled('password')) {
