@@ -67,14 +67,14 @@
         </div>
 
         <!-- Tenant -->
-        <div v-if="isSuperAdmin">
-          <InputLabel for="tenant_id" :value="t('tenant')" />
+        <div v-if="isAdminOrSuper">
+          <InputLabel for="tenant_id" :value="t('users.tenant')" />
           <select
             id="tenant_id"
             v-model="form.tenant_id"
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
           >
-            <option :value="null" disabled>{{ t('select_tenant') }}</option>
+            <option :value="null" disabled>{{ t('users.select_tenant') }}</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
               {{ tenant.name }}
             </option>
@@ -83,22 +83,20 @@
         </div>
 
         <!-- Role -->
-<!--
         <div>
-          <InputLabel for="role_id" :value="t('role')" />
+          <InputLabel for="role_id" :value="t('users.role')" />
           <select
             id="role_id"
             v-model="form.role_id"
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
           >
-            <option :value="null" disabled>{{ t('select_role') }}</option>
+            <option :value="null" disabled>{{ t('users.select_role') }}</option>
             <option v-for="role in roles" :key="role.id" :value="role.id">
               {{ role.name }} - {{ role.tenant_name }}
             </option>
           </select>
           <InputError :message="form.errors.role_id" class="mt-2" />
         </div>
--->
         <!-- member -->
         <div>
           <InputLabel for="member_id" :value="t('users.member')" />
@@ -129,7 +127,7 @@
 
 <script setup>
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
-import { useForm } from '@inertiajs/vue3'
+import { useForm, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import Autocomplete from '@/Components/OpenCartAutocomplete.vue'
@@ -142,18 +140,23 @@ import Checkbox from '@/Components/Checkbox.vue';
 
 const { t } = useI18n()
 
+const page = usePage()
 
 const props = defineProps({
   user: { type: Object, default: () => ({}) },
+  admin:Object,
   roles: { type: Array, default: () => [] },
   tenants: { type: Array, default: () => [] },
   selected_role: { type: Number, default: null }
 })
 
+const isAdminOrSuper =
+  Array.isArray(page.props.auth.admin?.roles) &&
+  page.props.auth.admin.roles.some(role =>
+    ['super_admin', 'admin'].includes(role.toLowerCase())
+  )
 
-// Super Admin 判定
-const isAdminOrSuper = Array.isArray(props.user?.roles) &&
-  props.user.roles.some(r => ['super admin', 'admin'].includes(r.name.toLowerCase()));
+console.log(isAdminOrSuper)
 
 const form = useForm({
   username: props.user?.username || '',

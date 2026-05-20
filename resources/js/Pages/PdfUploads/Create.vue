@@ -3,36 +3,86 @@
     <template #header>{{ $t('pdf_upload') }}</template>
 
     <div class="mx-auto py-6 space-y-6">
+        <div class="flex items-center gap-4 mb-4">
 
-      <div class="p-4 border rounded">
+          <h2 class="text-lg font-semibold text-gray-800">
+            {{ t('instructors.update') }}
+          </h2>
+
+          <div class="flex items-center gap-2 text-sm text-gray-400">
+
+            <CalendarDays class="w-4 h-4" />
+
+            <span>
+              {{ props.cycle?.start_date }}
+            </span>
+
+            <span class="text-gray-300">—</span>
+
+            <span>
+              {{ props.cycle?.end_date }}
+            </span>
+
+          </div>
+
+        </div>
+
+      <div class="p-4 border rounded w-full">
         <form @submit.prevent="submit" class="space-y-4">
-          <div class="col-span-4 bg-white rounded-lg shadow p-4">
-            <p class="text-sm text-gray-500 mb-2">
-              {{ t('instructors.point') }}
-            </p>
-
-            <div class="grid grid-cols-3 gap-4 text-sm">
-              <div class="flex flex-col">
-                <span class="text-gray-400">{{ t('instructors.approved') }}</span>
-                <span class="text-lg font-semibold text-green-600">
-                  {{ props?.approvedTotal }}
-                </span>
+          <div class="grid grid-cols-2 md:grid-cols-5 gap-6">
+            <!-- 承認済 -->
+            <div>
+              <div class="text-xs text-gray-400">
+                {{ t('instructors.approved') }}
               </div>
-
-              <div class="flex flex-col">
-                <span class="text-gray-400">{{ t('instructors.pending') }}</span>
-                <span class="text-lg font-semibold text-yellow-500">
-                  {{ props?.pendingTotal }}
-                </span>
-              </div>
-
-              <div class="flex flex-col">
-                <span class="text-gray-400">{{ t('instructors.total') }}</span>
-                <span class="text-lg font-semibold text-gray-800">
-                  {{ props?.total }}
-                </span>
+              <div class="text-3xl font-semibold text-green-600 mt-1">
+                {{ props?.approvedTotal }}
               </div>
             </div>
+
+            <!-- 申請中 -->
+            <div>
+              <div class="text-xs text-gray-400">
+                {{ t('instructors.pending') }}
+              </div>
+              <div class="text-2xl font-semibold text-amber-500 mt-1">
+                {{ props?.pendingTotal }}
+              </div>
+            </div>
+
+  <!-- 合計（弱めで残すなら） -->
+            <div>
+              <div class="text-xs text-gray-400">
+                {{ t('instructors.total') }}
+              </div>
+              <div class="text-2xl font-semibold text-gray-800 mt-1">
+                {{ props?.total }}
+              </div>
+            </div>
+
+            <!-- 参加回数（主役寄り） -->
+            <div>
+              <div class="text-xs text-gray-400">
+                {{ t('instructors.conference_count') }}
+              </div>
+              <div class="text-3xl font-light text-gray-900 mt-1">
+                {{ props?.conference_count }}
+              </div>
+            </div>
+
+            <!-- 年会費 -->
+            <div>
+              <div class="text-xs text-gray-400">
+                {{ t('instructors.isFeeOk') }}
+              </div>
+              <div
+                class="text-3xl font-light mt-1"
+                :class="props?.isFeeOk ? 'text-sky-600' : 'text-gray-300'"
+              >
+                {{ props?.isFeeOk ? '済' : '未' }}
+              </div>
+            </div>
+
           </div>
           <div class="bg-white shadow sm:rounded-lg p-6 space-y-4">
             <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -55,7 +105,7 @@
                 </div>
               </div>
               <div>
-                <InputLabel :value="t('members.code')" />
+                <InputLabel :value="t('instructors.code')" />
                 <TextInput v-model="form.instructor_code" type="text" class="input-field" />
                 <InputError :message="form.errors?.instructor_code" />
               </div>
@@ -69,72 +119,166 @@
             </div>
           </div>   
           <div class="flex justify-between items-center mt-4">
-            <SecondaryButton>
+
+            <!-- キャンセル -->
+            <SecondaryButton
+              @click="updateStatus('no_update')"
+            >
               {{ t('instructors.cancel') }}
-            </SecondaryButton>    
-            <PrimaryButton v-if="props.isFeeOk">
+            </SecondaryButton>
+
+            <!-- 送信 -->
+            <PrimaryButton
+              v-if="props.isFeeOk"
+              @click="updateStatus('pending')"
+            >
               {{ t('instructors.send') }}
-            </PrimaryButton>    
+            </PrimaryButton>
+
           </div>
         </form>
       </div>
 
       <!-- アップロード一覧 -->
-      <div>
-        <h2 class="text-lg font-semibold mb-2">{{ $t('uploaded_files') }}</h2>
+<div>
+  <h2 class="text-xl font-bold text-gray-800 mb-4">
+    {{ t('uploaded_files') }}
+  </h2>
 
-        <div v-if="props.uploads.length === 0" class="text-gray-500">{{ $t('no_uploads') }}</div>
+  <div
+    v-if="props.uploads.length === 0"
+    class="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-10 text-center text-gray-500"
+  >
+    {{ t('no_uploads') }}
+  </div>
 
-        <div v-else class="grid grid-cols-5 gap-4">
-          <div v-for="upload in props.uploads" :key="upload.id" class="border rounded p-2">
-            <div class="text-sm font-medium">{{ upload.credit_conference_name }}</div>
-            <div class="text-xs text-gray-500"><p>{{ t('instructors.point') }}:{{ upload.points }}</p></div>
-            <div class="text-xs text-gray-500">{{ upload.role_name }} - {{ upload.category_name }}</div>
-            
-            <img
-              v-if="upload.thumbnail_path"
-              :src="`/pdf-uploads/${upload.id}/thumbnail`"
-              alt="PDF Thumbnail"
-              class="w-full h-32 object-contain my-2"
-            />
-            <div v-else class="w-full h-32 bg-gray-100 flex items-center justify-center my-2 text-gray-400 text-xs">
-              {{ $t('no_thumbnail') }}
-            </div>
+  <div
+    v-else
+    class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-6 gap-6"
+  >
 
-            <div class="flex justify-between items-center mt-1">
-              <button
-                @click="previewPdf = `/pdf-uploads/${upload.id}/view`"
-                class="text-blue-600 hover:underline text-xs"
-              >
-                {{ $t('view_pdf') }}
-              </button>
-              <!--a
-                :href="`/pdf-uploads/${upload.id}/view`"
-                target="_blank"
-                class="text-blue-600 hover:underline text-xs"
-              >
-                {{ $t('view_pdf') }}
-            </a -->
+    <div
+      v-for="upload in props.uploads"
+      :key="upload.id"
+      class="group flex flex-col gap-3 p-4"
+    >
 
-              <span
-                class="text-xs px-1 rounded"
-                :class="{
-                  'bg-yellow-200 text-yellow-800': upload.status==='pending',
-                  'bg-green-200 text-green-800': upload.status==='approved',
-                  'bg-red-200 text-red-800': upload.status==='rejected'
-                }"
-              >
-                {{ $t(upload.status) }}
-              </span>
-            </div>
-
-            <div v-if="upload.status==='rejected'" class="text-xs text-red-600 mt-1">
-              {{ upload.rejection_message }}
-            </div>
-          </div>
-        </div>
+      <!-- サムネイル（軽く） -->
+      <div
+        v-if="upload.thumbnail_url"
+        class="w-full h-28 bg-gray-50 rounded-lg border border-gray-100 overflow-hidden"
+      >
+        <img
+          :src="upload.thumbnail_url"
+          class="w-full h-full object-contain p-2"
+        />
       </div>
 
+      <div
+        v-else
+        class="w-full h-28 bg-gray-50 rounded-lg border border-dashed border-gray-200 flex items-center justify-center text-gray-300 text-xs"
+      >
+        {{ t('no_thumbnail') }}
+      </div>
+
+      <!-- タイトル -->
+      <div class="text-sm text-gray-900 leading-snug">
+        {{ upload.credit_conference_name }}
+      </div>
+
+      <!-- バッジ（Nuxt UI風：かなり薄く） -->
+      <div class="flex gap-2 flex-wrap">
+
+        <span class="text-xs text-sky-600 bg-sky-50 px-2 py-0.5 rounded">
+          {{ upload.role_name }}
+        </span>
+
+        <span class="text-xs text-gray-600 bg-gray-100 px-2 py-0.5 rounded">
+          {{ upload.credit_category_name }}
+        </span>
+
+      </div>
+
+      <!-- 情報（フラット） -->
+      <div class="text-xs text-gray-500">
+        {{ upload.session || '-' }}
+      </div>
+
+      <div class="text-sm text-gray-900">
+        <span class="text-gray-400 text-xs">
+          {{ t('instructors.point') }}
+        </span>
+        <span class="font-medium text-sky-700 ml-1">
+          {{ upload.points || '-' }}
+        </span>
+      </div>
+
+      <!-- アクション（軽い1列） -->
+      <div class="flex items-center justify-between mt-1">
+
+        <!-- PDF -->
+        <button
+          @click="previewPdf = `/pdf-uploads/${upload.id}/view`"
+          class="text-xs text-gray-500 hover:text-sky-700 transition flex items-center gap-1"
+        >
+          <FileText class="w-4 h-4" />
+          PDFを見る
+        </button>
+
+        <!-- ステータス -->
+        <span
+          class="text-xs"
+          :class="{
+            'text-amber-500': upload.status === 'pending',
+            'text-green-600': upload.status === 'approved',
+            'text-red-500': upload.status === 'rejected'
+          }"
+        >
+          {{ t(upload.status) }}
+        </span>
+
+      </div>
+
+      <!-- 却下理由（控えめ表示） -->
+      <div
+        v-if="upload.status === 'rejected'"
+        class="text-xs text-red-500 mt-1"
+      >
+        {{ upload.rejection_message }}
+      </div>
+
+    </div>
+
+  </div>
+</div>
+
+    </div>
+    <div>
+      <DialogModal
+        :show="!!previewPdf"
+        maxWidth="7xl"
+        @close="previewPdf = null"
+      >
+        <template #title>
+          {{ t('PDFpreview') }}
+        </template>
+
+        <template #content>
+          <div class="w-[90vw] h-[80vh]">
+            <iframe
+              v-if="previewPdf"
+              :src="previewPdf"
+              class="w-full h-full border"
+            />
+          </div>
+        </template>
+
+        <template #footer>
+          <SecondaryButton @click="previewPdf = null">
+            {{ t('closed') }}
+          </SecondaryButton>
+        </template>
+      </DialogModal>
     </div>
   </AppLayout>
 </template>
@@ -150,6 +294,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
+import { Eye, FileText } from 'lucide-vue-next'
 
 import { useI18n } from 'vue-i18n'
 
@@ -159,12 +304,16 @@ const page = usePage()
 
 const props = defineProps({
   uploads: { type: Array, required: true },
+  member: Object,
+  cycle: Object,
   approvedTotal: Number,
   pendingTotal: Number,
   total: Number,
   totalFee: Number,
   totalPaid: Number,
   isFeeOk: Boolean,
+  conference_count: Number,
+
 })
 
 const form = useForm({
@@ -172,7 +321,7 @@ const form = useForm({
   first_name: props.member?.first_name ?? '',
   email: props.member?.email ?? '',
   code: props.member?.code ?? '',
-  instructor_code: props.member?.instructor_code ?? '',
+  instructor_code: props.cycle?.instructor_no ?? '',
 })
 
 
@@ -184,8 +333,14 @@ const openPdf = (pdfPath) => {
 
   // 例：フルパス化
   previewPdf.value = pdfPath
+}
 
-  // 例：ここで loading true
+const updateStatus = (status) => {
+
+  router.post('/instructor-update-cycles/status', {
+    id: props.cycle.id,
+    status,
+  })
 }
 
 </script>

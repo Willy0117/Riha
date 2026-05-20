@@ -22,7 +22,30 @@
           検索
         </button>
       </form>
+      <!-- per_page + add -->
+      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
 
+        <!-- per_page + add -->
+        <div class="flex items-center gap-2">
+          <select
+            v-model.number="form.per_page"
+            @change="submitSearch"
+            class="border rounded px-3 py-2 w-16 h-10"
+          >
+            <option v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}</option>
+          </select>
+
+        </div>
+
+        <button
+          @click="bulkUpdate"
+          :disabled="selectedIds.length === 0"
+          class="px-4 h-10 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 flex items-center space-x-1"
+        >
+          <BadgeCheck class="w-4 h-4"/>
+          <span>{{ t('update_selected') }}</span>
+        </button>
+      </div>
       <!-- テーブル -->
       <table class="table-auto w-full border border-gray-300 text-sm">
         <thead>
@@ -31,9 +54,9 @@
               <input type="checkbox" :checked="selectAll" @change="toggleSelectAll($event.target.checked)" />
             </th>
             <th class="border px-3 py-2">{{ t('name') }}</th>
-            <th class="border px-3 py-2">{{ t('update_period') }}</th>
-            <th class="border px-3 py-2">{{ t('total_points') }}</th>
-            <th class="border px-3 py-2">{{ t('conference_count') }}</th>
+            <th class="border px-3 py-2">{{ t('instructors.update_period') }}</th>
+            <th class="border px-3 py-2">{{ t('instructors.total_points') }}</th>
+            <th class="border px-3 py-2">{{ t('instructors.conference_count') }}</th>
             <th class="border px-3 py-2">{{ t('status') }}</th>
             <th class="border px-3 py-2">{{ t('actions') }}</th>
           </tr>
@@ -41,7 +64,7 @@
 
         <tbody>
           <tr
-            v-for="member in members.data"
+            v-for="member in props.members.data"
             :key="member.id"
             class="odd:bg-white even:bg-gray-100"
           >
@@ -63,12 +86,12 @@
             </td>
             <td class="border px-3 py-2">
               <!-- before_update の場合のみ審査ボタン表示 -->
-              <div v-if="member.update_cycles[0]?.status === 'before_update'">
+              <div v-if="member.update_cycles[0]?.status === 'pending'">
                 <button
                   @click="openReviewModal(member)"
                   class="bg-yellow-500 text-white px-2 py-1 rounded text-sm"
                 >
-                  {{ t('before_update') }}
+                  {{ t('instructors.pending') }}
                 </button>
               </div>
 
@@ -76,48 +99,7 @@
               <div v-else :class="statusColor(member.update_cycles[0]?.status)">
                 {{ statusLabel(member.update_cycles[0]?.status) }}
               </div>
-
-              <!-- 審査モーダル -->
-              <div v-if="reviewModal.show" class="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
-                <div class="bg-white rounded-lg w-96 p-4">
-                  <h2 class="text-lg font-bold mb-2">{{ t('review_member') }}</h2>
-
-                  <div class="mb-4">
-                    <label class="block mb-2">{{ t('choose_status') }}</label>
-                    <select v-model="reviewModal.status" class="w-full border rounded p-2">
-                      <option value="updated">{{ t('update') }}</option>
-                      <option value="no_update">{{ t('no_update') }}</option>
-                    </select>
-                  </div>
-
-                  <div class="mb-4" v-if="reviewModal.status === 'rejected' || reviewModal.status === 'no_update'">
-                    <label class="block mb-2">{{ t('reason') }}</label>
-                    <textarea
-                      v-model="reviewModal.reason"
-                      class="w-full border rounded p-2"
-                      rows="4"
-                      placeholder="理由を入力してください"
-                    ></textarea>
-                  </div>
-
-                  <div class="flex justify-end space-x-2">
-                    <button
-                      class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400"
-                      @click="reviewModal.show = false"
-                    >
-                      {{ t('cancel') }}
-                    </button>
-                    <button
-                      type="submit"
-                      class="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                      @click="submitReview"
-                    >
-                      {{ t('submit') }}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </td>
+            </td>  
 
             <td class="border px-3 py-2">
               <Link
@@ -144,17 +126,64 @@
       />
 
     </div>
+
+    <div>
+      <!-- 審査モーダル -->
+      <DialogModal :show="reviewModal.show" @close="reviewModal.show = false">
+        <template #title>
+          {{ t('instructors.update') }}
+        </template>
+
+        <template #content>
+          <div class="mb-4">
+            <label class="block mb-2">{{ t('instructors.choose_status') }}</label>
+            <select v-model="reviewModal.status" class="w-full border rounded p-2">
+              <option value="updated">{{ t('update') }}</option>
+              <option value="no_update">{{ t('no_update') }}</option>
+              <option value="rejected">{{ t('rejected') }}</option>
+            </select>
+          </div>
+
+          <div class="mb-4" v-if="reviewModal.status === 'rejected' || reviewModal.status === 'no_update'">
+            <label class="block mb-2">{{ t('instructors.reason') }}</label>
+            <textarea
+              v-model="reviewModal.reason"
+              class="w-full border rounded p-2"
+              rows="4"
+              placeholder="理由を入力してください"
+            ></textarea>
+          </div>
+        </template>
+
+        <template #footer>
+          <SecondaryButton @click="reviewModal.show = false">
+            {{ t('cancel') }}
+          </SecondaryButton>
+          <PrimaryButton class="ms-3" @click="submitReview">
+            {{ t('submit') }}
+          </PrimaryButton>
+        </template>
+      </DialogModal>
+   
+    </div>
   </AppLayout>
 </template>
 
 <script setup>
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
-import { Link, router } from '@inertiajs/vue3'
-import { computed, ref } from 'vue'
+import { Link, router, usePage } from '@inertiajs/vue3'
+import { computed, ref, reactive } from 'vue'
 import { useI18n } from 'vue-i18n'
+import DialogModal from '@/Components/DialogModal.vue';
+import InputLabel from '@/Components/InputLabel.vue';
+import SecondaryButton from '@/Components/SecondaryButton.vue';
+import PrimaryButton from '@/Components/PrimaryButton.vue';
+import { BadgeCheck } from 'lucide-vue-next'
 
 const { t } = useI18n()
+
+const page = usePage()
 
 // props
 const props = defineProps({
@@ -162,43 +191,54 @@ const props = defineProps({
   filters: Object, // { search: "" }
 })
 
-const members = props.members
-const search = ref(props.filters?.search ?? "")
-const page = ref(props.filters?.page ?? 1)
+const form = reactive({
+  name: props.filters.name,
+  per_page: props.filters.per_page || 20,
+  sort_by: props.filters.sort_by,   // ← 初期値を必ずセット
+  sort_dir: props.filters.sort_dir,    // ← 初期値を必ずセット
+})
+// persistQueryに各検索項目を追加
+const persistQuery = () => ({
+  name: form.name,
+  per_page: form.per_page,
+  sort_by: form.sort_by,
+  sort_dir: form.sort_dir,
+  page: props.members.current_page
+})
 
-// ---------- 検索 ----------
-const doSearch = () => {
-  page.value = 1
-  router.get(route('admin.instructorMembers.index'),  { 
-    search: search.value, 
-    page: page.value 
-  }, {
-    preserveState: false,
-    preserveScroll: true,
+const submitSearch = () => {
+  console.log(persistQuery())
+  router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: 1 }, {
+    preserveState: true,
+    replace: true,
+    onSuccess: () => resetSelectedIds()
   })
 }
 
-// ---------- ページ切替 ----------
-const goPage = (p) => {
-  page.value = p
-  router.get(route('admin.instructorMembers.index'), {
-    page: page.value,
-    search: search.value
-  }, {
-    preserveState: false,
-    preserveScroll: true
+// ページ番号クリック
+const goPage = (page) => {
+  router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page }, {
+    preserveState: true,
+    replace: true,
+    onSuccess: () => resetSelectedIds()
   })
 }
 
+// 列ヘッダクリックでソート
+const sortBy = (field) => {
+  if (form.sort_by === field) form.sort_dir = form.sort_dir==='asc'?'desc':'asc'
+  else { form.sort_by = field; form.sort_dir = 'desc' }
+  submitSearch()
+}
 // ---------- 件数計算（あなたのロジック） ----------
 const startItem = computed(() => {
-  if (members.total === 0) return 0
-  return members.per_page * (members.current_page - 1) + 1
+  if (props.members.total === 0) return 0
+  return form.per_page * (props.members.current_page - 1) + 1
 })
 
 const endItem = computed(() => {
-  if (members.total === 0) return 0
-  return Math.min(members.per_page * members.current_page, members.total)
+  if (props.members.total === 0) return 0
+  return Math.min(form.per_page * props.members.current_page, props.members.total)
 })
 
 // statusLabel / statusColor を function で定義
@@ -226,6 +266,21 @@ const selectAll = computed({
     return selectedIds.value.length === props.members.data.length
   }
 })
+
+// 複数更新
+const bulkUpdate = () => {
+  if (!confirm(t('confirm_update_selected'))) return
+  router.post(
+    route('admin.instructorMembers.bulkUpdate'),
+    { ids: selectedIds.value },
+    {
+      preserveState: true,
+      onSuccess: () => {
+        router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
+      }
+    }
+  )
+}
 
 function statusColor(s) {
   return {

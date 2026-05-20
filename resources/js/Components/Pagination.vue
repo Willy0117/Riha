@@ -1,43 +1,51 @@
 <template>
-  <div class="flex justify-between items-center mt-4">
-    <!-- 左端: Previous + ページ番号 + Next -->
-    <div class="flex space-x-1 items-center">
-      <button
-        :disabled="paginator.current_page === 1"
-        @click="changePage(paginator.current_page - 1)"
-        class="px-2 py-1 border rounded hover:bg-gray-200 disabled:opacity-50"
-      >
-        «
-      </button>
+ <div class="flex justify-between items-center mt-4">
+<div v-if="paginator.last_page > 1" class="flex items-center gap-1">
 
-      <template v-for="page in displayPages" :key="page.key">
-        <span
-          v-if="page.type === 'page'"
-          @click="changePage(page.number)"
-          :class="[
-            'px-3 py-1 border rounded hover:bg-gray-200 cursor-pointer',
-            page.number === paginator.current_page ? 'bg-gray-300 font-bold' : ''
-          ]"
-        >
-          {{ page.number }}
-        </span>
-        <span v-else class="px-2">…</span>
-      </template>
+  <!-- FULL MODE（1〜10ページ） -->
+  <template v-if="!isCompactPagination">
 
-      <button
-        :disabled="paginator.current_page === paginator.last_page"
-        @click="changePage(paginator.current_page + 1)"
-        class="px-2 py-1 border rounded hover:bg-gray-200 disabled:opacity-50"
-      >
-        »
-      </button>
-    </div>
+    <button
+      v-for="page in paginator.last_page"
+      :key="page"
+      @click="changePage(page)"
+      class="w-8 h-8 rounded-md text-sm transition"
+      :class="page === paginator.current_page
+        ? 'bg-slate-900 text-white'
+        : 'hover:bg-slate-100 text-slate-600'
+      "
+    >
+      {{ page }}
+    </button>
 
-    <!-- 右端: 表示件数 -->
-    <div class="text-gray-600">
-      {{ startItem }}-{{ endItem }} / {{ paginator.total }}
-    </div>
+  </template>
+
+  <!-- COMPACT MODE（11ページ以上） -->
+  <template v-else>
+
+    <button
+      v-for="page in pagesToShow"
+      :key="page"
+      @click="changePage(page)"
+      class="w-8 h-8 rounded-md text-sm transition"
+      :class="page === paginator.current_page
+        ? 'bg-slate-900 text-white'
+        : 'hover:bg-slate-100 text-slate-600'
+      "
+    >
+      {{ page }}
+    </button>
+
+  </template>
+
+</div>
+
+  <!-- info -->
+  <div class="text-sm text-slate-500">
+    {{ startItem }}-{{ endItem }} / {{ paginator.total }}
   </div>
+
+</div>
 </template>
 
 <script setup>
@@ -52,33 +60,23 @@ const props = defineProps({
 const startItem = computed(() => props.paginator.per_page * (props.paginator.current_page - 1) + 1)
 const endItem = computed(() => Math.min(props.paginator.per_page * props.paginator.current_page, props.paginator.total))
 
-// ページ番号の省略表示ロジック
-const displayPages = computed(() => {
-  const total = props.paginator.last_page
-  const current = props.paginator.current_page
-  const pages = []
-
-  if (total <= 7) {
-    for (let i = 1; i <= total; i++) pages.push({ type: 'page', number: i, key: i })
-  } else {
-    pages.push({ type: 'page', number: 1, key: 1 })
-
-    if (current > 4) pages.push({ type: 'ellipsis', key: 'start-ellipsis' })
-
-    for (let i = Math.max(2, current - 2); i <= Math.min(total - 1, current + 2); i++) {
-      pages.push({ type: 'page', number: i, key: i })
-    }
-
-    if (current < total - 3) pages.push({ type: 'ellipsis', key: 'end-ellipsis' })
-
-    pages.push({ type: 'page', number: total, key: total })
-  }
-
-  return pages
-})
-
 // ページ切り替え
 function changePage(page) {
   props.onPageChange(page)
 }
+
+const pagesToShow = computed(() => {
+  const last = props.paginator.last_page
+  const current = props.paginator.current_page
+
+  const start = Math.max(1, current - 2)
+  const end = Math.min(last, current + 2)
+
+  const pages = []
+  for (let i = start; i <= end; i++) {
+    pages.push(i)
+  }
+
+  return pages
+})
 </script>

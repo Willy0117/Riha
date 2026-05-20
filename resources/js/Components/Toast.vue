@@ -25,34 +25,6 @@ watch(
     }, 3000)
   }
 )
-/*
-watch(
-  () => page.props.flash,
-  (flash) => {
-    if (flash?.success || flash?.error) {
-
-      if (flash.success) {
-        message.value = flash.success
-        type.value = 'success'
-      }
-
-      if (flash.error) {
-        message.value = flash.error
-        type.value = 'error'
-      }
-
-      show.value = true
-
-      if (timer) clearTimeout(timer)
-
-      timer = setTimeout(() => {
-        show.value = false
-      }, 3000)
-    }
-  },
-  { immediate: true }
-)
-*/
 </script>
 
 <template>

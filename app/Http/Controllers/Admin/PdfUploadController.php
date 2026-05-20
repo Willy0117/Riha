@@ -3,11 +3,13 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use Carbon\Carbon;
 use App\Models\PdfUpload;
 use App\Models\CreditCategory;
 use App\Models\CreditConference;
 use App\Models\CreditRolePoint;
-
+use App\Models\InstructorCycle;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Http\Request;
 
 class PdfUploadController extends Controller
@@ -15,20 +17,30 @@ class PdfUploadController extends Controller
     // PDFアップロード一覧
     public function index(Request $request)
     {
-        // member, creditCategory, creditConference, creditRole をまとめてロード
         $query = PdfUpload::with([
             'member:id,name',
             'creditCategory:id,name',
             'creditConference:id,name',
-            'creditRole:id,role'
-        ]);
-
-        $query->when($request->filled('category_id'), fn($q) =>
+            'creditRole:id,role',
+        ])
+        ->when($request->filled('category_id'), fn($q) =>
             $q->where('credit_category_id', $request->category_id)
-        )->when($request->filled('conference_id'), fn($q) =>
+        )
+        ->when($request->filled('conference_id'), fn($q) =>
             $q->where('credit_conference_id', $request->conference_id)
-        )->when($request->filled('role_id'), fn($q) =>
+        )
+        ->when($request->filled('role_id'), fn($q) =>
             $q->where('credit_role_id', $request->role_id)
+        )
+        ->when($request->filled('end_date'), fn($q) =>
+            $q->whereHas('member.updateCycles', fn($cq) =>
+                $cq->where('end_date', $request->end_date)
+            )
+        )
+        ->when($request->filled('exam_round'), fn($q) =>
+            $q->whereHas('member.updateCycles', fn($cq) =>
+                $cq->where('exam_round', $request->exam_round)
+            )
         );
 
         $sortBy  = $request->input('sort_by', 'created_at');
@@ -44,28 +56,27 @@ class PdfUploadController extends Controller
             'session',
         ];
 
-        if (! in_array($sortBy, $allowedSorts)) {
+        if (!in_array($sortBy, $allowedSorts)) {
             $sortBy = 'created_at';
         }
-        /*
-        |--------------------------------------------------------------------------
-        | members 単体で完結するソート
-        |--------------------------------------------------------------------------
-        */
-        $query->orderBy($sortBy, $sortDir);
 
-        // =====================
-        // ページング + 整形
-        // =====================
+        $query->orderBy($sortBy, $sortDir);
 
         $perPage = (int) $request->input('per_page', 20);
 
         $uploads = $query
             ->paginate($perPage)
-            ->withQueryString();
+            ->withQueryString()
+            ->through(fn ($u) => [
+                ...$u->toArray(),
+                'thumbnail_url' => $u->thumbnail_path
+                    ? Storage::url($u->thumbnail_path)
+                    : null,
+            ]);
 
         $categories = CreditCategory::all();
         $conferences = CreditConference::all();
+        $instructorcycles = InstructorCycle::all();
 
         $roles = CreditRolePoint::all()->map(fn($r) => [
             'id' => $r->id,
@@ -75,10 +86,13 @@ class PdfUploadController extends Controller
             'credit_conference_id' => $r->credit_conference_id,
         ]);
 
+        $targetDate = Carbon::now()->addYears(5)->month(11)->day(30)->format('Y-m-d');
+
         return inertia('Admin/PdfUploads/Index', [
             'uploads' => $uploads,
             'categories' => $categories,
             'conferences' => $conferences,
+            'instructorcycles' => $instructorcycles,
             'roles' => $roles,
             'filters' => 
             [
@@ -87,6 +101,8 @@ class PdfUploadController extends Controller
                 'category_id'    => $request-> category_id ?? '',
                 'conference_id'  => $request-> conference_id ?? '',
                 'role_id'    => $request->role_id ?? '',
+                'exam_round' => $request->exam_round ?? '',
+                'end_date' => $request->filled('end_date') ? $request->end_date : '',//$targetDate,
                 'per_page'  => $request->per_page ?? 20,
                 'sort_by'   => $request->sort_by ?? 'created_at',  // ← 初期値
                 'sort_dir'  => $request->sort_dir ?? 'desc',       // ← 初期値
@@ -117,21 +133,17 @@ class PdfUploadController extends Controller
         return back()->with('success', __('PDF rejected.'));
     }
 
-    // PDF閲覧（管理者もprivateフォルダ参照）
     public function view(PdfUpload $pdf)
     {
-        $filePath = storage_path('app/private/' . $pdf->file_path);
+        $filePath = Storage::path($pdf->file_path);
         if (!file_exists($filePath)) abort(404);
-
         return response()->file($filePath);
     }
 
-    // サムネイル取得
     public function thumbnail(PdfUpload $pdf)
     {
-        $thumbPath = storage_path('app/private/' . $pdf->thumbnail_path);
+        $thumbPath = Storage::path($pdf->thumbnail_path);
         if (!file_exists($thumbPath)) abort(404);
-
         return response()->file($thumbPath);
     }
 }

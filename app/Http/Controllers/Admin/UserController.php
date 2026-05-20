@@ -80,20 +80,26 @@ class UserController extends Controller
      */
     public function create(Request $request)
     {
-        $currentUser = $request->user();
+        $currentUser = auth()->user();
 
-        $roles = $currentUser->hasRole('Super Admin')
-            ? Role::all()
-            : Role::where('tenant_id', $currentUser->tenant_id)->get();
+        $tenants = Tenant::all()->keyBy('id');
+
+        $roles = $currentUser->hasRole('super_admin')
+            ? Role::where('guard_name', 'web')->get()
+            : Role::where('tenant_id', $currentUser->tenant_id)
+                ->where('guard_name', 'web')
+                ->get();
 
         // tenant 名をマッピング
-        $tenants = Tenant::all()->keyBy('id');
-        $roles = $roles->map(function($role) use ($tenants) {
-            $role->tenant_name = $role->tenant_id ? ($tenants[$role->tenant_id]->name ?? '(Global)') : '(Global)';
+        $roles = $roles->map(function ($role) use ($tenants) {
+            $role->tenant_name = $role->tenant_id
+                ? ($tenants[$role->tenant_id]->name ?? '(Global)')
+                : '(Global)';
+
             return $role;
         });
 
-        $availableTenants = $currentUser->hasRole('Super Admin') ? Tenant::all() : [];
+        $availableTenants = $currentUser->hasRole('super_admin') ? Tenant::all() : [];
 
         return Inertia::render('Admin/Users/Edit', [
             'user' => null,
@@ -113,9 +119,10 @@ class UserController extends Controller
         $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|confirmed|min:8',
-            'username' => 'required|stringt|max:20',
+            'password' => 'required|string|confirmed|min:4',
+            'username' => 'required|string|max:20',
             'member_id' => 'required|integer',
+            'role_id' => 'required|integer',
         ]);
 
         // Super Admin は tenant_id を選択可能、tenant_admin は自分の tenant_id に固定
@@ -125,15 +132,14 @@ class UserController extends Controller
             : $currentUser->tenant_id;
 */
         $user = User::create([
-            'username' => $required->username,
-            'member_id' => $required->member_id,
+            'username' => $request->username,
+            'member_id' => $request->member_id,
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
         ]);
 
         $role = Role::findOrFail($request->role_id);
-
         // ユーザーに role を付与（assignRole 内で permissions も自動付与）
         $user->assignRole($role);
 
@@ -150,17 +156,24 @@ class UserController extends Controller
 
         $currentUser = auth()->user();
 
-        $roles = $currentUser->hasRole('Super Admin')
-            ? Role::all()
-            : Role::where('tenant_id', $currentUser->tenant_id)->get();
-
         $tenants = Tenant::all()->keyBy('id');
-        $roles = $roles->map(function($role) use ($tenants) {
-            $role->tenant_name = $role->tenant_id ? ($tenants[$role->tenant_id]->name ?? '(Global)') : '(Global)';
+
+        $roles = $currentUser->hasRole('super_admin')
+            ? Role::where('guard_name', 'web')->get()
+            : Role::where('tenant_id', $currentUser->tenant_id)
+                ->where('guard_name', 'web')
+                ->get();
+
+        // tenant 名をマッピング
+        $roles = $roles->map(function ($role) use ($tenants) {
+            $role->tenant_name = $role->tenant_id
+                ? ($tenants[$role->tenant_id]->name ?? '(Global)')
+                : '(Global)';
+
             return $role;
         });
 
-        $availableTenants = $currentUser->hasRole('Super Admin') ? Tenant::all() : [];
+        $availableTenants = $currentUser->hasRole('super_admin') ? Tenant::all() : [];
 
         return Inertia::render('Admin/Users/Edit', [
             'user' => $user,

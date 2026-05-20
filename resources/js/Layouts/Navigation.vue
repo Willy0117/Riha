@@ -1,12 +1,12 @@
 <script setup>
-import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue'
+import { ref, onMounted, onBeforeUnmount, watch, computed, watchEffect  } from 'vue'
 import { Link, router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 
 // Heroicons
 import {
   HomeIcon, DocumentCurrencyYenIcon,
-  UserIcon, DocumentIcon,
+  UserIcon, DocumentIcon,DocumentTextIcon,
   ServerIcon,
   UsersIcon,
   PlusIcon,
@@ -24,10 +24,89 @@ const page = usePage()
 const mobileOpen = ref(false)       // モバイル用の開閉状態
 
 const collapsed = ref(false)
-const openSubMenu = ref(null)
 
-const toggleCollapse = () => (collapsed.value = !collapsed.value)
-const toggleSubMenu = (menu) => (openSubMenu.value = openSubMenu.value === menu ? null : menu)
+const openMenu = ref(null)
+const openChildMenu = ref(null)
+
+const toggleMenu = (key) => {
+  openMenu.value =
+    openMenu.value === key ? null : key
+}
+
+const toggleChildMenu = (key) => {
+  openChildMenu.value =
+    openChildMenu.value === key ? null : key
+}
+
+const { t, locale } = useI18n()
+
+const menus = [
+  {
+    key: 'exams',
+    label: '指導士資格認定試験',
+    icon: UsersIcon,
+
+    children: [
+      {
+        key: 'exam_manage',
+        label: '自験例報告',
+
+        children: [
+          {
+            label: t('exams.reports_list'),
+            route: 'reports.index',
+          },
+          {
+            label: t('exams.reports'),
+            route: 'reports.create',
+          },
+        ],
+      },
+
+      {
+        key: 'exam_apply',
+        label: t('exams.application'),
+
+        children: [
+          {
+            label: t('applications.create'),
+            route: 'exams.create',
+          },
+        ],
+      },
+    ],
+  },
+
+  {
+    key: 'instructors',
+    label: '指導士認定更新',
+    icon: DocumentIcon,
+
+    children: [
+      {
+        label: '更新申請',
+        route: 'pdf-uploads.create',
+      },
+      {
+        label: '単位取得申請',
+        route: 'pdf-uploads.index',
+      },
+    ],
+  },
+
+  {
+    key: 'annual_fees',
+    label: '年会費支払い状況',
+    icon: DocumentCurrencyYenIcon,
+
+    children: [
+      {
+        label: '年会費一覧',
+        route: 'annual-fees.index',
+      },
+    ],
+  },
+]
 
 const { props } = usePage()
 console.log(props)
@@ -40,46 +119,44 @@ const hasApiFeatures = props.jetstream.hasApiFeatures
 const hasTeamFeatures = props.jetstream.hasTeamFeatures
 const canCreateTeams = props.jetstream.canCreateTeams
 
-const { t, locale } = useI18n()
+watchEffect(() => {
 
-// レスポンシブ判定
-/*const isMobile = ref(false)
-const handleResize = () => { isMobile.value = window.innerWidth < 1024 }
+  menus.forEach((menu) => {
 
-onMounted(() => {
-  handleResize()
-  window.addEventListener('resize', handleResize)
+    menu.children.forEach((child) => {
+
+      if (child.children) {
+
+        child.children.forEach((sub) => {
+
+          const target = route(sub.route)
+
+          if (page.url.startsWith(new URL(target).pathname)) {
+
+            openMenu.value = menu.key
+            openChildMenu.value = child.key
+
+          }
+
+        })
+
+      } else {
+
+        const target = route(child.route)
+
+        if (page.url.startsWith(new URL(target).pathname)) {
+
+          openMenu.value = menu.key
+
+        }
+
+      }
+
+    })
+
+  })
+
 })
-onBeforeUnmount(() => window.removeEventListener('resize', handleResize))
-*/
-// ページ遷移でサブメニュー閉じる
-//watch(() => router.page, () => { openSubMenu.value = null })
-
-// collapsed 状態保存
-//watch(collapsed, val => { localStorage.setItem('sidebar-collapsed', JSON.stringify(val)) })
-
-// ページURLに応じて初期サブメニューを決定
-onMounted(() => {
-  if (page.url.startsWith('/menus') || page.url.startsWith('/menus/weekly') || page.url.startsWith('/menus/import')) {
-    openSubMenu.value = 'menus'
-  }
-  if (page.url.startsWith('/tenants') || page.url.startsWith('/roles') || page.url.startsWith('/permissions')) {
-    openSubMenu.value = 'access'
-  }
-  if (page.url.startsWith('/devices') || page.url.startsWith('/operators') || page.url.startsWith('/sensors') || page.url.startsWith('/processes') ) {
-    openSubMenu.value = 'masters'
-  }
-  if (page.url.startsWith('/users')) {
-    openSubMenu.value = 'users'
-  }
-  if (page.url.startsWith('/reports')) {
-    openSubMenu.value = 'reports'
-  }
-  if (page.url.startsWith('/exams')) {
-    openSubMenu.value = 'exams'
-  }
-})
-
 // ヘッダー操作
 const logout = () => { router.post(route('logout')) }
 const switchTeam = (team) => { router.put(route('current-team.update'), { team_id: team.id }) }
@@ -175,106 +252,175 @@ const showAccessControl = computed(() => {
       </div>
 
        <nav class="flex-1 overflow-y-auto px-2 py-4 text-sm">
-      <!-- Dashboard -->
-      <Link :href="route('dashboard')"
-            class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('dashboard') ? 'bg-gray-300 font-semibold' : ''">
-        <HomeIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
-      </Link>
+            <!-- Dashboard -->
+        <Link :href="route('dashboard')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+              :class="isActive('dashboard') ? 'bg-gray-300 font-semibold' : ''">
+          <HomeIcon class="w-5 h-5"/>
+          <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
+        </Link>
 
-      <div class="mt-2">
-        <button
-          @click="toggleSubMenu('exams')"
-          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-        >
-          <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">{{ t('exams.application') }}</span>
-          </div>
-          <svg
-            v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'exams' }"
-            class="w-4 h-4 transform transition-transform duration-200"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <transition name="slide-fade">
-          <div v-show="openSubMenu === 'exams' && !collapsed" class="pl-6 mt-1 space-y-1">     
-            <Link :href="route('exams.create')"
-                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('exams.create') ? 'bg-gray-300 font-semibold' : ''">
-              <CubeIcon class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('applications.create') }}</span>
-            </Link>        
-       
-         </div>   
-        </transition>
-      </div>
-      <div class="mt-2">
-        <button
-          @click="toggleSubMenu('reports')"
-          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-        >
-          <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">{{ t('rehabs.self_report') }}</span>
-          </div>
-          <svg
-            v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'reports' }"
-            class="w-4 h-4 transform transition-transform duration-200"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <transition name="slide-fade">
-          <div v-show="openSubMenu === 'reports' && !collapsed" class="pl-6 mt-1 space-y-1">     
-            <Link :href="route('reports.index')"
-                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('reports.index') ? 'bg-gray-300 font-semibold' : ''">
-              <CubeIcon class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('rehabs.list') }}</span>
-            </Link>
-          
-            <Link :href="route('reports.create')"
-                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('reports.create') ? 'bg-gray-300 font-semibold' : ''">
-              <CubeIcon class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('exams.reports') }}</span>
-            </Link>
-        
-         </div>   
-        </transition>
-      </div>
-      <Link :href="route('pdf-uploads.create')"
-            class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('pdf-uploads.create') ? 'bg-gray-300 font-semibold' : ''">
-        <DocumentIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('instructors.update') }}</span>
-      </Link>
+        <div class="mt-2">
 
-      <Link :href="route('pdf-uploads.index')"
-            class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('pdf-uploads') ? 'bg-gray-300 font-semibold' : ''">
-        <DocumentIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('credit_acquisition') }}</span>
-      </Link>
-      <Link :href="route('annual-fees.index')"
-            class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-            :class="isActive('annual-fees') ? 'bg-gray-300 font-semibold' : ''">
-        <DocumentCurrencyYenIcon class="w-5 h-5"/>
-        <span v-if="!collapsed" class="ml-2">{{ t('annual_fees.annual_fee') }}</span>
-      </Link>
+        <div
+          v-for="menu in menus"
+          :key="menu.key"
+          class="mb-1"
+        >
+
+          <!-- 親 -->
+          <button
+            @click="toggleMenu(menu.key)"
+            class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200"
+          >
+
+            <div class="flex items-center">
+
+              <component
+                :is="menu.icon"
+                class="w-5 h-5"
+              />
+
+              <span
+                v-if="!collapsed"
+                class="ml-2"
+              >
+                {{ menu.label }}
+              </span>
+
+            </div>
+
+            <svg
+              v-if="!collapsed"
+              class="w-4 h-4 transition-transform"
+              :class="{
+                'rotate-90': openMenu === menu.key
+              }"
+              fill="none"
+              stroke="currentColor"
+              stroke-width="2"
+              viewBox="0 0 24 24"
+            >
+              <path
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+
+          </button>
+
+          <!-- 2階層 -->
+          <transition name="slide-fade">
+
+            <div
+              v-show="openMenu === menu.key && !collapsed"
+              class="pl-4 mt-1 space-y-1"
+            >
+
+              <div
+                v-for="child in menu.children"
+                :key="child.key || child.label"
+              >
+
+                <!-- 3階層あり -->
+                <template v-if="child.children">
+
+                  <button
+                    @click="toggleChildMenu(child.key)"
+                    class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200"
+                  >
+
+                    <span>{{ child.label }}</span>
+
+                    <svg
+                      class="w-4 h-4 transition-transform"
+                      :class="{
+                        'rotate-90': openChildMenu === child.key
+                      }"
+                      fill="none"
+                      stroke="currentColor"
+                      stroke-width="2"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        d="M9 5l7 7-7 7"
+                      />
+                    </svg>
+
+                  </button>
+
+                  <!-- 3階層 -->
+                  <transition name="slide-fade">
+
+                    <div
+                      v-show="openChildMenu === child.key"
+                      class="pl-6 mt-1 space-y-1"
+                    >
+
+                      <Link
+                        v-for="sub in child.children"
+                        :key="sub.route"
+                        :href="route(sub.route)"
+                        class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                        :class="isActive(sub.route)
+                          ? 'bg-gray-300 font-semibold'
+                          : ''"
+                      >
+
+                        <CubeIcon class="w-5 h-5"/>
+
+                        <span
+                          v-if="!collapsed"
+                          class="ml-2"
+                        >
+                          {{ sub.label }}
+                        </span>
+
+                      </Link>
+
+                    </div>
+
+                  </transition>
+
+                </template>
+
+                <!-- 2階層のみ -->
+                <template v-else>
+
+                  <Link
+                    :href="route(child.route)"
+                    class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                    :class="isActive(child.route)
+                      ? 'bg-gray-300 font-semibold'
+                      : ''"
+                  >
+
+                    <CubeIcon class="w-5 h-5"/>
+
+                    <span
+                      v-if="!collapsed"
+                      class="ml-2"
+                    >
+                      {{ child.label }}
+                    </span>
+
+                  </Link>
+
+                </template>
+
+              </div>
+
+            </div>
+
+          </transition>
+
+        </div>
+
+      </div>
+
     </nav>
   </aside>
       <!-- モバイルオーバーレイ -->

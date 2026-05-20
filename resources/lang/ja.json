@@ -22,6 +22,7 @@
   "return": "戻る",
   "revise": "訂正する",
   "delete_selected": "選択削除",
+  "update_selected": "選択更新",
   "action": "操 作",
   "save": "保 存",
   "edit": "編 集",
@@ -116,16 +117,27 @@
     "email": "メールアドレス",
     "confirm_password": "パスワードをもう一度",
     "member": "会員",
-    "organization": "所属先",
+    "tenant": "テナント",
+    "select_tenant": "テナントを選択",
+    "role": "権限",
+    "select_role": "権限を選択",
     "user has been created.": "ユーザーを作成しました。",
     "user has been updated.": "ユーザーを更新しました。",
     "user has been deleted.": "ユーザーを削除しました。"
   },
+  "cycle_status": {
+    "updated": "更新済み",
+    "before_update": "更新前",
+    "no_update": "更新しない",
+    "pending": "申請中"
+  },
   "instructors": {
     "instructor": "指導士",
+    "code": "指導士認定番号",
     "member":"指導士会員",
+    "choose_status": "スタータスを選択",
     "details": "詳細",
-    "list”": "指導士会員一覧",
+    "list": "指導士更新申請一覧",
     "show": "詳細",
     "update": "指導士更新",
     "send":"更新を申込",
@@ -133,16 +145,23 @@
     "point": "単位",
     "pending": "申請中",
     "approved": "承認",
-    "total": "合計"
+    "total": "合計",
+    "isFeeOk": "年会費",
+    "total_points": "有効単位数",
+    "conference_count": "有効集会数",
+    "update_period": "指導士認定期間",
+    "participation_count": "学術集会参加回数",
+    "reason": "理由は"
   },
   "pdf-uploads": {
     "list": "単位取得一覧",
     "category": "カテゴリー",
     "conference": "学術種別",
-    "session": "開催回",
+    "session": "認定回",
     "role": "参加権限",
     "message": "却下理由",
-    "pdf": "証明書"
+    "pdf": "証明書",
+    "end_date": "更新最終日"
   },
   "user_list": "ユーザー一覧",
   "add_user": "ユーザー追加",
@@ -338,7 +357,6 @@
   },
   "applications": {
     "apply_type": "申込経路",
-    "poem": "名前の詩 新規申込",
     "create": "指導士受験 新規申込",
     "code": "受注コード",
     "application_date": "申込日",
@@ -384,7 +402,7 @@
     "month": "月",
     "day": "日"
   },
-  "registers": {
+   "registers": {
     "members": "会員情報",
     "organization":"所属先",
     "company_name":"会社名",

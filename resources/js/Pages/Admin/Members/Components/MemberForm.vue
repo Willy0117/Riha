@@ -8,7 +8,8 @@ import TextInput from '@/Components/TextInput.vue';
 import Checkbox from '@/Components/Checkbox.vue';
 
 const props = defineProps({
-  modelValue: Object
+  modelValue: Object,
+  errors: Object,
 })
 
 const form = reactive(props.modelValue)
@@ -23,13 +24,13 @@ const form = reactive(props.modelValue)
       <div class="col-span-6 sm:col-span-3">
         <InputLabel value="姓" />
         <TextInput v-model="form.last_name" type="text" class="input-field" />
-        <InputError :message="form.errors?.last_name" />
+        <InputError :message="errors?.['member.last_name']" />
       </div>
 
       <div class="col-span-6 sm:col-span-3">
         <InputLabel value="名" />
         <TextInput v-model="form.first_name" type="text" class="input-field" />
-        <InputError :message="form.errors?.first_name" />
+        <InputError :message="errors?.['member.first_name']" />
       </div>
     </div>
 
@@ -38,13 +39,13 @@ const form = reactive(props.modelValue)
       <div class="col-span-6 sm:col-span-3">
         <InputLabel value="せい" />
         <TextInput v-model="form.last_name_kana" type="text" class="input-field" />
-        <InputError :message="form.errors?.last_name_kana" />
+        <InputError :message="errors?.['member.last_name_kana']" />
       </div>
 
       <div class="col-span-6 sm:col-span-3">
         <InputLabel value="めい" />
         <TextInput v-model="form.first_name_kana" type="text" class="input-field" />
-        <InputError :message="form.errors?.first_name_kana" />
+        <InputError :message="errors?.['member.first_name_kana']" />
       </div>
     </div>
 
@@ -65,28 +66,28 @@ const form = reactive(props.modelValue)
           <span>その他</span>
         </label>
       </div>
-      <InputError :message="form.errors?.gender" />
+      <InputError :message="errors?.['member.gender']" />
     </div>
 
     <!-- 生年月日 -->
     <div class="col-span-6 sm:col-span-3">
       <InputLabel value="生年月日" />
       <TextInput v-model="form.birthday" type="date" class="input-field" />
-      <InputError :message="form.errors?.birthday" />
+      <InputError :message="errors?.['member.birthday']" />
     </div>
 
     <!-- ログインメール -->
     <div class="col-span-6 sm:col-span-3">
       <InputLabel value="メール（ログインID）" />
       <TextInput v-model="form.email" type="email" class="input-field" />
-      <InputError :message="form.errors?.email" />
+      <InputError :message="errors?.['member.email']" />
     </div>
 
     <!-- 個人メール -->
     <div class="col-span-6 sm:col-span-3">
       <InputLabel value="個人メール" />
       <TextInput v-model="form.personal_email" type="email" class="input-field" />
-      <InputError :message="form.errors?.personal_email" />
+      <InputError :message="errors?.['member.personal_email']" />
     </div>
 
     <!-- 会員状態 -->
@@ -97,7 +98,7 @@ const form = reactive(props.modelValue)
         <option value="inactive">休会</option>
         <option value="withdrawn">退会</option>
       </select>
-      <InputError :message="form.errors?.member_status" />
+      <InputError :message="errors?.['member.member_status']" />
     </div>
 
     <div class="col-span-6 sm:col-span-2">
@@ -111,13 +112,22 @@ const form = reactive(props.modelValue)
     <div class="col-span-6 sm:col-span-2">
       <InputLabel value="入会日" />
       <TextInput v-model="form.join_date" type="date" class="input-field" />
+      <InputError :message="errors?.['member.member.join_date']" />
     </div>
 
     <!-- 退会日 -->
     <div class="col-span-6 sm:col-span-2">
       <InputLabel value="退会日" />
       <TextInput v-model="form.leave_date" type="date" class="input-field" />
+      <InputError :message="errors?.['member.member.leave_date']" />
     </div>
-
+    <!-- 送付先 -->
+    <div class="col-span-6 sm:col-span-2">
+      <h3 class="text-lg font-semibold mb-2">郵送物送付先</h3>
+      <SelectInput v-model="form.postal_destination">
+        <option value="home">自宅</option>
+        <option value="work">所属先</option>
+      </SelectInput>
+    </div>  
   </div>
 </template>

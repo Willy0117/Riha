@@ -14,27 +14,31 @@ class InstructorMemberController extends Controller
     {
         $search = $request->search;
         $page = $request->page ?? 1;
+        $per_page = $request->per_page ?? 20; 
 
-        // ベースクエリ
         $query = Member::whereHas('user')
-          ->with(['updateCycles', 'pdfUploads', 'user']);
-/*
-        $query = Member::whereHas('user.roles', function($q){
-            $q->where('name', 'instructor');
-        })
-        ->with(['updateCycles', 'pdfUploads', 'user']);
-*/
+            ->whereHas('updateCycles', function ($q) {
+                $q->where('status', 'pending');
+            })
+            ->with([
+                'updateCycles' => function ($q) {
+                    $q->where('status', 'pending'); // ←ここ重要
+                },
+                'pdfUploads'
+            ]);
+
         if (!empty($search)) {
             $query->where('name', 'like', "%{$search}%");
         }
 
         // ★ paginate にする（これが最重要）
-        $members = $query->paginate(20)->through(function ($member) {
+        $members = $query->paginate($per_page)->through(function ($member) {
 
             // 各サイクルの集計
             $member->updateCycles->each(function($cycle) use ($member) {
 
                 $cycle->conference_count = PdfUpload::where('member_id', $member->id)
+                    ->where('status', 'approved') // ←これ追加
                     ->whereHas('creditCategory', fn($q) => $q->where('name', '学術集会'))
                     ->whereHas('creditConference', fn($q) => $q->where('name', '日本腎臓リハビリテーション学会'))
                     ->whereBetween('created_at', [$cycle->start_date, $cycle->end_date])
@@ -42,7 +46,7 @@ class InstructorMemberController extends Controller
                     ->count();
 
                 $cycle->total_points = PdfUpload::where('member_id', $member->id)
-                    ->whereHas('creditCategory', fn($q) => $q->where('name', '学術集会'))
+                    ->where('status', 'approved') // ←これだけ追加
                     ->whereBetween('created_at', [$cycle->start_date, $cycle->end_date])
                     ->sum('points');
             });
@@ -55,6 +59,8 @@ class InstructorMemberController extends Controller
             'filters' => [
                 'search' => $search,
                 'page' => $page,
+                'per_page' => $per_page,
+                
             ]
         ]);
     }

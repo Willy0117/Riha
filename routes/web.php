@@ -14,11 +14,13 @@ use App\Http\Controllers\Admin\InstructorMemberController as AdminInstructorMemb
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\Admin\AnnualFeeController as AdminAnnualFeeController;
 use App\Http\Controllers\Admin\PdfUploadController as AdminPdfUploadController;
+use App\Http\Controllers\Admin\InstructorUpdateCycleController as AdminInstructorUpdateCycleController;
 use App\Http\Controllers\Admin\MemberImportController;
 
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\PdfUploadController;
 use App\Http\Controllers\RehabApplicationController;
+use App\Http\Controllers\InstructorUpdateCycleController;
 use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnnualFeeController;
@@ -269,7 +271,7 @@ Route::middleware([
     Route::post('/rehab-apply/files', [RehabApplicationController::class, 'uploadPdf'])
         ->name('rehab.files.upload');
 
-
+    Route::post('/instructor-update-cycles/status',[InstructorUpdateCycleController::class, 'updateStatus']);
 
 });
 /*

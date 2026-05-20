@@ -58,5 +58,11 @@
   "rehabilitation_goal_program": "Rehabilitation: Goals & Programs",
   "future_tasks_policy": "Future Tasks & Policy",
   "attachments": "Attachments (Certificates, Recommendations, etc.)",
-  "submit": "Submit"
+  "submit": "Submit",
+  "cycle_status": {
+    "updated": "Updated",
+    "before_update": "Before Update",
+    "no_update": "No Update",
+    "pending": "Pending"
+  }
 }

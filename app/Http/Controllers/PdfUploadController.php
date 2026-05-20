@@ -20,23 +20,37 @@ class PdfUploadController extends Controller
     {
         $user = Auth::user();
 
-        // アップロード一覧
-        $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole'])
-            ->where('member_id', $user->member_id)
-            ->latest()
-            ->get()
-            ->map(fn($u) => [
-                'id' => $u->id,
-                'credit_category_name' => $u->creditCategory?->name,
-                'credit_conference_name' => $u->creditConference?->name,
-                'role_name' => $u->creditRole?->role,
-                'points' => $u->point,
-                'status' => $u->status,
-                'thumbnail_path' => $u->thumbnail_path,
-                'rejection_message' => $u->rejection_message,
-            ]);
+        $cycle = $user->member?->latestCycle;
 
-        // 全カテゴリー
+        $uploads = collect();
+
+        if ($cycle) {
+
+            $uploads = PdfUpload::with([
+                    'creditCategory',
+                    'creditConference',
+                    'creditRole',
+                ])
+                ->where('member_id', $user->member_id)
+                ->latest()
+                ->get()
+                ->map(fn($u) => [
+                    'id' => $u->id,
+                    'credit_category_name' => $u->creditCategory?->name,
+                    'credit_conference_name' => $u->creditConference?->name,
+                    'role_name' => $u->creditRole?->role,
+                    'points' => $u->points,
+                    'status' => $u->status,
+                    'session' => $u->session,
+
+                    'thumbnail_url' => $u->thumbnail_path
+                        ? Storage::url($u->thumbnail_path)
+                        : null,
+
+                    'rejection_message' => $u->rejection_message,
+                ]);
+        }
+
         $creditCategories = CreditCategory::all();
 
         // 全学術集会・論文・セミナー等
@@ -51,7 +65,14 @@ class PdfUploadController extends Controller
             'credit_conference_id' => $r->credit_conference_id,
         ]);
 
-        return inertia('PdfUploads/Index', compact('uploads', 'creditCategories', 'conferences', 'roles'));
+        return inertia('PdfUploads/Index', [
+            'member' => $user->member,
+            'uploads' => $uploads,
+            'cycle' => $cycle,
+            'creditCategories' => $creditCategories,
+            'conferences' => $conferences,
+            'roles' => $roles,
+        ]);
     }
 
     public function store(Request $request, FileService $fileService)
@@ -102,21 +123,35 @@ class PdfUploadController extends Controller
     {
         $user = Auth::user();
 
-        // アップロード一覧
-        $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole'])
-            ->where('member_id', $user->member_id)
-            ->latest()
-            ->get()
-            ->map(fn($u) => [
-                'id' => $u->id,
-                'credit_category_name' => $u->creditCategory?->name,
-                'credit_conference_name' => $u->creditConference?->name,
-                'role_name' => $u->creditRole?->role,
-                'points' => $u->points,
-                'status' => $u->status,
-                'thumbnail_path' => $u->thumbnail_path,
-                'rejection_message' => $u->rejection_message,
-            ]);
+        $cycle = $user->member?->latestCycle;
+
+        $uploads = collect();
+
+        if ($cycle) {
+            $uploads = PdfUpload::with([
+                    'creditCategory',
+                    'creditConference',
+                    'creditRole',
+                ])
+                ->where('member_id', $user->member_id)
+                ->latest()
+                ->get()
+                ->map(fn($u) => [
+                    'id' => $u->id,
+                    'credit_category_name' => $u->creditCategory?->name,
+                    'credit_conference_name' => $u->creditConference?->name,
+                    'role_name' => $u->creditRole?->role,
+                    'points' => $u->points,
+                    'status' => $u->status,
+                    'session' => $u->session,
+
+                    'thumbnail_url' => $u->thumbnail_path
+                        ? Storage::url($u->thumbnail_path)
+                        : null,
+
+                    'rejection_message' => $u->rejection_message,
+                ]);
+        }
 
         $approvedTotal = $uploads
             ->where('status', 'approved')
@@ -137,6 +172,20 @@ class PdfUploadController extends Controller
 
         $isFeeOk = $totalFee <= $totalPaid;
 
+        $conference_count = PdfUpload::where('member_id', $user->member_id)
+            ->where('status', 'approved')
+            ->whereBetween('created_at', [$cycle->start_date, $cycle->end_date])
+            ->whereHas('creditCategory', fn ($q) =>
+                $q->where('name', '学術集会')
+            )
+            ->whereHas('creditConference', fn ($q) =>
+                $q->where('name', '日本腎臓リハビリテーション学会')
+            )
+            ->whereHas('creditRole', fn ($q) =>
+                $q->where('role', '参加')
+            )
+            ->count();
+
         // 全カテゴリー
         $creditCategories = CreditCategory::all();
 
@@ -153,30 +202,32 @@ class PdfUploadController extends Controller
         ]);
 
         return inertia('PdfUploads/Create', [
+            'member' => $user->member,
             'uploads' => $uploads,
+            'cycle' => $cycle,
             'creditCategories' => $creditCategories,
             'conferences' => $conferences,
             'roles' => $roles,
-
             'approvedTotal' => $approvedTotal,
             'pendingTotal' => $pendingTotal,
             'total' => $total,
             'totalFee' => $totalFee,
             'totalPaid' => $totalPaid,
             'isFeeOk' => $isFeeOk,
+            'conference_count' => $conference_count,
         ]);
     }
 
     public function view(PdfUpload $pdf)
     {
-        $filePath = storage_path('app/private/' . $pdf->file_path);
+        $filePath = Storage::path($pdf->file_path);
         if (!file_exists($filePath)) abort(404);
         return response()->file($filePath);
     }
 
     public function thumbnail(PdfUpload $pdf)
     {
-        $thumbPath = storage_path('app/private/' . $pdf->thumbnail_path);
+        $thumbPath = Storage::path($pdf->thumbnail_path);
         if (!file_exists($thumbPath)) abort(404);
         return response()->file($thumbPath);
     }

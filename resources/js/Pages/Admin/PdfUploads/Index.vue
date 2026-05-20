@@ -1,4 +1,3 @@
-<!-- resources/js/Pages/Admin/PdfUploads/Index.vue -->
 <template>
   <AppLayout :title="t('pdf-uploads.list')">
     <template #header>{{ t('pdf-uploads.list') }}</template>
@@ -6,7 +5,7 @@
     <div class="p-6 space-y-6">
 
       <!-- 検索・フィルター -->
-      <div class="grid grid-cols-6 gap-4 text-sm">
+      <div class="grid grid-cols-7 gap-4 text-sm">
         <div class="col-span-1">
           <InputLabel :value="t('pdf-uploads.category')" />
           <select v-model="form.category_id" class="input w-full border rounded px-2 py-1">
@@ -46,7 +45,34 @@
             </option>
           </select>
         </div>
-        <div class="col-span-1"></div>
+        <div class="col-span-1">
+          <InputLabel :value="t('pdf-uploads.session')" />
+          <select v-model="form.exam_round" class="input w-full border rounded px-2 py-1">
+            <option value="">{{ t('all') }}</option>
+            <option
+                v-for="cycle in instructorcycles"
+                :key="cycle.id"
+                :value="cycle.exam_round"
+            >
+              第 {{ cycle.exam_round }} 回
+            </option>
+          </select>
+        </div>
+        <div class="col-span-1">
+          <InputLabel :value="t('pdf-uploads.end_date')" />
+          <VueDatePicker
+            v-model="form.end_date"
+            :format-locale="ja"
+            format="yyyy/MM/dd"
+            model-type="yyyy-MM-dd"
+            :enable-time-picker="false"
+            :week-start="0"
+            :day-class="dayClass"
+            auto-apply
+            input-class-name="input w-full border rounded px-2 py-1"
+          >
+          </VueDatePicker>
+        </div>
         <div class="flex items-end col-span-1">
           <button
             @click="submitSearch"
@@ -56,95 +82,158 @@
           </button>
         </div>
       </div>
+<!-- TABLE -->
+<div class="bg-white border border-slate-200 rounded-xl overflow-hidden">
 
-      <!-- PDF一覧テーブル -->
-      <table class="min-w-full border border-gray-300 border-collapse">
+  <!-- HEADER -->
+  <div class="grid grid-cols-9 gap-3 px-5 py-3 bg-slate-50 text-[11px] font-medium text-slate-500">
+    <div>姓名</div>
+    <div>カテゴリー</div>
+    <div>認定回</div>
+    <div>学術種別</div>
+    <div>参加権限</div>
+    <div>証明書</div>
+    <!-- status sortable -->
+    <div
+      class="cursor-pointer select-none flex items-center gap-1"
+      @click="sortBy('status')"
+    >
+      ステータス
+  <span class="ml-1 text-slate-400">
+    <!-- 未選択 -->
+    <ArrowUpDown v-if="form.sort_by !== 'status'" class="w-4 h-4" />
 
-        <thead>
-          <tr class="bg-gray-200 text-xs">
-            <th class="px-3 py-2">{{ t('members.name') }}</th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('credit_category_id')">
-              {{ t('pdf-uploads.category') }}
-              <span v-if="form.sort_by==='credit_category_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('session')">
-              {{ t('pdf-uploads.session') }}
-              <span v-if="form.sort_by==='session'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('credit_confarence_id')">
-              {{ t('pdf-uploads.conference') }}
-              <span v-if="form.sort_by==='credit_confarence_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('credit_role_id')">
-              {{ t('pdf-uploads.role') }}
-              <span v-if="form.sort_by==='credit_role_id'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <th class="px-3 py-2">{{ t('pdf-uploads.pdf') }}</th>
-            <th class="px-3 py-2 cursor-pointer" @click="sortBy('status')">
-              {{ t('status') }}
-              <span v-if="form.sort_by==='status'">{{ form.sort_dir==='asc'?'▲':'▼' }}</span>
-            </th>
-            <th class="px-3 py-2">{{ t('created_at') }}</th>
-            <th class="px-3 py-2">{{ t('actions.action') }}</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="upload in props.uploads.data" :key="upload.id" class="odd:bg-white even:bg-gray-100 text-sm">
+    <!-- 選択済み：昇順 -->
+    <ArrowUp
+      v-else-if="form.sort_dir === 'asc'"
+      class="w-4 h-4 text-slate-700"
+    />
 
-            <td>{{ upload.member?.name ?? '-' }}</td>
-            <td class="px-3 py-2">{{ upload.credit_category ? upload.credit_category.name : '' }}</td>
-            <td class="px-3 py-2">{{ upload.session ? upload.session : '-' }}</td>
-            <td class="px-3 py-2">{{ upload.credit_conference ? upload.credit_conference.name : '' }}</td>
-            <td class="px-3 py-2">{{ upload.credit_role ? upload.credit_role.role : '' }}</td>
-            <td class="px-3 py-2">
-                <div
-                    @click="openPreview(upload.id)"
-                    class="cursor-pointer flex items-center gap-2"
-                >
-                    <img
-                    v-if="upload.thumbnail_path"
-                    :src="`/admin/pdf-uploads/${upload.id}/thumbnail`"
-                    alt="Thumbnail"
-                    class="w-10 h-10 object-contain border"
-                    />
-                    <span v-else class="text-gray-400 text-xs">
-                    {{ t('no_thumbnail') }}
-                    </span>
-                </div>
-            </td>
-            <td class="px-3 py-2">{{ upload.updated_at ? dayjs(upload.updated_at).format('YYYY/MM/DD') : '' }}</td>
-            <td class="px-3 py-2">
-              <span
-                class="text-xs px-1 rounded"
-                :class="{
-                  'bg-yellow-200 text-yellow-800': upload.status==='pending',
-                  'bg-green-200 text-green-800': upload.status==='approved',
-                  'bg-red-200 text-red-800': upload.status==='rejected'
-                }"
-              >
-                {{ $t(upload.status) }}
-              </span>
-            </td>
-            <td class="px-3 py-2 space-x-2">
-              <button
-                v-if="upload.status==='pending'"
-                @click="approve(upload.id)"
-                class="px-2 py-1 rounded text-xs hover:bg-green-600"
-              >
-                <HandThumbUpIcon class="w-5 h-5 text-green-500" />
-              </button>
-              <button
-                v-if="upload.status==='pending'"
-                @click="openReject(upload)"
-                class="px-2 py-1 rounded text-xs hover:bg-red-600"
-              >
-                <HandThumbDownIcon class="w-5 h-5 text-red-500" />
-              </button>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- 選択済み：降順 -->
+    <ArrowDown
+      v-else
+      class="w-4 h-4 text-slate-700"
+    />
+  </span>
+    </div>
 
+    <!-- date sortable -->
+    <div
+      class="cursor-pointer select-none flex items-center gap-1"
+      @click="sortBy('created_at')"
+    >
+      作成日
+  <span class="ml-1 text-slate-400">
+    <!-- 未選択 -->
+    <ArrowUpDown v-if="form.sort_by !== 'created_at'" class="w-4 h-4" />
+
+    <!-- 選択済み：昇順 -->
+    <ArrowUp
+      v-else-if="form.sort_dir === 'asc'"
+      class="w-4 h-4 text-slate-700"
+    />
+
+    <!-- 選択済み：降順 -->
+    <ArrowDown
+      v-else
+      class="w-4 h-4 text-slate-700"
+    />
+  </span>
+    </div>
+    <div class="text-right">操作</div>
+  </div>
+
+  <!-- BODY -->
+  <div class="divide-y divide-slate-100">
+
+    <div
+      v-for="upload in props.uploads.data"
+      :key="upload.id"
+      class="grid grid-cols-9 gap-3 px-5 py-4 items-center hover:bg-slate-50 transition"
+    >
+
+      <!-- name -->
+      <div class="text-sm font-medium text-slate-900">
+        {{ upload.member?.name ?? '-' }}
+      </div>
+
+      <!-- category -->
+      <div class="text-sm text-slate-600">
+        {{ upload.credit_category?.name ?? '-' }}
+      </div>
+
+      <!-- session -->
+      <div class="text-sm text-slate-600">
+        {{ upload.session ?? '-' }}
+      </div>
+
+      <!-- conference -->
+      <div class="text-sm text-slate-600 truncate max-w-[220px]" :title="upload.credit_conference?.name">
+        {{ upload.credit_conference?.name ?? '-' }}
+      </div>
+      <!-- role -->
+      <div class="text-sm text-slate-600">
+        {{ upload.credit_role?.role ?? '-' }}
+      </div>
+
+      <!-- pdf -->
+      <div>
+        <div @click="openPreview(upload.id)" class="cursor-pointer flex items-center gap-2">
+          <img
+            v-if="upload.thumbnail_url"
+            :src="upload.thumbnail_url"
+            class="w-10 h-10 object-contain border border-slate-200 rounded"
+          />
+          <span v-else class="text-xs text-slate-400">
+            {{ t('no_thumbnail') }}
+          </span>
+        </div>
+      </div>
+
+      <!-- status -->
+      <div>
+        <span
+          class="inline-flex px-2 py-1 text-xs rounded-md"
+          :class="{
+            'bg-yellow-50 text-yellow-700': upload.status==='pending',
+            'bg-emerald-50 text-emerald-700': upload.status==='approved',
+            'bg-red-50 text-red-700': upload.status==='rejected'
+          }"
+        >
+          {{ $t(upload.status) }}
+        </span>
+      </div>
+
+      <!-- date -->
+      <div class="text-sm text-slate-500">
+        {{ upload.updated_at ? dayjs(upload.updated_at).format('YYYY/MM/DD') : '-' }}
+      </div>
+
+      <!-- actions -->
+      <div class="text-right flex justify-end gap-3">
+
+        <button
+          v-if="upload.status==='pending'"
+          @click="approve(upload.id)"
+          class="text-sm text-emerald-600 hover:text-emerald-700"
+        >
+          承認
+        </button>
+
+        <button
+          v-if="upload.status==='pending'"
+          @click="openReject(upload)"
+          class="text-sm text-red-600 hover:text-red-700"
+        >
+          却下
+        </button>
+
+      </div>
+
+    </div>
+
+  </div>
+</div>
       <!-- ページネーション -->
       <Pagination :paginator="uploads" :onPageChange="goPage"/>
     </div>
@@ -209,8 +298,12 @@ import Pagination from '@/Components/Pagination.vue'
 import Modal from '@/Components/Modal.vue'
 import DialogModal from '@/Components/DialogModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
+import TextInput from '@/Components/TextInput.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
+import VueDatePicker from '@vuepic/vue-datepicker'
+import '@vuepic/vue-datepicker/dist/main.css';
+import { ja } from 'date-fns/locale'
 
 import axios from 'axios'
 import { Link, usePage, router } from '@inertiajs/vue3'
@@ -219,6 +312,7 @@ import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 
 import { PlusIcon, PencilIcon, TrashIcon, MagnifyingGlassIcon, DocumentPlusIcon, HandThumbUpIcon, HandThumbDownIcon} from '@heroicons/vue/24/outline'
+import { ArrowUp, ArrowDown, ArrowUpDown } from 'lucide-vue-next'
 
 const page = usePage()
 
@@ -226,20 +320,22 @@ const props = defineProps({
   uploads: Object,
   categories: Object,
   conferences: Object,
+  instructorcycles: Object,
   roles: Object,
   filters: Object,
 })
 
-console.log(props.uploads.data)
+console.log(props.filters)
 
 const { t } = useI18n()
-
 
 // フィルタフォーム
 const form = reactive({
   category_id: props.filters?.category_id ?? '',
   conference_id: props.filters?.conference_id ?? '',
   role_id: props.filters?.role_id ?? '',
+  end_date: props.filters?.end_date,
+  exam_round: props.filters?.exam_round ?? '',
   status: props.filters?.status,
   per_page: props.filters?.per_page,
   sort_by: props.filters?.sort_by ?? 'created_at',
@@ -323,6 +419,33 @@ const openPreview = (id) => {
   previewPdf.value = `/admin/pdf-uploads/${id}/view`
 }
 
+const dayClass = (date) => {
+  const day = date.getDay()
+
+  if (day === 0) return 'dp-sunday'
+  if (day === 6) return 'dp-saturday'
+
+  return ''
+}
+
 </script>
+<style>
+.dp-sunday {
+  color: red !important;
+}
+
+.dp-saturday {
+  color: blue !important;
+}
+/*
+.dp__input {
+  width: 100%;
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.375rem !important;
+  padding: 0.5rem 2.5rem 0.5rem 0.75rem !important;
+  min-height: 38px;
+}
+*/
+</style>
 
 

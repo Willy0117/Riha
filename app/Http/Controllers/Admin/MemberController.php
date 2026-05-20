@@ -398,5 +398,201 @@ logger()->error('BASE DIR DEBUG', [
         $imagick->destroy();
 
         return [$pdfRelativePath, $thumbnailRelativePath];
-    }    
+    }   
+    
+    public function export()
+    {
+
+        $handle = fopen('php://output', 'r+');
+
+        // Excel文字化け対策（BOM）
+        fwrite($handle, "\xEF\xBB\xBF");
+
+        // ヘッダー
+        fputcsv($handle, [
+            '外国人受入支援番号',
+            '会社名',
+            '代表者',
+            '代表者肩書・役職',
+            '郵便番号',
+            '所在地１（都道府県・市区町村名・番地）',
+            '所在地２（建物ビル名）',
+            '電話',
+            'FAX',
+            '携帯番号',
+            'E-mail',
+            '加入年月日',
+            '退会年月日',
+            '外国人会費請求日',
+            '外国人会費入金日',
+            '外国人会費入金額',
+            '備考',
+            '顧客地域',
+            '会社名フリガナ',
+            '代表者フリガナ',
+            '申込担当者',
+            '指定郵送先郵便番号',
+            '指定郵送先住所1（都道府県・市区町村名・番地）',
+            '指定郵送先住所2',
+            '指定郵送先電話番号',
+            '指定郵送先FAX',
+            '指定郵送先携帯番号',
+            '指定郵送先担当者',
+            '代理申込名前',
+            '代理申込電話番号',
+            '代理申込住所',
+            '代理申込担当者',
+            '代理申込電話',
+            '代理申込FAX',
+            '代理申込メール',
+            '口座振替銀行名',
+            '口座振替銀行コード',
+            '口座振替支店名',
+            '口座振替支店コード',
+            '口座振替口座種別',
+            '口座振替口座番号',
+            '口座振替口座名義人',
+            '口座振替口座名義フリガナ',
+            'ｱﾌﾟﾗｽ口振依頼書顧客番号',
+            'JAC認定番号',
+        ]);
+
+        $members = Member::with(['corp', 'mail', 'agent', 'bankAccount', 'region','invoice'])->get();
+
+        foreach ($members as $member) {
+
+            $corp  = $member->corp;
+            $mail  = $member->mail;
+            $agent = $member->agent;
+
+            // ===== 住所結合 =====
+            $corpAddress = trim(
+                ($corp->address1 ?? '') .
+                ($corp->address2 ?? '') .
+                ($corp->address3 ?? '')
+            );
+
+            $mailAddress = trim(
+                ($mail->address1 ?? '') .
+                ($mail->address2 ?? '')
+            );
+
+            $agentAddress = trim(
+                ($agent->address1 ?? '') .
+                ($agent->address2 ?? '') .
+                ($agent->address3 ?? '')
+            );
+
+            // ===== 氏名結合 =====
+            $corpRepresentative = trim(
+                ($corp->last_name ?? '') . ' ' .
+                ($corp->first_name ?? '')
+            );
+
+            $agentName = trim(
+                ($agent->last_name ?? '') . ' ' .
+                ($agent->first_name ?? '')
+            );
+
+            // ===== 会費（最新1件想定）=====
+            $invoice = $member->invoice;
+
+            fputcsv($handle, [
+                // 外国人受入支援番号
+                $member->number,
+                // 会社名
+                $corp->name ?? '',
+                // 代表者
+                $corpRepresentative,
+                // 代表者肩書
+                $corp->position ?? '',
+                // 郵便番号
+                $corp->postal_code ?? '',
+                // 所在地1（統合）
+                $corpAddress,
+                // 所在地2（今回は分けないので空）
+                '',
+                // 電話
+                $corp->tel ?? '',
+
+                // FAX
+                $corp->fax ?? '',
+
+                // 携帯番号
+                $corp->mobile ?? '',
+
+                // E-mail
+                $corp->email ?? '',
+
+                // 加入年月日
+                optional($member->joined_at)?->format('Y-m-d'),
+
+                // 退会年月日
+                optional($member->withdrawn_at)?->format('Y-m-d'),
+
+                // 外国人会費請求日
+                optional($invoice)->issued_at?->format('Y-m-d'),
+
+                // 外国人会費入金日
+                optional($invoice)->paid_at?->format('Y-m-d'),
+
+                // 外国人会費入金額
+                $invoice->amount ?? '',
+
+                // 備考（organizations.noteではなくmemberに無いので空）
+                '',
+
+                // 顧客地域
+                optional($member->region)->name ?? '',
+
+                // 会社名フリガナ
+                $corp->name_kana ?? '',
+
+                // 代表者フリガナ（member側）
+                trim(($member->last_name_kana ?? '') . ' ' . ($member->first_name_kana ?? '')),
+
+                // 申込担当者
+                '',
+
+                // ===== 指定郵送先（type=2）=====
+                $mail->postal_code ?? '',
+                $mailAddress,
+                $mail->address3 ?? '',
+                $mail->tel ?? '',
+                $mail->fax ?? '',
+                $mail->mobile ?? '',
+                trim(($mail->last_name ?? '') . ' ' . ($mail->first_name ?? '')),
+
+                // ===== 代理申込（type=3）=====
+                $agentName,
+                $agent->tel ?? '',
+                $agentAddress,
+                trim(($agent->last_name ?? '') . ' ' . ($agent->first_name ?? '')),
+                $agent->tel ?? '',
+                $agent->fax ?? '',
+                $agent->email ?? '',
+
+                // ===== 口座 =====
+                optional($member->bankAccount)->bank_name ?? '',
+                optional($member->bankAccount)->bank_code ?? '',
+                optional($member->bankAccount)->branch_name ?? '',
+                optional($member->bankAccount)->branch_code ?? '',
+                optional($member->bankAccount)->account_type ?? '',
+                optional($member->bankAccount)->account_no ?? '',
+                optional($member->bankAccount)->account_name ?? '',
+                optional($member->bankAccount)->account_kana ?? '',
+
+                // 追加
+                $member->aplus_customer_no ?? '',
+                $member->jac_certification_no ?? '',
+            ]);
+        }
+        rewind($handle);
+
+        return response()->streamDownload(function () use ($handle) {
+            fpassthru($handle);
+        }, 'members.csv', [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+        ]);
+    } 
 }

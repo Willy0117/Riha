@@ -56,13 +56,13 @@
 
         <!-- Tenant -->
         <div v-if="isSuperAdmin">
-          <InputLabel for="tenant_id" :value="t('tenant')" />
+          <InputLabel for="tenant_id" :value="t('users.tenant')" />
           <select
             id="tenant_id"
             v-model="form.tenant_id"
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
           >
-            <option value="" >{{ t('select_tenant') }}</option>
+            <option value="" >{{ t('users.select_tenant') }}</option>
             <option v-for="tenant in tenants" :key="tenant.id" :value="tenant.id">
               {{ tenant.name }}
             </option>
@@ -72,13 +72,13 @@
 
         <!-- Role -->
         <div>
-          <InputLabel for="role_id" :value="t('role')" />
+          <InputLabel for="role_id" :value="t('users.role')" />
           <select
             id="role_id"
             v-model="form.role_id"
             class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
           >
-            <option value="" >{{ t('select_role') }}</option>
+            <option value="" >{{ t('users.select_role') }}</option>
             <option v-for="role in roles" :key="role.id" :value="role.id">
               {{ role.name }} - {{ role.tenant_name }}
             </option>

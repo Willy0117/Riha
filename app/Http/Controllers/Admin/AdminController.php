@@ -85,16 +85,20 @@ class AdminController extends Controller
     {
         $currentUser = auth('admin')->user();
 
-        $roles = $currentUser->hasRole('super_admin')
-            ? Role::all()
-            : Role::where('tenant_id', $currentUser->tenant_id)->get();
-
         $tenants = Tenant::all()->keyBy('id');
 
-        $roles = $roles->map(function($role) use ($tenants) {
+        $roles = $currentUser->hasRole('super_admin', 'admin')
+            ? Role::where('guard_name', 'admin')->get()
+            : Role::where('tenant_id', $currentUser->tenant_id)
+                ->where('guard_name', 'web')
+                ->get();
+
+        // tenant 名をマッピング
+        $roles = $roles->map(function ($role) use ($tenants) {
             $role->tenant_name = $role->tenant_id
                 ? ($tenants[$role->tenant_id]->name ?? '(Global)')
                 : '(Global)';
+
             return $role;
         });
 
@@ -146,11 +150,11 @@ class AdminController extends Controller
 
         $rolesQuery = Role::where('guard_name', 'admin');
 
+        $tenants = Tenant::all()->keyBy('id');
+
         $roles = $currentUser->hasRole('super_admin', 'admin')
             ? $rolesQuery->get()
             : $rolesQuery->where('tenant_id', $currentUser->tenant_id)->get();
-
-        $tenants = Tenant::all()->keyBy('id');
 
         $roles = $roles->map(function ($role) use ($tenants) {
             $role->tenant_name = $role->tenant_id

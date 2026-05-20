@@ -1486,7 +1486,6 @@ watch(
   ],
   () => {
     // ===== 口座名義（フリガナ） =====
-    // ===== 口座名義（フリガナ） =====
     const prefixKana = getCompanyTypeKana(form.company_type_prefix)
     const suffixKana = getCompanyTypeKana(form.company_type_suffix)
 
