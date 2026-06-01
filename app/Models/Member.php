@@ -64,6 +64,10 @@ class Member extends Model
     {
         return $this->hasMany(MemberRole::class);
     }
+    public function annualFees()
+    {
+        return $this->hasMany(AnnualFee::class);
+    }
     /* =====================
      |  表示用ラベル
      * ===================== */

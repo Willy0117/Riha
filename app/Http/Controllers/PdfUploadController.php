@@ -11,6 +11,7 @@ use App\Models\AnnualFee;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Http;
 use App\Services\FileService;
 use App\Services\PdfService;
 
@@ -78,46 +79,134 @@ class PdfUploadController extends Controller
     public function store(Request $request, FileService $fileService)
     {
         $request->validate([
-            'file' => 'required|mimes:pdf|max:10240',
+            'file' => 'required|mimes:pdf,png,jpeg,jpg|max:10240',
             'credit_category_id' => 'required|exists:credit_categories,id',
             'credit_conference_id' => 'required|exists:credit_conferences,id',
             'role_id' => 'required|exists:credit_role_points,id',
             'session' => 'nullable|string|max:50',
+            'issued_date' => 'required|date',
         ]);
 
         $user = Auth::user();
-        
-        // サムネイル生成
+
         try {
+            [$file_path, $thumbnail_path] = $fileService->storeUploadedFile(
+                $request->file('file'),
+                'pdf_uploads'
+            );
 
-            [$file_path, $thumbnail_path] =
-                $fileService->storeUploadedFile(
-                    $request->file('file'),
-                    'pdf_uploads'
-                );
-
-            // role_id でポイントを取得
             $role = CreditRolePoint::find($request->role_id);
+            $conference = CreditConference::find($request->credit_conference_id);
             $points = $role ? $role->points : 0;
 
-            $upload = PdfUpload::create([
-                'member_id' => $user->member_id,
-                'file_path' => $file_path,
-                'thumbnail_path' => $thumbnail_path,
-                'credit_category_id' => $request->credit_category_id,
-                'credit_conference_id' => $request->credit_conference_id,
-                'credit_role_id' => $request->role_id,
-                'session' => $request->session ?? '',
-                'points' => $points,
-                'status' => 'pending',
+            $verificationResult = $this->verifyPdfWithGemini(
+                $request->file('file'),
+                [
+                    'date'        => $request->issued_date,
+                    'conference'  => $conference?->name,
+                    'role'        => $role?->role,
+                    'member_name' => $user->name,
+                ]
+            );
+
+            PdfUpload::create([
+                'member_id'           => $user->member_id,
+                'file_path'           => $file_path,
+                'thumbnail_path'      => $thumbnail_path,
+                'credit_category_id'  => $request->credit_category_id,
+                'credit_conference_id'=> $request->credit_conference_id,
+                'credit_role_id'      => $request->role_id,
+                'session'             => $request->session ?? '',
+                'points'              => $points,
+                'issued_date'         => $request->issued_date,
+                'status'              => 'pending',
+                'ai_verification'     => json_encode($verificationResult),
             ]);
-            return back()->with('success', __('PDF uploaded successfully.'));
+
+            $warnings = [];
+            if (!($verificationResult['date_match'] ?? true)) {
+                $warnings[] = "日付が一致していません。PDFには「{$verificationResult['pdf_date']}」と記載されています。";
+            }
+            if (!($verificationResult['conference_match'] ?? true)) {
+                $warnings[] = "学会名が一致していません。PDFには「{$verificationResult['pdf_conference']}」と記載されています。";
+            }
+            if (!($verificationResult['role_match'] ?? true)) {
+                $warnings[] = "参加種別が一致していません。PDFには「{$verificationResult['pdf_role']}」と記載されています。";
+            }
+            if (!($verificationResult['name_match'] ?? true)) {
+                $warnings[] = "氏名が一致していません。PDFには「{$verificationResult['pdf_name']}」と記載されています。";
+            }
+
+            return back()->with([
+                'success'  => __('PDF uploaded successfully.'),
+                'warnings' => $warnings,
+            ]);
+
         } catch (\Exception $e) {
-            \Log::error('Thumbnail generation failed: ' . $e->getMessage());
+            \Log::error('Upload failed: ' . $e->getMessage());
             return back()->with('error', __('PDF upload failed.'));
         }
     }
 
+    private function verifyPdfWithGemini($file, array $inputData): array
+    {
+        $base64 = base64_encode(file_get_contents($file->path()));
+        $mimeType = $file->getMimeType();
+
+        $prompt = <<<EOT
+    このファイルから以下の情報を抽出し、入力データと照合してください。
+    結果はJSON形式のみで返してください。余分なテキストは不要です。
+
+    入力データ：
+    - 日付: {$inputData['date']}
+    - 学会名: {$inputData['conference']}
+    - 参加種別: {$inputData['role']}
+    - 氏名: {$inputData['member_name']}
+
+    以下のJSON形式で返してください：
+    {
+    "date_match": true/false,
+    "conference_match": true/false,
+    "role_match": true/false,
+    "name_match": true/false,
+    "pdf_date": "ファイルに記載の日付",
+    "pdf_conference": "ファイルに記載の学会名",
+    "pdf_role": "ファイルに記載の参加種別",
+    "pdf_name": "ファイルに記載の氏名",
+    "notes": "特記事項があれば"
+    }
+    EOT;
+
+        try {
+            $response = Http::post(
+                'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=' . env('GEMINI_API_KEY'),
+                [
+                    'contents' => [[
+                        'parts' => [
+                            [
+                                'inline_data' => [
+                                    'mime_type' => $mimeType,
+                                    'data'      => $base64,
+                                ],
+                            ],
+                            [
+                                'text' => $prompt,
+                            ],
+                        ],
+                    ]],
+                ]
+            );
+
+            $content = $response->json('candidates.0.content.parts.0.text');
+            $content = preg_replace('/```json|```/', '', $content);
+
+            return json_decode(trim($content), true) ?? ['error' => 'parse failed'];
+
+        } catch (\Exception $e) {
+            \Log::error('Gemini API error: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
+        }
+    }
 
     public function create() 
     {
@@ -164,8 +253,15 @@ class PdfUploadController extends Controller
         $total = $uploads->sum('points');
 
         $fees = AnnualFee::where('member_id', $user->member_id)
-            ->whereBetween('fiscal_year', [now()->year - 4, now()->year])
+            ->whereBetween('fiscal_year', [
+                date('Y', strtotime($cycle->start_date)),
+                date('Y', strtotime($cycle->end_date)),
+            ])
             ->get();
+
+        $annualFeeStatus = $fees
+            ->filter(fn($f) => $f->annual_fee > 0)
+            ->every(fn($f) => $f->status === 'paid');
 
         $totalFee = $fees->sum(fn($f) => $f->annual_fee + $f->renewal_fee);
         $totalPaid = $fees->sum('payment_amount');
@@ -214,7 +310,10 @@ class PdfUploadController extends Controller
             'totalFee' => $totalFee,
             'totalPaid' => $totalPaid,
             'isFeeOk' => $isFeeOk,
+            'requiredUnits' => 50,
             'conference_count' => $conference_count,
+            'fees' => $fees,
+            'annualFeeStatus' => $annualFeeStatus,  
         ]);
     }
 

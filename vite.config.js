@@ -13,12 +13,13 @@ export default defineConfig({
     build: {
         minify: false,
         reportCompressedSize: false,
-        sourcemap: true,
+        sourcemap: false,
         rollupOptions: {
-        // 不要な chunk 分割を抑える
-        output: {
-            manualChunks: undefined,
-        },
+            output: {
+                manualChunks: {
+                    'lucide': ['lucide-vue-next'],
+                }
+            }
         },
     },
     server: {

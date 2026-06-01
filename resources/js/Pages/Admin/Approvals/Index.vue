@@ -2,10 +2,11 @@
   <AppLayout>
     <template #header>
         <div>
-          <h2 class="text-2xl font-bold text-gray-800">事務局ポータル</h2>
+          <h3 class="text-2xl font-bold text-gray-800 flex items-center gap-2"><BadgeCheck class="w-5 h-5" />審査員ポータル</h3>
           <p class="text-xs text-gray-500 mt-1">申請者の提出書類を確認し、審査を行います。</p>
         </div>
     </template>
+
     <div class="p-6">
       <!-- per_page + add -->
       <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
@@ -31,30 +32,14 @@
           <span>{{ t('update_selected') }}</span>
         </button>
       </div>
-            <!-- ページヘッダー -->
-
       <!-- テーブルカード -->
       <div class="table-card">
         <div class="table-header">
           <div class="table-header-left">
             <h2 class="table-title">申請者一覧</h2>
-            <p class="table-desc">納入状況の更新と更新対象者の設定</p>
+            <p class="table-desc"></p>
           </div>
           <div class="table-controls">
-            <button
-              class="btn btn-danger-outline"
-              :disabled="selectedIds.length === 0"
-              @click="handleDeleteSelected"
-            >
-              選択した申請者を削除 ({{ selectedIds.length }}名)
-            </button>
-            <div class="filter-select-wrapper">
-              <span class="filter-icon">▼</span>
-              <select v-model="filterYear" class="filter-select">
-                <option value="">更新予定年（すべて）</option>
-                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年</option>
-              </select>
-            </div>
             <div class="search-wrapper">
               <span class="search-icon">🔍</span>
               <input
@@ -81,12 +66,12 @@
                 </th>
                 <th>会員番号</th>
                 <th>{{ t('name') }}</th>
-                <th>取得年</th>
-                <th>更新予定年</th>
-                <th>年会費</th>
-                <th>更新料</th>
+                <th>申請日</th>
                 <th>現在の単位</th>
+                <th>書類状況</th>
+                <th>年会費</th>
                 <th>本申請ステータス</th>
+                <th>審査</th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -113,8 +98,20 @@
                 </td>
                 <td>{{ member.code }}</td>
                 <td>{{ member.name }}</td>
-                <td>{{ member.update_cycles[0]?.start_date ? new Date(member.update_cycles[0].start_date).getFullYear() : '-' }}年</td>
-                <td>{{ member.update_cycles[0]?.renewal_start_date ? new Date(member.update_cycles[0].renewal_start_date).getFullYear() : '-' }}年</td>
+                <td>{{ dayjs(member.update_cycles[0]?.updated_at).format('YYYY年MM月DD日') }}</td>
+                <td class="text-center">{{ member.update_cycles[0]?.total_points ?? '-' }} 単位</td>
+                <td class="text-center">
+                  <span
+                    :class="[
+                      'px-3 py-1 rounded-full text-xs font-semibold border',
+                      member.update_cycles[0]?.pending_count > 0
+                        ? 'bg-yellow-50 text-yellow-600 border-yellow-400'
+                        : 'bg-green-50 text-green-600 border-green-400'
+                    ]"
+                  >
+                    未審査 {{ member.update_cycles[0]?.pending_count ?? 0 }} 件
+                  </span>
+                </td>
                 <!-- 年会費 -->
                 <td>
                   <span class="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full w-fit"
@@ -124,27 +121,31 @@
                     {{ getAnnualFeeStatus(member) }}
                   </span>
                 </td>
-                <!-- 更新料 -->
-                <td>
-                  <span class="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full w-fit"
-                    :class="getRenewalClass(member)">
-                    <CheckCircle2 v-if="getRenewalStatus(member) === '納入済'" class="w-3 h-3" />
-                    <XCircle v-else class="w-3 h-3" />
-                    {{ getRenewalStatus(member) }}
-                  </span>
-                </td>
-                <td class="text-center">{{ member.update_cycles[0]?.total_points ?? '-' }} / 50</td>
                 <td>
                   <span :class="['status-badge', statusClass(member.update_cycles[0]?.status)]">
                     {{ statusLabel(member.update_cycles[0]?.status) }}
                   </span>
                 </td>
+                <td class="text-center">
+                  <button
+                    :disabled="!(member.update_cycles[0]?.total_points >= 50 && getAnnualFeeStatus(member) === '納入済')"
+                    :class="[
+                      'px-4 py-1 rounded text-xs font-semibold transition',
+                      member.update_cycles[0]?.total_points >= 50 && getAnnualFeeStatus(member) === '納入済'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                    ]"
+                    @click="openReviewModal(member)"
+                  >
+                    <BadgeCheck class="inline w-4 h-4" /> 審査 
+                  </button>
+                </td>
                 <td class="border px-3 py-2">
                   <Link
-                    :href="route('admin.instructorMembers.show', member.id)"
-                    class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
+                    :href="route('admin.approvals.show', member.id)"
+                    class="px-3 py-1 text-blue-600 rounded hover:text-blue-700 text-xs"
                   >
-                    {{ t('edit') }}
+                    詳細 <ChevronRight class="inline w-4 h-4" />
                   </Link>
                 </td>
               </tr>
@@ -215,7 +216,8 @@ import DialogModal from '@/Components/DialogModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { BadgeCheck, CheckCircle2, XCircle } from 'lucide-vue-next'
+import { BadgeCheck, CheckCircle2, XCircle, ChevronRight, Users } from 'lucide-vue-next'
+import dayjs from 'dayjs'
 
 const { t } = useI18n()
 
@@ -226,6 +228,8 @@ const props = defineProps({
   members: Object, // 👈 paginator オブジェクトに変更
   filters: Object, // { search: "" }
 })
+
+console.log(props.members)
 
 const form = reactive({
   name: props.filters.name,
@@ -325,7 +329,7 @@ const statusLabel = (status) => {
     'updated':       '更新済',
     'before_update': '未更新',
     'no_update':     '更新しない',
-    'pending':       '本申請中',
+    'pending':       '本申請済み',
   }
   return map[status] ?? '-'
 }
@@ -421,24 +425,17 @@ const yearOptions = [2024, 2025, 2026, 2027]
 const statusClass = (status) => {
   const map = {
     'updated':       'bg-green-50 text-green-600 font-semibold',
-    'before_update': 'bg-blue-50 text-blue-600 font-semibold',
+    'before_update': 'bg-yellow-50 text-yellow-600 font-semibold',
     'no_update':     'bg-gray-100 text-gray-600',
-    'pending':       'bg-yellow-50 text-yellow-600',
+    'pending':       'bg-blue-50 text-blue-600',
   }
   return map[status] ?? 'bg-gray-100 text-gray-600'
 }
 
-// --- アクション ---
-const handleImport = () => alert('会員情報インポート (SMOOSY)')
-const handlePaymentSync = () => alert('入金データ同期 (SMOOSY)')
-const handleExport = () => alert('審査完了者リスト出力 (SMOOSY)')
-const handleDeleteSelected = () => {
-  if (confirm(`選択した ${selectedIds.value.length} 名を削除しますか？`)) {
-    members.value = members.value.filter((m) => !selectedIds.value.includes(m.id))
-    selectedIds.value = []
-  }
+const approve = (member) => {
+  if (!confirm('承認してよろしいですか？')) return
+  // 後からAPI処理を追加
 }
-const handleEdit = (member) => alert(`編集: ${member.name}`)
 
 </script>
 <style scoped>

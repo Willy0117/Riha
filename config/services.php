@@ -39,5 +39,9 @@ return [
         'base_url' => env('BANKCODEJP_API_BASE_URL'),
         'api_key' => env('BANKCODEJP_API_KEY'),
     ],
+    
+    'gemini' => [
+        'key' => env('GEMINI_API_KEY'),
+    ],
 
 ];

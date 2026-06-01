@@ -17,7 +17,11 @@
           />
           <p v-if="errors.name" class="text-red-500 text-sm mt-1">{{ errors.name }}</p>
         </div>
-
+        <select v-model="form.guard_name">
+            <option value="admin">管理者</option>
+            <option value="web">会員</option>
+        </select>
+          <p v-if="errors.gurad_name" class="text-red-500 text-sm mt-1">{{ errors.guard_name }}</p>
         <!-- Permissions MultiSelect -->
         <div>
           <label class="block mb-1 font-medium">{{ t('permissions.permission') }}</label>
@@ -80,6 +84,7 @@ const { t } = useI18n()
 // 初期フォーム値
 const form = reactive({
   name: props.role?.name || '',
+  guard_name: props.role?.guard_name || '',
   permissions: props.role?.permissions?.map(p => p.id) || [],
 })
 

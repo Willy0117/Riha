@@ -170,6 +170,31 @@
 
     </div>
 
+    <div class="flex items-center justify-between p-4 bg-white rounded-lg shadow-sm border border-gray-200">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full border-2 border-gray-300 flex items-center justify-center text-gray-400">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+          </svg>
+        </div>
+        <div>
+          <p class="font-semibold text-gray-800">審査の最終確認</p>
+          <p class="text-sm text-gray-500">すべての提出書類が「承認済み」になると完了ボタンが有効になります。</p>
+        </div>
+      </div>
+      <button
+        :disabled="!allApproved"
+        :class="[
+          'px-6 py-2 rounded-lg text-sm font-semibold transition',
+          allApproved
+            ? 'bg-blue-600 text-white hover:bg-blue-700'
+            : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+        ]"
+      >
+        審査を完了として確定する
+      </button>
+    </div>
+
     <!-- PDFプレビューDialog -->
     <Dialog :open="!!previewPdf" @update:open="previewPdf = null">
       <DialogContent class="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col">
@@ -193,7 +218,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -285,11 +310,16 @@ const handleReject = (upload) => {
 }
 
 const backToIndex = () => {
-  router.get(route('admin.instructorMembers.index'), {
+  router.get(route('admin.approvals.index'), {
     search: filters?.search ?? '',
     page: filters?.page ?? 1,
   })
 }
+
+const allApproved = computed(() => 
+  uploads?.every(upload => upload.status === 'approved') ?? false
+)
+
 </script>
 
 <style>

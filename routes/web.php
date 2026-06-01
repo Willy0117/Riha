@@ -11,6 +11,7 @@ use App\Http\Controllers\SetLocaleController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\MemberController as AdminMemberController;
 use App\Http\Controllers\Admin\InstructorMemberController as AdminInstructorMemberController;
+use App\Http\Controllers\Admin\ApprovalController as AdminApprovalController;
 use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationController;
 use App\Http\Controllers\Admin\AnnualFeeController as AdminAnnualFeeController;
 use App\Http\Controllers\Admin\PdfUploadController as AdminPdfUploadController;
@@ -113,6 +114,12 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('pdf-uploads/{pdf}/reject', [AdminPdfUploadController::class, 'reject'])->name('pdf-uploads.reject');
         Route::get('pdf-uploads/{pdf}/view', [AdminPdfUploadController::class, 'view'])->name('pdf-uploads.view');
         Route::get('pdf-uploads/{pdf}/thumbnail', [AdminPdfUploadController::class, 'thumbnail'])->name('pdf-uploads.thumbnail');
+        // 指導士審査・承認
+        Route::get('approvals', [AdminApprovalController::class, 'index'])
+            ->name('approvals.index');
+        // 指導士会員詳細（PDF一覧）
+        Route::get('approvals/{member}', [AdminApprovalController::class, 'show'])
+            ->name('approvals.show');
         // 指導士会員一覧
         Route::get('instructorMembers', [AdminInstructorMemberController::class, 'index'])
             ->name('instructorMembers.index');

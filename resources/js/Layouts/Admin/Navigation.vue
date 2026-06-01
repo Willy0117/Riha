@@ -6,10 +6,10 @@
       class="lg:hidden p-2 rounded-full hover:bg-gray-200"
     >
       <template v-if="mobileOpen">
-        <XMarkIcon class="w-5 h-5 text-gray-600" />
+        <X class="w-5 h-5 text-gray-600" />
       </template>
       <template v-else>
-        <Bars3Icon class="w-5 h-5 text-gray-600" />
+        <Menu class="w-5 h-5 text-gray-600" />
       </template>
     </button>
 
@@ -22,20 +22,31 @@
         'fixed top-0 lg:relative lg:left-0 h-screen'
       ]"
     >
-      <!-- PC折りたたみボタン -->
-      <div class="flex justify-end p-2 flex-none lg:flex">
-        <button
-          @click="toggleCollapse"
-          class="p-2 rounded-full hover:bg-gray-200"
-        >
-          <template v-if="collapsed">
-            <Bars3Icon class="w-5 h-5 text-gray-600" />
-          </template>
-          <template v-else>
-            <XMarkIcon class="w-5 h-5 text-gray-600" />
-          </template>
-        </button>
+    <!-- 開いている時 -->
+    <div v-if="!collapsed" class="flex items-center justify-between p-2 border-b border-gray-200">
+      <div class="flex items-center gap-2">
+        <div class="logo-icon">JS</div>
+        <div class="overflow-hidden">
+          <span class="block text-xs font-bold text-gray-800 leading-tight truncate">
+            指導士資格更新システム
+          </span>
+          <span class="block text-gray-400 tracking-widest truncate" style="font-size:9px">
+            RENEWAL MANAGEMENT SYSTEM
+          </span>
+        </div>
       </div>
+      <button @click="toggleCollapse" class="p-2 rounded-full hover:bg-gray-200 flex-none">
+        <XMarkIcon class="w-5 h-5 text-gray-600" />
+      </button>
+    </div>
+
+    <!-- 閉じている時 -->
+    <div v-else class="flex flex-col items-center py-2 border-b border-gray-200 gap-1">
+      <div class="logo-icon">JS</div>
+      <button @click="toggleCollapse" class="p-2 rounded-full hover:bg-gray-200">
+        <Menu class="w-5 h-5 text-gray-600" />
+      </button>
+    </div>
 
     <!-- メニュー -->
     <nav class="flex-1 overflow-y-auto px-2 py-4 text-sm">
@@ -45,7 +56,7 @@
         class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         :class="isActive('dashboard') ? 'bg-gray-300 font-semibold' : ''"
       >
-        <HomeIcon class="w-5 h-5"/>
+        <Home class="w-5 h-5"/>
         <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
       </Link>
       <div class="mt-2">
@@ -54,7 +65,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
+            <Users class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('member') }}</span>
           </div>
           <svg
@@ -77,7 +88,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
               :class="isActive('admin.members.index') ? 'bg-gray-200 font-semibold' : ''"
             >
-              <UserIcon class="w-4 h-4 mr-1"/>
+              <Users class="w-4 h-4 mr-1"/>
               {{ t('member') }}
             </Link>
           </div>
@@ -91,7 +102,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
+            <GraduationCap class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('指導士資格認定') }}</span>
           </div>
           <svg
@@ -113,7 +124,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
               :class="isActive('exams.index') ? 'bg-gray-300 font-semibold' : ''"
             >
-              <UsersIcon class="w-5 h-5"/>
+              <GraduationCap class="w-5 h-5"/>
               <span v-if="!collapsed" class="ml-2">{{ t('exams.application') }}</span>
             </Link>
             <!-- Link
@@ -127,7 +138,43 @@
 
           </div>
         </transition>
-      </div>   
+      </div>
+            <!-- 指導士認定更新 -->
+      <div class="mt-2">
+        <button
+          @click="toggleSubMenu('approval')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <CheckCircle2 class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">審査員ポータル</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'approval' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'approval' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.approvals.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+              :class="isActive('approvals.index') ? 'bg-gray-300 font-semibold' : ''"
+            >
+              <CheckCircle2 class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('指導士更新承認') }}</span>
+            </Link>
+
+          </div>
+        </transition>
+      </div>     
       <!-- 指導士認定更新 -->
       <div class="mt-2">
         <button
@@ -135,7 +182,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
+            <RefreshCw class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('指導士認定更新') }}</span>
           </div>
           <svg
@@ -166,7 +213,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
               :class="isActive('admin.pdf-uploads.index') ? 'bg-gray-300 font-semibold' : ''"
             >
-              <UsersIcon class="w-5 h-5"/>
+              <FileText class="w-5 h-5"/>
               <span v-if="!collapsed" class="ml-2">{{ t('単位取得申請') }}</span>
             </Link>
 
@@ -218,7 +265,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <DocumentCurrencyYenIcon class="w-5 h-5"/>
+            <Calendar class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('annual_fees.annual_fee') }}</span>
           </div>
           <svg
@@ -238,7 +285,7 @@
             <Link :href="route('admin.annual-fees.index')"
                   class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
                   :class="isActive('admin.annual-fees') ? 'bg-gray-300 font-semibold' : ''">
-              <DocumentCurrencyYenIcon class="w-5 h-5"/>
+              <Calendar class="w-5 h-5"/>
               <span v-if="!collapsed" class="ml-2">{{ t('annual_fees.annual_fee') }}</span>
             </Link>
           </div>
@@ -252,7 +299,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <ShieldCheckIcon class="w-5 h-5"/>
+            <ShieldCheck class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('access_control') }}</span>
           </div>
           <svg
@@ -304,7 +351,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
+            <Users class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('admin') }}</span>
           </div>
           <svg
@@ -327,7 +374,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
               :class="isActive('admin.admins.index') ? 'bg-gray-200 font-semibold' : ''"
             >
-              <UserIcon class="w-4 h-4 mr-1"/>
+              <Users class="w-4 h-4 mr-1"/>
               {{ t('admin') }}
             </Link>
           </div>
@@ -340,7 +387,7 @@
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
-            <UsersIcon class="w-5 h-5"/>
+            <Users class="w-5 h-5"/>
             <span v-if="!collapsed" class="ml-2">{{ t('user') }}</span>
           </div>
           <svg
@@ -363,7 +410,7 @@
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
               :class="isActive('admin.users.index') ? 'bg-gray-200 font-semibold' : ''"
             >
-              <UserIcon class="w-4 h-4 mr-1"/>
+              <User class="w-4 h-4 mr-1"/>
               {{ t('user') }}
             </Link>
           </div>
@@ -384,14 +431,23 @@
 <script setup>
 import { ref, onMounted, watch } from 'vue'
 import { Link, usePage } from '@inertiajs/vue3'
+
 import {
-  HomeIcon, DocumentCurrencyYenIcon,
-  UsersIcon, UserIcon,
-  ShieldCheckIcon,
-  BuildingOfficeIcon,
-  ServerIcon,Bars3Icon, XMarkIcon, ArrowUturnLeftIcon,
-  TicketIcon,UserPlusIcon, UserMinusIcon, ArrowRightIcon
-} from '@heroicons/vue/24/outline'
+  Home,
+  Users,
+  User,
+  ShieldCheck,
+  Building2,
+  Menu,
+  X,
+  GraduationCap,
+  FileCheck,
+  RefreshCw,
+  FileText,
+  Calendar,
+  CheckCircle2,
+  ArrowLeft
+} from 'lucide-vue-next'
 
 const page = usePage()
 
@@ -405,6 +461,17 @@ const toggleCollapse = () => (collapsed.value = !collapsed.value)
 
 const { props } = usePage()
 
+console.log(props)
+console.log(props.auth)
+console.log(props.auth.user)
+
+const roles = props.auth?.user?.roles ?? []
+const permissions = props.auth?.user?.permissions ?? []
+
+const hasRole = (role) => roles.includes(role)
+
+const can = (permission) => permissions.includes(permission)
+
 const user = props.auth.admin ?? props.auth.user
 
 // i18n
@@ -414,7 +481,6 @@ const { t } = useI18n()
 const isActive = (routeName) => false
 const hasApiFeatures = true
 const showAccessControl = true
-const can = (permission) => true
 
 // 例外マッピング
 const groupMap = {
@@ -489,6 +555,19 @@ onMounted(() => {
 </script>
 
 <style>
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   transition: all 0.2s ease;

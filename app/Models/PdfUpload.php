@@ -20,6 +20,7 @@ class PdfUpload extends Model
         'points',
         'status',
         'rejection_message',
+        'issued_date',
     ];
 
     public function member() { return $this->belongsTo(Member::class); }

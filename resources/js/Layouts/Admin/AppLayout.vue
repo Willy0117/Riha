@@ -8,7 +8,15 @@
     <div class="flex-1 flex flex-col">
       <!-- ヘッダー -->
       <header class="bg-white shadow flex items-center justify-between px-4 h-16">
-        <div v-if="$slots.header" class="text-lg font-semibold">
+        <!-- ロゴ（左端に追加） -->
+        <div class="flex items-center gap-3 flex-none">
+          <div class="logo-icon">JS</div>
+          <div class="leading-tight">
+            <span class="block text-sm font-bold text-gray-800">指導士資格更新システム</span>
+            <span class="block text-gray-400 tracking-widest" style="font-size:9px">RENEWAL MANAGEMENT SYSTEM</span>
+          </div>
+        </div>
+        <div v-if="$slots.header">
           <slot name="header" />
         </div>
 
@@ -19,7 +27,7 @@
               @click="open = !open"
               class="inline-flex justify-center w-full rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-sm font-medium text-gray-700 hover:bg-gray-50 focus:outline-none"
             >
-              <GlobeAltIcon class="w-5 h-5 mr-2" /> {{ t('language') }}
+              <Globe class="w-5 h-5 mr-2" /> {{ t('language') }}
               <svg
                 class="-mr-1 ml-2 h-5 w-5"
                 xmlns="http://www.w3.org/2000/svg"
@@ -57,7 +65,7 @@
               type="submit"
               class="flex items-center space-x-2 text-red-600 hover:text-red-800 font-medium bg-transparent p-0 m-0 border-0 cursor-pointer"
             >
-              <ArrowRightOnRectangleIcon class="w-5 h-5" />
+              <LogOut class="w-5 h-5" />
               <span>{{ t('logout') }}</span>
             </button>
           </form>
@@ -88,7 +96,7 @@ import LoadingOverlay from '@/Components/LoadingOverlay.vue'
 
 import { router, usePage } from '@inertiajs/vue3'
 import { ref } from 'vue'
-import { ArrowRightOnRectangleIcon, GlobeAltIcon } from '@heroicons/vue/24/outline'
+import { LogOut, Globe } from 'lucide-vue-next'
 import { useI18n } from 'vue-i18n'
 
 const { props } = usePage()
@@ -120,3 +128,18 @@ const changeLanguage = (lang) => {
   open.value = false
 }
 </script>
+<style scoped>
+.logo-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #fff;
+  font-weight: 800;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+</style>

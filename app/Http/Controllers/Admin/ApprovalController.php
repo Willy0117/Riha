@@ -7,7 +7,7 @@ use App\Models\Member;
 use App\Models\PdfUpload;
 use Illuminate\Http\Request;
 
-class InstructorMemberController extends Controller
+class ApprovalController extends Controller
 {
     // Index: 会員一覧
     public function index(Request $request)
@@ -15,31 +15,21 @@ class InstructorMemberController extends Controller
         $search = $request->search;
         $page = $request->page ?? 1;
         $per_page = $request->per_page ?? 20; 
-/*
+
         $query = Member::whereHas('user')
-            ->whereHas('updateCycles', function ($q) {
-                $q->where('status', 'pending');
-            })
+            ->whereHas('updateCycles', fn ($q) => $q->where('status', 'pending'))
             ->with([
-                'updateCycles' => function ($q) {
-                    $q->where('status', 'pending'); // ←ここ重要
-                },
-                'pdfUploads'
-            ]);
-*/
-        $query = Member::whereHas('user')
-            ->with([
-                'updateCycles',
+                'updateCycles' => fn ($q) => $q->where('status', 'pending'),
                 'pdfUploads',
-                'annualFees' 
+                'annualFees'
             ]);
+
         if (!empty($search)) {
             $query->where('name', 'like', "%{$search}%");
         }
 
         // ★ paginate にする（これが最重要）
         $members = $query->paginate($per_page)->through(function ($member) {
-
             // 各サイクルの集計
             $member->updateCycles->each(function($cycle) use ($member) {
 
@@ -51,6 +41,11 @@ class InstructorMemberController extends Controller
                     ->whereHas('creditRole', fn($q) => $q->where('role', '参加'))
                     ->count();
 
+                $cycle->pending_count = PdfUpload::where('member_id', $member->id)
+                    ->where('status', 'pending')
+                    ->whereBetween('issued_date', [$cycle->start_date, $cycle->end_date])
+                    ->count();
+
                 $cycle->total_points = PdfUpload::where('member_id', $member->id)
                     ->where('status', 'approved') // ←これだけ追加
                     ->whereBetween('issued_date', [$cycle->start_date, $cycle->end_date])
@@ -60,7 +55,7 @@ class InstructorMemberController extends Controller
             return $member;
         });
 
-        return inertia('Admin/InstructorMembers/Index', [
+        return inertia('Admin/Approvals/Index', [
             'members' => $members,
             'filters' => [
                 'search' => $search,
@@ -103,7 +98,7 @@ class InstructorMemberController extends Controller
                 ->sum('points');
         }
 
-        return inertia('Admin/InstructorMembers/Show', [
+        return inertia('Admin/Approvals/Show', [
             'member'  => $member,
             'uploads' => $member->pdfUploads,
             'filters' => [

@@ -87,7 +87,7 @@ import Toast from '@/Components/Toast.vue'
 import LoadingOverlay from '@/Components/LoadingOverlay.vue'
 
 import { router, usePage } from '@inertiajs/vue3'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 import { ArrowRightOnRectangleIcon, GlobeAltIcon } from '@heroicons/vue/24/outline'
 import { useI18n } from 'vue-i18n'
 
@@ -95,6 +95,15 @@ const { props } = usePage()
 const user = props.auth.user
 
 const { t, locale } = useI18n()
+
+watch(
+  () => props.flash,
+  (val) => {
+    console.log('flash:', val)
+  },
+  { deep: true }
+)
+
 
 const logout = () => {
   router.post(route('logout'))
