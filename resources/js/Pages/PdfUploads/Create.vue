@@ -23,7 +23,7 @@
         <div class="progress-area">
           <div class="progress-info">
             <div class="unit-display">
-              <span class="unit-current">{{ props?.approvedTotal }}</span>
+              <span class="unit-current">{{ totalCredits }}</span>
               <span class="unit-separator"> / {{ props?.requiredUnits }} 単位</span>
             </div>
             <div class="unit-right">
@@ -77,7 +77,12 @@
         </div>
 
         <div class="period-block">
-          <p class="period-label">認定期間（5年間）</p>
+          <p class="period-label">
+            認定期間 {{ cycleYears }} 年間
+            <span v-if="cycleYears > 5" class="text-red-500">
+              （原則5年だが延長されている扱い）
+            </span>
+          </p>
           <p class="period-value">{{ props.cycle?.start_date }} 〜 {{ props.cycle?.end_date }}</p>
         </div>
 
@@ -88,7 +93,7 @@
 
         <div class="info-box">
           <Info class="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-          <p>更新申請は認定期間5年目の指定期間内（上記）にのみ受け付けています。</p>
+          <p>更新申請は認定期間最終年の指定期間内（上記）にのみ受け付けています。</p>
         </div>
       </div>
     </div>
@@ -464,6 +469,7 @@ import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import { Eye, FileText, Calendar, CreditCard, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle } from 'lucide-vue-next'
+import dayjs from 'dayjs'
 
 import { useI18n } from 'vue-i18n'
 
@@ -492,6 +498,8 @@ const props = defineProps({
   annualFeeStatus: Boolean, 
 })
 
+const totalCredits = computed(() => (props.approvedTotal ?? 0) + (props.pendingTotal ?? 0))
+
 const form = useForm({
   last_name: props.member?.last_name ?? '',
   first_name: props.member?.first_name ?? '',
@@ -504,6 +512,13 @@ const form = useForm({
   role_id: '',
   session: '',
   issued_date: ''
+})
+
+const cycleYears = computed(() => {
+  if (!props.cycle?.start_date || !props.cycle?.end_date) return 5
+  const start = new Date(props.cycle.start_date)
+  const end = new Date(props.cycle.end_date)
+  return end.getFullYear() - start.getFullYear()
 })
 
 const progressPercent = computed(() => {
@@ -565,8 +580,8 @@ const isEligible = computed(() => {
 
   return (
     isWithinPeriod &&
-    (props.conference_count ?? 0) >= 1 &&
-    (props.approvedTotal ?? 0) >= (props.requiredUnits ?? 50)
+    (props.conference_count ?? 0) > 1 &&
+    (totalCredits.value ?? 0) >= (props.requiredUnits ?? 50)
   )
 })
 
@@ -621,6 +636,20 @@ const onFileDrop = (e) => {
 
 function upload() {
   console.log(form)
+  const issuedDate = dayjs(form.issued_date)
+  const startDate = dayjs(props.cycle?.start_date)
+  const endDate = dayjs(props.cycle?.end_date)
+
+  if (!issuedDate.isValid()) {
+    alert('参加日/発行日を入力してください')
+    return
+  }
+
+  if (issuedDate.isBefore(startDate) || issuedDate.isAfter(endDate)) {
+    alert(`参加日/発行日は認定期間（${props.cycle?.start_date} 〜 ${props.cycle?.end_date}）内である必要があります`)
+    return
+  }
+
   form.post('/pdf-uploads', {
     file: form.file,
     credit_category_id: form.credit_category_id,

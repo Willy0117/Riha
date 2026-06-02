@@ -21,6 +21,7 @@ class PdfUpload extends Model
         'status',
         'rejection_message',
         'issued_date',
+        'ai_verification',
     ];
 
     public function member() { return $this->belongsTo(Member::class); }

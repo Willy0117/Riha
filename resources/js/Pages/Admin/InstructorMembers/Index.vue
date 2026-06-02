@@ -441,7 +441,7 @@ const handleDeleteSelected = () => {
 const handleEdit = (member) => alert(`編集: ${member.name}`)
 
 </script>
-<style scoped>
+<style>
 /* ===== リセット・基本 ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
 

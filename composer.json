@@ -20,6 +20,7 @@
         "setasign/fpdi": "^2.6",
         "setasign/fpdi-tfpdf": "^2.3",
         "setasign/tfpdf": "^1.31",
+        "smalot/pdfparser": "^2.12",
         "spatie/laravel-permission": "^6.23",
         "tecnickcom/tcpdf": "^6.10",
         "tightenco/ziggy": "^2.0"

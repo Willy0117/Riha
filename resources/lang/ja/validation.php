@@ -25,5 +25,9 @@ return [
         'tel'           => 'TEL',
         'fax'           => 'FAX',
         'email'         => 'メールアドレス',
+        'credit_category_id' => '区分',
+        'credit_conference_id' => '学会名',
+        'role_id' => '役割',
+        'session' => '書類名', 
     ],
 ];

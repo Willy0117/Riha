@@ -83,7 +83,7 @@ class PdfUploadController extends Controller
             'credit_category_id' => 'required|exists:credit_categories,id',
             'credit_conference_id' => 'required|exists:credit_conferences,id',
             'role_id' => 'required|exists:credit_role_points,id',
-            'session' => 'nullable|string|max:50',
+            'session' => 'required|string|max:50',
             'issued_date' => 'required|date',
         ]);
 
@@ -99,7 +99,7 @@ class PdfUploadController extends Controller
             $conference = CreditConference::find($request->credit_conference_id);
             $points = $role ? $role->points : 0;
 
-            $verificationResult = $this->verifyPdfWithGemini(
+            $verificationResult = $this->verifyPdfWithGroq(
                 $request->file('file'),
                 [
                     'date'        => $request->issued_date,
@@ -147,6 +147,68 @@ class PdfUploadController extends Controller
             return back()->with('error', __('PDF upload failed.'));
         }
     }
+
+
+    private function verifyPdfWithGroq($file, array $inputData): array
+    {
+        $parser = new \Smalot\PdfParser\Parser();
+        $pdf = $parser->parseFile($file->path());
+        $pdfText = $pdf->getText();
+
+        \Log::info('PDF text: ' . $pdfText);
+
+        $prompt = <<<EOT
+    以下のPDFテキストから情報を抽出し、入力データと照合してください。
+    結果はJSONのみで返してください。余分なテキストは不要です。
+
+    PDFテキスト：
+    {$pdfText}
+
+    入力データ：
+    - 日付: {$inputData['date']}（PDFの日付がこの日付を含んでいればOK）
+    - 学会名: {$inputData['conference']}
+    - 参加種別: {$inputData['role']}
+    - 氏名: {$inputData['member_name']}（スペースは無視して照合してください）
+
+    以下のJSON形式で返してください：
+    {
+    "date_match": true/false,
+    "conference_match": true/false,
+    "role_match": true/false,
+    "name_match": true/false,
+    "pdf_date": "PDFに記載の日付",
+    "pdf_conference": "PDFに記載の学会名",
+    "pdf_role": "PDFに記載の参加種別",
+    "pdf_name": "PDFに記載の氏名",
+    "notes": "特記事項があれば"
+    }
+    EOT;
+
+        try {
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . env('GROQ_API_KEY'),
+                'Content-Type'  => 'application/json',
+            ])->post('https://api.groq.com/openai/v1/chat/completions', [
+                'model'    => 'llama-3.3-70b-versatile',
+                'messages' => [
+                    ['role' => 'user', 'content' => $prompt]
+                ],
+            ]);
+
+            \Log::info('Groq response: ' . json_encode($response->json()));
+
+            $content = $response->json('choices.0.message.content');
+            $content = preg_replace('/```json|```/', '', $content);
+
+            return json_decode(trim($content), true) ?? ['error' => 'parse failed'];
+
+        } catch (\Exception $e) {
+            \Log::error('Groq API error: ' . $e->getMessage());
+            return ['error' => $e->getMessage()];
+        }
+    }
+
+
 
     private function verifyPdfWithGemini($file, array $inputData): array
     {
@@ -198,6 +260,7 @@ class PdfUploadController extends Controller
             );
 
             $content = $response->json('candidates.0.content.parts.0.text');
+            \Log::info('Gemini response: ' . $content); 
             $content = preg_replace('/```json|```/', '', $content);
 
             return json_decode(trim($content), true) ?? ['error' => 'parse failed'];
@@ -269,7 +332,7 @@ class PdfUploadController extends Controller
         $isFeeOk = $totalFee <= $totalPaid;
 
         $conference_count = PdfUpload::where('member_id', $user->member_id)
-            ->where('status', 'approved')
+//            ->where('status', 'approved')
             ->whereBetween('created_at', [$cycle->start_date, $cycle->end_date])
             ->whereHas('creditCategory', fn ($q) =>
                 $q->where('name', '学術集会')
