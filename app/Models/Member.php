@@ -64,10 +64,31 @@ class Member extends Model
     {
         return $this->hasMany(MemberRole::class);
     }
-    public function annualFees()
+    
+    public function invoices()
     {
-        return $this->hasMany(AnnualFee::class);
+        return $this->hasMany(Invoice::class);
     }
+
+    public function addresses()
+    {
+        return $this->hasMany(MemberAddress::class);
+    }
+ 
+    public function educations()
+    {
+        return $this->hasMany(MemberEducation::class);
+    }
+ 
+    public function degrees()
+    {
+        return $this->hasMany(MemberDegree::class);
+    }
+ 
+    public function committees()
+    {
+        return $this->hasMany(MemberCommittee::class);
+    }    
     /* =====================
      |  表示用ラベル
      * ===================== */

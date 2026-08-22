@@ -25,7 +25,9 @@ class FileService
 
         $path = $file->storeAs($dir, $filename, $this->disk);
 
-        $thumbnail = $this->createThumbnail($path, $dir);
+        // サムネイルは、アップロード直後のローカル一時ファイル（$file->getRealPath()）から生成する。
+        // S3ディスクには「ローカルパス」という概念が無いため、保存後のパスから再取得しようとすると失敗する。
+        $thumbnail = $this->createThumbnailFromLocalFile($file->getRealPath(), $path, $dir);
 
         return [$path, $thumbnail];
     }
@@ -47,50 +49,56 @@ class FileService
 
         Storage::disk($this->disk)->put($path, $data);
 
-        $thumbnail = $this->createThumbnail($path, $dir);
+        // サムネイル生成のため、いったんローカルの一時ファイルへ書き出す
+        $tmpFile = tempnam(sys_get_temp_dir(), 'b64img');
+        file_put_contents($tmpFile, $data);
+
+        $thumbnail = $this->createThumbnailFromLocalFile($tmpFile, $path, $dir);
+
+        @unlink($tmpFile);
 
         return [$path, $thumbnail];
     }
 
     /**
      * サムネイル生成
+     *
+     * $localSourcePath : 変換元ファイルの「ローカル」パス（アップロード直後の一時ファイル、
+     *                    またはbase64をいったん書き出した一時ファイル）
+     * $path            : ディスク（S3含む）上での本体ファイルの保存パス（拡張子判定に使う）
+     * $dir             : サムネイルの保存先ディレクトリ（例: pdf_uploads）
      */
-    public function createThumbnail(string $path, string $dir): ?string
+    public function createThumbnailFromLocalFile(string $localSourcePath, string $path, string $dir): ?string
     {
         try {
-            $fullPath = Storage::disk($this->disk)->path($path);
-
             $thumbDir = $dir.'/thumbnails';
-
             $thumbName = pathinfo($path, PATHINFO_FILENAME).'_thumb.png';
-
             $thumbPath = $thumbDir.'/'.$thumbName;
-
-            $thumbFullPath = Storage::disk($this->disk)->path($thumbPath);
-
-            if (!file_exists(dirname($thumbFullPath))) {
-                mkdir(dirname($thumbFullPath), 0755, true);
-            }
 
             $imagick = new Imagick();
 
-            $ext = strtolower(pathinfo($fullPath, PATHINFO_EXTENSION));
+            // 拡張子は「保存先パス」の方から判定する（一時ファイル名には拡張子が付かないため）
+            $ext = strtolower(pathinfo($path, PATHINFO_EXTENSION));
 
             if ($ext === 'pdf') {
-                $imagick->setResolution(150,150);
-                $imagick->readImage($fullPath.'[0]');
+                $imagick->setResolution(150, 150);
+                $imagick->readImage($localSourcePath.'[0]');
             } else {
-                $imagick->readImage($fullPath);
+                $imagick->readImage($localSourcePath);
             }
 
             $imagick->setImageFormat('png');
-
             $imagick->thumbnailImage(150, 150, true);
 
-            $imagick->writeImage($thumbFullPath);
-
+            // 生成したサムネイルも、いったんローカルの一時ファイルへ書き出してからディスク（S3含む）へアップロードする
+            $thumbTmpFile = tempnam(sys_get_temp_dir(), 'thumb').'.png';
+            $imagick->writeImage($thumbTmpFile);
             $imagick->clear();
             $imagick->destroy();
+
+            Storage::disk($this->disk)->put($thumbPath, file_get_contents($thumbTmpFile));
+
+            @unlink($thumbTmpFile);
 
             return $thumbPath;
         } catch (\Exception $e) {

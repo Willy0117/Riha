@@ -248,7 +248,7 @@ const persistQuery = () => ({
 
 const submitSearch = () => {
   console.log(persistQuery())
-  router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: 1 }, {
+  router.get(route('admin.approvals.index'), { ...persistQuery(), page: 1 }, {
     preserveState: true,
     replace: true,
     onSuccess: () => resetSelectedIds()
@@ -257,7 +257,7 @@ const submitSearch = () => {
 
 // ページ番号クリック
 const goPage = (page) => {
-  router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page }, {
+  router.get(route('admin.approvals.index'), { ...persistQuery(), page }, {
     preserveState: true,
     replace: true,
     onSuccess: () => resetSelectedIds()
@@ -318,7 +318,7 @@ const bulkUpdate = () => {
     {
       preserveState: true,
       onSuccess: () => {
-        router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
+        router.get(route('admin.approvals.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
       }
     }
   )
@@ -356,7 +356,7 @@ function submitReview() {
   if (!reviewModal.value.cycleId) return
 
   router.post(
-    route('admin.instructorUpdateCycles.review', reviewModal.value.cycleId),
+    route('admin.approvals.review', reviewModal.value.cycleId),
     {
       status: reviewModal.value.status,
       reason: reviewModal.value.reason,
@@ -365,7 +365,7 @@ function submitReview() {
       onSuccess: () => {
         reviewModal.value.show = false
         router.get(
-          route('admin.instructorMembers.index'),
+          route('admin.approvals.index'),
           { search: search.value, page: props.members.current_page },
           { preserveState: true, preserveScroll: true }
         )
@@ -377,7 +377,7 @@ function submitReview() {
   )
 }
 const getAnnualFeeStatus = (member) => {
-  const fees = member.annual_fees?.filter(f => f.annual_fee > 0)
+  const fees = member.invoices?.filter(f => f.annual_fee > 0)
   if (!fees || fees.length === 0) return '未納'
   return fees.every(f => f.status === 'paid') ? '納入済' : '未納'
 }
@@ -389,7 +389,7 @@ const getAnnualFeeClass = (member) => {
 }
 
 const getRenewalStatus = (member) => {
-  const fee = member.annual_fees?.find(f => f.renewal_fee > 0)
+  const fee = member.invoices?.find(f => f.renewal_fee > 0)
   if (!fee) return '未請求'
   return fee.status === 'paid' ? '納入済' : '未納'
 }
@@ -401,20 +401,6 @@ const getRenewalClass = (member) => {
   return 'bg-gray-100 text-gray-500'
 }
 
-// --- ロール切替 ---
-const roles = [
-  { key: 'office', label: '事務局' },
-  { key: 'examiner', label: '審査員' },
-  { key: 'applicant', label: '申請者' },
-]
-const currentRole = ref('office')
-
-// --- タブ ---
-const tabs = [
-  { key: 'applicants', label: '申請者・納入管理', icon: '👤' },
-  { key: 'settings', label: 'システム設定', icon: '⚙️' },
-]
-const currentTab = ref('applicants')
 
 // --- 検索・フィルター ---
 const searchQuery = ref('')
@@ -438,18 +424,9 @@ const approve = (member) => {
 }
 
 </script>
-<style scoped>
+<style>
 /* ===== リセット・基本 ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
-.app-wrapper {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f4f5f7;
-  font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  color: #1a1a2e;
-}
 
 /* ===== ヘッダー ===== */
 .header {
@@ -507,24 +484,6 @@ const approve = (member) => {
   padding: 4px;
 }
 
-.nav-btn {
-  padding: 6px 18px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.nav-btn.active {
-  background: #fff;
-  color: #111827;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-
 .header-user {
   display: flex;
   align-items: center;
@@ -564,116 +523,11 @@ const approve = (member) => {
   gap: 28px;
 }
 
-/* ===== ページヘッダー ===== */
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #1e3a6e;
-  font-style: italic;
-  letter-spacing: -0.5px;
-}
-
-.page-desc {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.6;
-}
-
-.page-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ===== ボタン ===== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.btn-icon {
-  font-size: 14px;
-}
-
-.btn-primary {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-
-.btn-primary:hover {
-  background: #1d4ed8;
-}
-
-.btn-outline {
-  background: #fff;
-  color: #2563eb;
-  border-color: #2563eb;
-}
-
-.btn-outline:hover {
-  background: #eff6ff;
-}
-
-.btn-danger-outline {
-  background: #fff;
-  color: #dc2626;
-  border-color: #fca5a5;
-  font-size: 12px;
-  padding: 7px 14px;
-}
-
-.btn-danger-outline:disabled {
-  color: #9ca3af;
-  border-color: #e5e7eb;
-  cursor: not-allowed;
-}
-
 /* ===== タブ ===== */
 .tabs {
   display: flex;
   gap: 4px;
   border-bottom: 1px solid #e5e7eb;
-}
-
-.tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: all 0.15s;
-}
-
-.tab-btn.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
-  font-weight: 600;
 }
 
 /* ===== テーブルカード ===== */
@@ -845,24 +699,6 @@ const approve = (member) => {
 .status-approved  { background: #d1fae5; color: #065f46; }
 .status-pending   { background: #f3f4f6; color: #6b7280; }
 .status-rejected  { background: #fee2e2; color: #dc2626; }
-
-/* ===== 操作ボタン ===== */
-.action-btn {
-  padding: 5px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  color: #374151;
-  transition: all 0.15s;
-}
-
-.action-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-}
 
 /* ===== フッター ===== */
 .footer {

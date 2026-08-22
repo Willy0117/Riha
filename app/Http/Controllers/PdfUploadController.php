@@ -7,16 +7,59 @@ use App\Models\CreditCategory;
 use App\Models\CreditConference;
 use App\Models\CreditRolePoint;
 use App\Models\Member;
-use App\Models\AnnualFee;
+use App\Models\Invoice;//AnnualFee;
+use App\Models\ApplicationSchedule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Validation\Rule;
 use App\Services\FileService;
 use App\Services\PdfService;
 
 class PdfUploadController extends Controller
 {
+    // ファイルを保存しているディスク（S3運用時は 'local' に固定せず、必ずこの共通メソッド経由で取得する）
+    private function disk()
+    {
+        return Storage::disk(config('filesystems.default'));
+    }
+
+    // 一覧・詳細で使うサムネイルURL（S3の場合は有効期限付きの署名URLになる）
+    private function thumbnailUrl(?string $thumbnailPath): ?string
+    {
+        if (!$thumbnailPath) return null;
+
+        return $this->disk()->temporaryUrl($thumbnailPath, now()->addMinutes(30));
+    }
+
+    /**
+     * 現在の会員の更新サイクルに対応する ApplicationSchedule（期区分）を取得する。
+     * 判定順序：
+     * 1. 現在日時が cycle.renewal_start_date 〜 renewal_end_date（更新申請受付期間）内であること
+     * 2. 1を満たす場合のみ、現在日時が schedule.application_start 〜 application_end 内にある行を検索
+     * どちらかを満たさない場合は null（画面側は該当カードを表示しない）。
+     */
+    private function currentSchedule($cycle): ?ApplicationSchedule
+    {
+        if (!$cycle || !$cycle->renewal_start_date || !$cycle->renewal_end_date) {
+            return null;
+        }
+
+        $now = now();
+
+        $isWithinRenewalPeriod = $now->gte(\Carbon\Carbon::parse($cycle->renewal_start_date))
+            && $now->lte(\Carbon\Carbon::parse($cycle->renewal_end_date));
+
+        if (!$isWithinRenewalPeriod) {
+            return null;
+        }
+
+        return ApplicationSchedule::whereDate('application_start', '<=', $now->toDateString())
+            ->whereDate('application_end', '>=', $now->toDateString())
+            ->first();
+    }
+
     public function index()
     {
         $user = Auth::user();
@@ -30,7 +73,7 @@ class PdfUploadController extends Controller
             $uploads = PdfUpload::with([
                     'creditCategory',
                     'creditConference',
-                    'creditRole',
+                    'creditRole.creditRole',
                 ])
                 ->where('member_id', $user->member_id)
                 ->latest()
@@ -39,14 +82,12 @@ class PdfUploadController extends Controller
                     'id' => $u->id,
                     'credit_category_name' => $u->creditCategory?->name,
                     'credit_conference_name' => $u->creditConference?->name,
-                    'role_name' => $u->creditRole?->role,
+                    'role_name' => $u->creditRole?->creditRole?->name,
                     'points' => $u->points,
                     'status' => $u->status,
                     'session' => $u->session,
 
-                    'thumbnail_url' => $u->thumbnail_path
-                        ? Storage::url($u->thumbnail_path)
-                        : null,
+                    'thumbnail_url' => $this->thumbnailUrl($u->thumbnail_path),
 
                     'rejection_message' => $u->rejection_message,
                 ]);
@@ -54,16 +95,26 @@ class PdfUploadController extends Controller
 
         $creditCategories = CreditCategory::all();
 
-        // 全学術集会・論文・セミナー等
-        $conferences = CreditConference::all();
+        // 全学術集会・論文・セミナー等（どの区分で使えるかを credit_role_points から動的算出して付与）
+        $conferences = CreditConference::all()->map(function ($conf) {
+            return [
+                'id' => $conf->id,
+                'name' => $conf->name,
+                'available_category_ids' => CreditRolePoint::where('credit_conference_id', $conf->id)
+                    ->pluck('credit_category_id')
+                    ->unique()
+                    ->values(),
+            ];
+        });
 
         // 全 roles
-        $roles = CreditRolePoint::all()->map(fn($r) => [
+        $roles = CreditRolePoint::with('creditRole')->get()->map(fn($r) => [
             'id' => $r->id,
-            'name' => $r->role,
+            'name' => $r->creditRole?->name,
             'points' => $r->points,
             'credit_category_id' => $r->credit_category_id,
             'credit_conference_id' => $r->credit_conference_id,
+            'requires_session' => $r->requires_session,
         ]);
 
         return inertia('PdfUploads/Index', [
@@ -83,7 +134,15 @@ class PdfUploadController extends Controller
             'credit_category_id' => 'required|exists:credit_categories,id',
             'credit_conference_id' => 'required|exists:credit_conferences,id',
             'role_id' => 'required|exists:credit_role_points,id',
-            'session' => 'required|string|max:50',
+            'session' => [
+                Rule::requiredIf(function () use ($request) {
+                    $role = CreditRolePoint::find($request->role_id);
+                    return $role && $role->requires_session;
+                }),
+                'nullable',
+                'string',
+                'max:50',
+            ],
             'issued_date' => 'required|date',
         ]);
 
@@ -104,7 +163,7 @@ class PdfUploadController extends Controller
                 [
                     'date'        => $request->issued_date,
                     'conference'  => $conference?->name,
-                    'role'        => $role?->role,
+                    'role'        => $role?->creditRole?->name,
                     'member_name' => $user->name,
                 ]
             );
@@ -270,8 +329,7 @@ class PdfUploadController extends Controller
             return ['error' => $e->getMessage()];
         }
     }
-
-    public function create() 
+    public function create()
     {
         $user = Auth::user();
 
@@ -283,39 +341,80 @@ class PdfUploadController extends Controller
             $uploads = PdfUpload::with([
                     'creditCategory',
                     'creditConference',
-                    'creditRole',
+                    'creditRole.creditRole',
                 ])
                 ->where('member_id', $user->member_id)
                 ->latest()
                 ->get()
-                ->map(fn($u) => [
-                    'id' => $u->id,
-                    'credit_category_name' => $u->creditCategory?->name,
-                    'credit_conference_name' => $u->creditConference?->name,
-                    'role_name' => $u->creditRole?->role,
-                    'points' => $u->points,
-                    'status' => $u->status,
-                    'session' => $u->session,
+                ->map(function ($u) use ($cycle) {
+                    $issuedDate = $u->issued_date ? \Carbon\Carbon::parse($u->issued_date) : null;
 
-                    'thumbnail_url' => $u->thumbnail_path
-                        ? Storage::url($u->thumbnail_path)
-                        : null,
+                    $isWithinPeriod = $issuedDate
+                        && $issuedDate->gte(\Carbon\Carbon::parse($cycle->start_date))
+                        && $issuedDate->lte(\Carbon\Carbon::parse($cycle->end_date));
 
-                    'rejection_message' => $u->rejection_message,
-                ]);
+                    return [
+                        'id' => $u->id,
+                        'credit_category_name' => $u->creditCategory?->name,
+                        'credit_conference_name' => $u->creditConference?->name,
+                        'role_name' => $u->creditRole?->creditRole?->name,
+                        'points' => $u->points,
+                        'status' => $u->status,
+                        'session' => $u->session,
+                        'issued_date' => $issuedDate?->format('Y-m-d'),
+                        'updated_at' => $u->updated_at,
+                        'is_within_period' => $isWithinPeriod,
+
+                        'thumbnail_url' => $this->thumbnailUrl($u->thumbnail_path),
+
+                        'rejection_message' => $u->rejection_message,
+                    ];
+                });
         }
 
-        $approvedTotal = $uploads
+        // 単位集計・学会参加カウントは、認定期間内（issued_date基準）の書類のみを対象にする
+        $uploadsWithinPeriod = $uploads->where('is_within_period', true);
+
+        $approvedTotal = $uploadsWithinPeriod
             ->where('status', 'approved')
             ->sum('points');
-            
-        $pendingTotal = $uploads
+
+        $pendingTotal = $uploadsWithinPeriod
             ->where('status', 'pending')
             ->sum('points');
 
-        $total = $uploads->sum('points');
+        $total = $uploadsWithinPeriod->sum('points');
 
-        $fees = AnnualFee::where('member_id', $user->member_id)
+        // 更新申請の審査中（cycle.status === 'pending'）は、cycle.updated_at（申請した瞬間）を基準に判定する。
+        $isCycleUnderReview = $cycle?->status === 'pending';
+        $appliedAt = $cycle?->updated_at;
+
+        $uploads = $uploads->map(function ($u) use ($isCycleUnderReview, $appliedAt) {
+            if (!$u['is_within_period']) {
+                $u['status'] = 'out_of_period';
+                $u['rejection_message'] = null;
+                return $u;
+            }
+
+            if ($isCycleUnderReview) {
+                $updatedAt = $u['updated_at'] ?? null;
+
+                $changedAfterApplied = $appliedAt && $updatedAt
+                    && \Carbon\Carbon::parse($updatedAt)->gt($appliedAt);
+
+                if ($u['status'] === 'pending' || $changedAfterApplied) {
+                    $u['status'] = 'under_review';
+                    $u['rejection_message'] = null;
+                }
+            }
+
+            return $u;
+        });
+
+        // 画面には不要なので、内部用フィールドはレスポンスから外す
+        $uploads = $uploads->map(fn($u) => \Illuminate\Support\Arr::except($u, ['updated_at', 'is_within_period']));
+
+        $fees = Invoice::where('member_id', $user->member_id)
             ->whereBetween('fiscal_year', [
                 date('Y', strtotime($cycle->start_date)),
                 date('Y', strtotime($cycle->end_date)),
@@ -331,9 +430,8 @@ class PdfUploadController extends Controller
 
         $isFeeOk = $totalFee <= $totalPaid;
 
-        $conference_count = PdfUpload::where('member_id', $user->member_id)
-//            ->where('status', 'approved')
-            ->whereBetween('created_at', [$cycle->start_date, $cycle->end_date])
+        $conferenceUploadsQuery = PdfUpload::where('member_id', $user->member_id)
+            ->whereBetween('issued_date', [$cycle->start_date, $cycle->end_date])
             ->whereHas('creditCategory', fn ($q) =>
                 $q->where('name', '学術集会')
             )
@@ -341,24 +439,40 @@ class PdfUploadController extends Controller
                 $q->where('name', '日本腎臓リハビリテーション学会')
             )
             ->whereHas('creditRole', fn ($q) =>
-                $q->where('role', '参加')
-            )
-            ->count();
+                $q->whereHas('creditRole', fn ($q2) => $q2->where('name', '参加'))
+            );
+
+        $conference_count = (clone $conferenceUploadsQuery)->count();
+        $approvedConferenceCount = (clone $conferenceUploadsQuery)->where('status', 'approved')->count();
+        $pendingConferenceCount = (clone $conferenceUploadsQuery)->where('status', 'pending')->count();
 
         // 全カテゴリー
         $creditCategories = CreditCategory::all();
 
-        // 全学術集会・論文・セミナー等
-        $conferences = CreditConference::all();
+        // 全学術集会・論文・セミナー等（どの区分で使えるかを credit_role_points から動的算出して付与）
+        $conferences = CreditConference::all()->map(function ($conf) {
+            return [
+                'id' => $conf->id,
+                'name' => $conf->name,
+                'available_category_ids' => CreditRolePoint::where('credit_conference_id', $conf->id)
+                    ->pluck('credit_category_id')
+                    ->unique()
+                    ->values(),
+            ];
+        });
 
         // 全 roles
-        $roles = CreditRolePoint::all()->map(fn($r) => [
+        $roles = CreditRolePoint::with('creditRole')->get()->map(fn($r) => [
             'id' => $r->id,
-            'name' => $r->role,
+            'name' => $r->creditRole?->name,
             'points' => $r->points,
             'credit_category_id' => $r->credit_category_id,
             'credit_conference_id' => $r->credit_conference_id,
+            'requires_session' => $r->requires_session,
         ]);
+
+        // [今回追加] 現在の期区分（ApplicationSchedule）を取得し、応募期間・審査期間（委員長）を画面に渡す
+        $schedule = $this->currentSchedule($cycle);
 
         return inertia('PdfUploads/Create', [
             'member' => $user->member,
@@ -375,22 +489,61 @@ class PdfUploadController extends Controller
             'isFeeOk' => $isFeeOk,
             'requiredUnits' => 50,
             'conference_count' => $conference_count,
+            'pendingConferenceCount' => $pendingConferenceCount,
+            'approvedConferenceCount' => $approvedConferenceCount,
             'fees' => $fees,
-            'annualFeeStatus' => $annualFeeStatus,  
+            'annualFeeStatus' => $annualFeeStatus,
+            'schedule' => $schedule,
         ]);
     }
 
+    /**
+     * PDF本体の閲覧。S3署名URLへリダイレクトする（非公開バケット前提）。
+     */
     public function view(PdfUpload $pdf)
     {
-        $filePath = Storage::path($pdf->file_path);
-        if (!file_exists($filePath)) abort(404);
-        return response()->file($filePath);
+        abort_unless($pdf->member_id === Auth::user()->member_id, 403);
+
+        if (!$pdf->file_path || !$this->disk()->exists($pdf->file_path)) {
+            abort(404);
+        }
+
+        $url = $this->disk()->temporaryUrl($pdf->file_path, now()->addMinutes(10));
+
+        return redirect($url);
     }
 
+    /**
+     * サムネイルの閲覧。S3署名URLへリダイレクトする（非公開バケット前提）。
+     */
     public function thumbnail(PdfUpload $pdf)
     {
-        $thumbPath = Storage::path($pdf->thumbnail_path);
-        if (!file_exists($thumbPath)) abort(404);
-        return response()->file($thumbPath);
+        abort_unless($pdf->member_id === Auth::user()->member_id, 403);
+
+        if (!$pdf->thumbnail_path || !$this->disk()->exists($pdf->thumbnail_path)) {
+            abort(404);
+        }
+
+        $url = $this->disk()->temporaryUrl($pdf->thumbnail_path, now()->addMinutes(10));
+
+        return redirect($url);
+    }
+
+    public function destroy(PdfUpload $pdfUpload)
+    {
+        // 自分の書類以外は削除できないようにする
+        abort_unless($pdfUpload->member_id === Auth::user()->member_id, 403);
+
+        // ストレージ上のファイルも一緒に削除
+        if ($pdfUpload->file_path) {
+            $this->disk()->delete($pdfUpload->file_path);
+        }
+        if ($pdfUpload->thumbnail_path) {
+            $this->disk()->delete($pdfUpload->thumbnail_path);
+        }
+
+        $pdfUpload->delete();
+
+        return back()->with('success', '書類を削除しました。');
     }
 }

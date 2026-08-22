@@ -59,7 +59,7 @@
         <Home class="w-5 h-5"/>
         <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
       </Link>
-      <div v-if="can('manage members')" class="mt-2">
+      <div v-if="can('members.view ')" class="mt-2">
         <button
           @click="toggleSubMenu('members')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -82,7 +82,7 @@
         </button>
 
         <transition name="slide-fade">
-          <div v-show="openSubMenu === 'members' && !collapsed" class="pl-6 mt-1 space-y-1">
+          <div v-show="openSubMenu === 'member' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link
               :href="route('admin.members.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
@@ -95,45 +95,10 @@
         </transition>
       </div> 
 
-      <!-- 指導士資格認定 -->
-      <div v-if="can('manage certification')" class="mt-2">
+<!-- 審査員ポータル（新規：担当申請の書類確認・承認/差し戻し） -->
+      <div v-if="can('reviewers.view') || can('reviewers.edit')" class="mt-2">
         <button
-          @click="toggleSubMenu('certification')"
-          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-        >
-          <div class="flex items-center">
-            <GraduationCap class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">{{ t('指導士資格認定') }}</span>
-          </div>
-          <svg
-            v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'certification' }"
-            class="w-4 h-4 transform transition-transform duration-200"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <transition name="slide-fade">
-          <div v-show="openSubMenu === 'certification' && !collapsed" class="pl-6 mt-1 space-y-1">
-            <Link
-              :href="route('admin.exams.index')"
-              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-              :class="isActive('exams.index') ? 'bg-gray-300 font-semibold' : ''"
-            >
-              <GraduationCap class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('exams.application') }}</span>
-            </Link>
-          </div>
-        </transition>
-      </div>
-            <!-- 指導士認定更新 -->
-      <div class="mt-2">
-        <button
-          @click="toggleSubMenu('approval')"
+          @click="toggleSubMenu('reviewers')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
@@ -142,7 +107,7 @@
           </div>
           <svg
             v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'approval' }"
+            :class="{ 'rotate-90': openSubMenu === 'reviewers' }"
             class="w-4 h-4 transform transition-transform duration-200"
             fill="none"
             stroke="currentColor"
@@ -153,32 +118,32 @@
           </svg>
         </button>
         <transition name="slide-fade">
-          <div v-show="openSubMenu === 'approval' && !collapsed" class="pl-6 mt-1 space-y-1">
+          <div v-show="openSubMenu === 'reviewers' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link
-              :href="route('admin.approvals.index')"
+              :href="route('admin.reviewer.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-              :class="isActive('approvals.index') ? 'bg-gray-300 font-semibold' : ''"
+              :class="isActive('reviewer.index') ? 'bg-gray-300 font-semibold' : ''"
             >
-              <CheckCircle2 class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('指導士更新承認') }}</span>
+              <CheckCircle2 class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">担当申請の審査</span>
             </Link>
-
           </div>
         </transition>
-      </div>     
-      <!-- 指導士認定更新 -->
-      <div v-if="can('manage renewal')" class="mt-2">
+      </div>
+
+      <!-- 審査委員長ポータル（新規：最終判定） -->
+      <div v-if="can('chief.view') || can('chief.edit')" class="mt-2">
         <button
-          @click="toggleSubMenu('renewal')"
+          @click="toggleSubMenu('chief')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
             <Award class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">{{ t('指導士認定更新') }}</span>
+            <span v-if="!collapsed" class="ml-2">審査委員長ポータル</span>
           </div>
           <svg
             v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'manage members' }"
+            :class="{ 'rotate-90': openSubMenu === 'chief' }"
             class="w-4 h-4 transform transition-transform duration-200"
             fill="none"
             stroke="currentColor"
@@ -189,33 +154,101 @@
           </svg>
         </button>
         <transition name="slide-fade">
-          <div v-show="openSubMenu === 'renewal' && !collapsed" class="pl-6 mt-1 space-y-1">
+          <div v-show="openSubMenu === 'chief' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.chief.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+              :class="isActive('chief.index') ? 'bg-gray-300 font-semibold' : ''"
+            >
+              <Award class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">更新申請の最終判定</span>
+            </Link>
+          </div>
+        </transition>
+      </div>
+
+      <!-- アサイン担当者ポータル（新規：審査員アサイン） -->
+      <div v-if="can('subleader.view')" class="mt-2">
+        <button
+          @click="toggleSubMenu('subleader')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <GraduationCap class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">アサイン担当者ポータル</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'subleader' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'subleader' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.subleader.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+              :class="isActive('subleader.index') ? 'bg-gray-300 font-semibold' : ''"
+            >
+              <GraduationCap class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">審査員アサイン</span>
+            </Link>
+          </div>
+        </transition>
+      </div>       
+     <!-- 事務局ポータル（なんでもあり） -->
+      <div v-if="can('instructorMembers.view')" class="mt-2">
+        <button
+          @click="toggleSubMenu('instructorMember')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <GraduationCap class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">事務局ポータル</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'instructorMember' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'instructorMember' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link
               :href="route('admin.instructorMembers.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
               :class="isActive('instructorMembers.index') ? 'bg-gray-300 font-semibold' : ''"
             >
-              <Award class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('指導士認定更新申請') }}</span>
+              <GraduationCap class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">事務局</span>
             </Link>
-                       <!-- Members -->
             <Link
-              :href="route('admin.pdf-uploads.index')"
+              :href="route('admin.schedules.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-              :class="isActive('admin.pdf-uploads.index') ? 'bg-gray-300 font-semibold' : ''"
+              :class="isActive('schedules.index') ? 'bg-gray-300 font-semibold' : ''"
             >
-              <Award class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('単位取得申請') }}</span>
+              <GraduationCap class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">スケジュールリマインダー設定</span>
             </Link>
-
           </div>
         </transition>
-      </div>          
-
+      </div>    
       <!-- Membes サブメニュー -->
      
       <!-- Organizations サブメニュー -->
-      <div v-if="can('manage organizations')" class="mt-2">
+      <div v-if="can('organizations.view') || can('organizations.edit')" class="mt-2">
         <button
           @click="toggleSubMenu('organizations')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -250,18 +283,19 @@
           </div>
         </transition>
       </div>
-      <div v-if="can('manage annual_fees')" class="mt-2">
+
+      <div v-if="can('invoices.view') || can('invoices.edit')" class="mt-2">
         <button
-          @click="toggleSubMenu('annual_fees')"
+          @click="toggleSubMenu('invoices')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
             <Calendar class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">{{ t('annual_fees.annual_fee') }}</span>
+            <span v-if="!collapsed" class="ml-2">{{ t('invoices') }}</span>
           </div>
           <svg
             v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'annual_fees' }"
+            :class="{ 'rotate-90': openSubMenu === 'invoices' }"
             class="w-4 h-4 transform transition-transform duration-200"
             fill="none"
             stroke="currentColor"
@@ -272,19 +306,93 @@
           </svg>
         </button>
         <transition name="slide-fade">
-          <div v-show="openSubMenu === 'annual_fees' && !collapsed" class="pl-6 mt-1 space-y-1">
+          <div v-show="openSubMenu === 'invoices' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link :href="route('admin.annual-fees.index')"
                   class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('admin.annual-fees') ? 'bg-gray-300 font-semibold' : ''">
+                  :class="isActive('admin.invoices') ? 'bg-gray-300 font-semibold' : ''">
               <Calendar class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('annual_fees.annual_fee') }}</span>
+              <span v-if="!collapsed" class="ml-2">{{ t('invoices') }}</span>
             </Link>
           </div>
         </transition>
-      </div>              
+      </div>
 
-            <!-- Access Control -->
-      <div v-if="can('manage tenants') || can('manage roles') || can('manage permissions')" class="mt-2">
+      <div v-if="can('credits.view') || can('credits.edit')" class="mt-2">
+        <button
+          @click="toggleSubMenu('credits')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <Settings class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">単位設定</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'credits' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'credits' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link :href="route('admin.credit-role-points.index')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.credit-role-points') ? 'bg-gray-300 font-semibold' : ''">
+              <Calendar class="w-5 h-5"/>
+              <span v-if="!collapsed" class="ml-2">単位設定</span>
+            </Link>
+          </div>
+        </transition>
+      </div>          
+                  
+      <div v-if="can('imports.view')|| can('imports.edit')" class="mt-2">
+        <button
+          @click="toggleSubMenu('imports')"
+          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+        >
+          <div class="flex items-center">
+            <Upload class="w-5 h-5"/>
+            <span v-if="!collapsed" class="ml-2">{{ t('import') }}</span>
+          </div>
+          <svg
+            v-if="!collapsed"
+            :class="{ 'rotate-90': openSubMenu === 'imports' }"
+            class="w-4 h-4 transform transition-transform duration-200"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            viewBox="0 0 24 24"
+          >
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
+        <transition name="slide-fade">
+          <div v-show="openSubMenu === 'imports' && !collapsed" class="pl-6 mt-1 space-y-1">
+            <Link
+              :href="route('admin.import.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
+            >
+              <Upload class="w-4 h-4 mr-1"/>
+              {{ t('import') }}
+            </Link>
+
+            <Link :href="route('admin.import.index')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.import.index') ? 'bg-gray-300 font-semibold' : ''">
+              <Upload class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('import') }}</span>
+            </Link>
+          </div>
+        </transition>
+      </div>  
+
+                  <!-- Access Control -->
+      <div v-if="can('tenants.view') || can('tenants.edit') || can('roles.view') || can('roles.edit') || can('permissions.view') || can('permissions.edit')" class="mt-2">
         <button
           @click="toggleSubMenu('system')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -309,7 +417,7 @@
         <transition name="slide-fade">
           <div v-show="openSubMenu === 'system' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link
-              v-if="can('manage tenants')"
+              v-if="can('tenants.view') || can('tenants.edit')"
               :href="route('admin.tenants.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
             >
@@ -317,7 +425,7 @@
               {{ t('navigations.tenants') }}
             </Link>
             <Link
-              v-if="can('manage roles')"
+              v-if="can('roles.view') || can('roles.edit')"
               :href="route('admin.roles.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
             >
@@ -325,7 +433,7 @@
               {{ t('navigations.roles') }}
             </Link>
             <Link
-              v-if="can('manage permissions')"
+              v-if="can('permissions.view') || can('permissions.edit')"
               :href="route('admin.permissions.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
             >
@@ -335,10 +443,10 @@
           </div>
         </transition>
       </div>      
-      <!-- Admins サブメニュー -->
-      <div v-if="can('manage admins')" class="mt-2">
+      <!-- admin サブメニュー -->
+      <div v-if="can('admins.view') || can('admins.edit')" class="mt-2">
         <button
-          @click="toggleSubMenu('admins')"
+          @click="toggleSubMenu('admin')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
         >
           <div class="flex items-center">
@@ -347,7 +455,7 @@
           </div>
           <svg
             v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'admins' }"
+            :class="{ 'rotate-90': openSubMenu === 'admin' }"
             class="w-4 h-4 transform transition-transform duration-200"
             fill="none"
             stroke="currentColor"
@@ -359,7 +467,7 @@
         </button>
 
         <transition name="slide-fade">
-          <div v-show="openSubMenu === 'admins' && !collapsed" class="pl-6 mt-1 space-y-1">
+          <div v-show="openSubMenu === 'admin' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link
               :href="route('admin.admins.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
@@ -371,8 +479,8 @@
           </div>
         </transition>
       </div>
-      <!-- Users サブメニュー -->
-      <div v-if="can('manage users')" class="mt-2">
+      <!-- user サブメニュー -->
+      <div v-if="can('users.view') || can('users.edit')" class="mt-2">
         <button
           @click="toggleSubMenu('users')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -430,7 +538,7 @@ import {
   FileCheck,
   RefreshCw,
   FileText,
-  Calendar,
+  Calendar,Upload,
   CheckCircle2,
   ArrowLeft,Settings
 } from 'lucide-vue-next'
@@ -467,7 +575,8 @@ const { t } = useI18n()
 const isActive = (routeName) => false
 const hasApiFeatures = true
 
-const validMenus = ['member', 'admins', 'users', 'system','annual_fees','organizations', 'approval', 'renewal' , 'certification' ]
+const validMenus = ['members', 'admins', 'users', 'systems','annual_fees','organizations', 'approvals', 'renewals',
+ 'certifications','imports', 'invoices', 'credits', 'instructorMember' ]
 
 // 自動判定
 const detectMenu = () => {

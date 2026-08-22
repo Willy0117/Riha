@@ -18,6 +18,7 @@ export default defineConfig({
             output: {
                 manualChunks: {
                     'lucide': ['lucide-vue-next'],
+                    'vendor-ui':   ['radix-vue', '@vueuse/core', 'class-variance-authority', 'clsx', 'tailwind-merge'],
                 }
             }
         },

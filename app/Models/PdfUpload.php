@@ -22,12 +22,14 @@ class PdfUpload extends Model
         'rejection_message',
         'issued_date',
         'ai_verification',
+        'reviewed_by',
     ];
 
     public function member() { return $this->belongsTo(Member::class); }
     public function creditCategory() { return $this->belongsTo(CreditCategory::class); }
     public function creditConference() { return $this->belongsTo(CreditConference::class); }
     public function creditRole() { return $this->belongsTo(CreditRolePoint::class, 'credit_role_id'); }
+    public function reviewer() { return $this->belongsTo(User::class, 'reviewed_by'); }
 }
 
 

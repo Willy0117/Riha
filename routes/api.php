@@ -22,6 +22,7 @@ Route::get('/dashboard/stats', function () {
     ]);
 });
 
+Route::post('stripe/webhook', [\App\Http\Controllers\Admin\StripeWebhookController::class, 'handle']);
 
 Route::get('/user', function (Request $request) {
     return $request->user();

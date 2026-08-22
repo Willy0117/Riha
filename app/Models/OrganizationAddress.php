@@ -3,36 +3,29 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class OrganizationAddress extends Model
 {
     protected $fillable = [
         'organization_id',
         'type',
-        'postal',
+        'name',
+        'postal_code',
         'address1',
         'address2',
         'address3',
+        'tel',
+        'fax',
+        'email',
     ];
 
-    public function organization()
+    protected $casts = [
+        'type' => 'integer',
+    ];
+
+    public function organization(): BelongsTo
     {
         return $this->belongsTo(Organization::class);
     }
-
-    public function documents()
-    {
-        return $this->hasMany(OrganizationAddressDocument::class);
-    }
-    
-    public function getFullAddressAttribute(): string
-    {
-        return collect([
-            $this->address1,
-            $this->address2,
-            $this->address3,
-        ])
-        ->filter(fn ($v) => filled($v)) // null, '' を除外
-        ->implode('');
-    }    
 }

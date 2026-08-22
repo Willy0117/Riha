@@ -93,19 +93,6 @@ const menus = [
       },
     ],
   },
-
-  {
-    key: 'annual_fees',
-    label: '年会費支払い状況',
-    icon: DocumentCurrencyYenIcon,
-
-    children: [
-      {
-        label: '年会費一覧',
-        route: 'annual-fees.index',
-      },
-    ],
-  },
 ]
 
 const { props } = usePage()

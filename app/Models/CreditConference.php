@@ -9,15 +9,12 @@ class CreditConference extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['credit_category_id', 'name', 'points'];
+    protected $fillable = [
+        'name',
+    ];
 
-    public function category()
+    public function rolePoints()
     {
-        return $this->belongsTo(CreditCategory::class, 'credit_category_id');
-    }
-
-    public function roles()
-    {
-        return $this->hasMany(CreditRolePoint::class, 'credit_conference_id');
+        return $this->hasMany(CreditRolePoint::class);
     }
 }

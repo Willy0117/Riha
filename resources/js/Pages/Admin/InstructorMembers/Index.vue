@@ -3,10 +3,18 @@
     <template #header>
         <div>
           <h2 class="text-2xl font-bold text-gray-800">事務局ポータル</h2>
-          <p class="text-xs text-gray-500 mt-1">申請者の提出書類を確認し、審査を行います。</p>
+          <p class="text-xs text-gray-500 mt-1">申請者の提出書類を確認し、判定を行います。</p>
         </div>
     </template>
     <div class="p-6">
+      <!-- flashメッセージ -->
+      <div
+        v-if="page.props.flash?.success"
+        class="mb-4 px-4 py-3 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm"
+      >
+        {{ page.props.flash.success }}
+      </div>
+
       <!-- per_page + add -->
       <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
 
@@ -22,14 +30,19 @@
 
         </div>
 
-        <button
-          @click="bulkUpdate"
-          :disabled="selectedIds.length === 0"
-          class="px-4 h-10 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 flex items-center space-x-1"
-        >
-          <BadgeCheck class="w-4 h-4"/>
-          <span>{{ t('update_selected') }}</span>
-        </button>
+        <div class="flex items-center gap-2">
+          <button
+            @click="bulkUpdate"
+            :disabled="selectedIds.length === 0"
+            class="px-4 h-10 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 flex items-center space-x-1"
+          >
+            <BadgeCheck class="w-4 h-4"/>
+            <span>{{ t('update_selected') }}</span>
+          </button>
+          <span v-if="selectedIds.length > 0" class="text-xs text-gray-500">
+            ※ 承認済みでない申請者は自動的にスキップされます
+          </span>
+        </div>
       </div>
             <!-- ページヘッダー -->
 
@@ -50,7 +63,7 @@
             </button>
             <div class="filter-select-wrapper">
               <span class="filter-icon">▼</span>
-              <select v-model="filterYear" class="filter-select">
+              <select v-model="filterYear" @change="submitSearch" class="filter-select">
                 <option value="">更新予定年（すべて）</option>
                 <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年</option>
               </select>
@@ -87,12 +100,13 @@
                 <th>更新料</th>
                 <th>現在の単位</th>
                 <th>本申請ステータス</th>
+                <th>審査員判定</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="props.members.data.length === 0">
-                <td colspan="10" class="empty-row">
+                <td colspan="11" class="empty-row">
                   <div class="empty-state">
                     <span class="empty-icon">📋</span>
                     <p>表示するデータがありません</p>
@@ -139,6 +153,19 @@
                     {{ statusLabel(member.update_cycles[0]?.status) }}
                   </span>
                 </td>
+                <td>
+                  <span
+                    class="text-xs px-2 py-1 rounded-full font-medium"
+                    :class="{
+                      'bg-gray-100 text-gray-500': !member.update_cycles[0]?.reviewer_judgment || member.update_cycles[0]?.reviewer_judgment === 'unreviewed',
+                      'bg-green-50 text-green-600 border border-green-200': member.update_cycles[0]?.reviewer_judgment === 'pass',
+                      'bg-red-50 text-red-600 border border-red-200': member.update_cycles[0]?.reviewer_judgment === 'fail',
+                      'bg-orange-50 text-orange-600 border border-orange-200': member.update_cycles[0]?.reviewer_judgment === 're_review',
+                    }"
+                  >
+                    {{ judgmentLabel(member.update_cycles[0]?.reviewer_judgment) }}
+                  </span>
+                </td>
                 <td class="border px-3 py-2">
                   <Link
                     :href="route('admin.instructorMembers.show', member.id)"
@@ -164,7 +191,7 @@
     </div>
 
     <div>
-      <!-- 審査モーダル -->
+      <!-- 判定モーダル -->
       <DialogModal :show="reviewModal.show" @close="reviewModal.show = false">
         <template #title>
           {{ t('instructors.update') }}
@@ -239,11 +266,11 @@ const persistQuery = () => ({
   per_page: form.per_page,
   sort_by: form.sort_by,
   sort_dir: form.sort_dir,
+  renewal_year: filterYear.value,
   page: props.members.current_page
 })
 
 const submitSearch = () => {
-  console.log(persistQuery())
   router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: 1 }, {
     preserveState: true,
     replace: true,
@@ -277,22 +304,21 @@ const endItem = computed(() => {
   return Math.min(form.per_page * props.members.current_page, props.members.total)
 })
 
-// statusLabel / statusColor を function で定義
-/*
-function statusLabel(s) {
-  return {
-    updated: t('updated'),
-    before_update: t('before_update'),
-    no_update: t('no_update'),
-    rejected: t('rejected')
-  }[s] || '-'
-}
-*/
 // 選択削除
 const selectedIds = ref([])
 
-const toggleSelectAll = (checked) => {
-  selectedIds.value = checked ? props.members.data.map(s => s.id) : []
+const toggleSelectAll = (e) => {
+  selectedIds.value = e.target.checked
+    ? props.members.data.map(m => m.id)
+    : []
+}
+
+const toggleSelect = (id) => {
+  if (selectedIds.value.includes(id)) {
+    selectedIds.value = selectedIds.value.filter(i => i !== id)
+  } else {
+    selectedIds.value.push(id)
+  }
 }
 
 const resetSelectedIds = () => {
@@ -305,7 +331,7 @@ const selectAll = computed({
   }
 })
 
-// 複数更新
+// 複数更新（認定期間の更新処理。承認済みのもののみ対象、コントローラ側でも二重チェック）
 const bulkUpdate = () => {
   if (!confirm(t('confirm_update_selected'))) return
   router.post(
@@ -314,6 +340,7 @@ const bulkUpdate = () => {
     {
       preserveState: true,
       onSuccess: () => {
+        resetSelectedIds()
         router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
       }
     }
@@ -326,8 +353,15 @@ const statusLabel = (status) => {
     'before_update': '未更新',
     'no_update':     '更新しない',
     'pending':       '本申請中',
+    'approved':      '承認済み',
+    'reject':        '却下',
   }
   return map[status] ?? '-'
+}
+
+const judgmentLabel = (judgment) => {
+  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '再審査' }
+  return map[judgment] ?? '未判定'
 }
 
 const reviewModal = ref({
@@ -373,7 +407,7 @@ function submitReview() {
   )
 }
 const getAnnualFeeStatus = (member) => {
-  const fees = member.annual_fees?.filter(f => f.annual_fee > 0)
+  const fees = member.invoices?.filter(f => f.annual_fee > 0)
   if (!fees || fees.length === 0) return '未納'
   return fees.every(f => f.status === 'paid') ? '納入済' : '未納'
 }
@@ -385,7 +419,7 @@ const getAnnualFeeClass = (member) => {
 }
 
 const getRenewalStatus = (member) => {
-  const fee = member.annual_fees?.find(f => f.renewal_fee > 0)
+  const fee = member.invoices?.find(f => f.renewal_fee > 0)
   if (!fee) return '未請求'
   return fee.status === 'paid' ? '納入済' : '未納'
 }
@@ -414,7 +448,7 @@ const currentTab = ref('applicants')
 
 // --- 検索・フィルター ---
 const searchQuery = ref('')
-const filterYear = ref('')
+const filterYear = ref(props.filters.renewal_year ?? '')
 const yearOptions = [2024, 2025, 2026, 2027]
 
 // --- ステータスクラス ---
@@ -424,6 +458,8 @@ const statusClass = (status) => {
     'before_update': 'bg-blue-50 text-blue-600 font-semibold',
     'no_update':     'bg-gray-100 text-gray-600',
     'pending':       'bg-yellow-50 text-yellow-600',
+    'approved':      'bg-emerald-50 text-emerald-600 font-semibold',
+    'reject':        'bg-red-50 text-red-600 font-semibold',
   }
   return map[status] ?? 'bg-gray-100 text-gray-600'
 }
@@ -431,7 +467,7 @@ const statusClass = (status) => {
 // --- アクション ---
 const handleImport = () => alert('会員情報インポート (SMOOSY)')
 const handlePaymentSync = () => alert('入金データ同期 (SMOOSY)')
-const handleExport = () => alert('審査完了者リスト出力 (SMOOSY)')
+const handleExport = () => alert('判定完了者リスト出力 (SMOOSY)')
 const handleDeleteSelected = () => {
   if (confirm(`選択した ${selectedIds.value.length} 名を削除しますか？`)) {
     members.value = members.value.filter((m) => !selectedIds.value.includes(m.id))

@@ -1,18 +1,21 @@
 <script setup lang="ts">
-import { computed, type HTMLAttributes } from 'vue'
-import { SelectGroup, type SelectGroupProps } from 'radix-vue'
+import type { SelectGroupProps } from 'reka-ui'
+import type { HTMLAttributes } from 'vue'
+import { reactiveOmit } from '@vueuse/core'
+import { SelectGroup } from 'reka-ui'
 import { cn } from '@/lib/utils'
 
 const props = defineProps<SelectGroupProps & { class?: HTMLAttributes['class'] }>()
 
-const delegatedProps = computed(() => {
-  const { class: _, ...delegated } = props
-  return delegated
-})
+const delegatedProps = reactiveOmit(props, 'class')
 </script>
 
 <template>
-  <SelectGroup v-bind="delegatedProps" :class="cn('p-1 w-full', props.class)">
+  <SelectGroup
+    data-slot="select-group"
+    v-bind="delegatedProps"
+    :class="cn('scroll-my-1 p-1', props.class)"
+  >
     <slot />
   </SelectGroup>
 </template>

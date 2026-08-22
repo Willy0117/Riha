@@ -16,7 +16,13 @@ use App\Http\Controllers\Admin\OrganizationController as AdminOrganizationContro
 use App\Http\Controllers\Admin\AnnualFeeController as AdminAnnualFeeController;
 use App\Http\Controllers\Admin\PdfUploadController as AdminPdfUploadController;
 use App\Http\Controllers\Admin\InstructorUpdateCycleController as AdminInstructorUpdateCycleController;
-use App\Http\Controllers\Admin\MemberImportController;
+use App\Http\Controllers\Admin\ImportController as AdminImportController;
+use App\Http\Controllers\Admin\CreditRolePointController as CreditRolePointController;
+use App\Http\Controllers\Admin\ChiefReviewController as ChiefReviewController;
+use App\Http\Controllers\Admin\ReviewerController as ReviewerController;
+use App\Http\Controllers\Admin\SubLeaderAssignmentController as SubLeaderAssignmentController;
+use App\Http\Controllers\Admin\ScheduleController as ScheduleController;
+use App\Http\Controllers\Admin\InvoiceController;
 
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\PdfUploadController;
@@ -69,8 +75,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // organization
         Route::resource('organizations', \App\Http\Controllers\Admin\OrganizationController::class);
 
-        Route::resource('annual-fees', \App\Http\Controllers\Admin\AnnualFeeController::class);
-
         // exams　指導士試験申込
         Route::put(
             'exams/{exam}/status',
@@ -78,6 +82,38 @@ Route::prefix('admin')->name('admin.')->group(function () {
         )->name('exams.updateStatus');
 
         Route::resource('exams', \App\Http\Controllers\Admin\ExamController::class);
+
+        Route::get('credit-role-points', [CreditRolePointController::class, 'index'])
+            ->name('credit-role-points.index');
+
+        // 学会（credit_conferences）
+        Route::post('credit-role-points/conferences', [CreditRolePointController::class, 'storeConference'])
+            ->name('credit-role-points.conferences.store');
+        Route::put('credit-role-points/conferences/{conference}', [CreditRolePointController::class, 'updateConference'])
+            ->name('credit-role-points.conferences.update');
+        Route::delete('credit-role-points/conferences/{conference}', [CreditRolePointController::class, 'destroyConference'])
+            ->name('credit-role-points.conferences.destroy');
+        // ↑ reorder ルートは display_order 廃止済みのため削除
+
+        // 区分
+        Route::post('credit-role-points/categories', [CreditRolePointController::class, 'storeCategory'])
+            ->name('credit-role-points.categories.store');
+        Route::put('credit-role-points/categories/{category}', [CreditRolePointController::class, 'updateCategory'])
+            ->name('credit-role-points.categories.update');
+        Route::delete('credit-role-points/categories/{category}', [CreditRolePointController::class, 'destroyCategory'])
+            ->name('credit-role-points.categories.destroy');
+
+        // role名マスタ（credit_roles）
+        Route::post('credit-role-points/roles', [CreditRolePointController::class, 'storeRole'])
+            ->name('credit-role-points.roles.store');
+
+        // role・単位（credit_role_points）
+        Route::post('credit-role-points', [CreditRolePointController::class, 'storeRolePoint'])
+            ->name('credit-role-points.store');
+        Route::put('credit-role-points/{rolePoint}', [CreditRolePointController::class, 'updateRolePoint'])
+            ->name('credit-role-points.update');
+        Route::delete('credit-role-points/{rolePoint}', [CreditRolePointController::class, 'destroyRolePoint'])
+            ->name('credit-role-points.destroy');
 
         Route::post(
             'applications/{application}/upload-document',
@@ -114,28 +150,99 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('pdf-uploads/{pdf}/reject', [AdminPdfUploadController::class, 'reject'])->name('pdf-uploads.reject');
         Route::get('pdf-uploads/{pdf}/view', [AdminPdfUploadController::class, 'view'])->name('pdf-uploads.view');
         Route::get('pdf-uploads/{pdf}/thumbnail', [AdminPdfUploadController::class, 'thumbnail'])->name('pdf-uploads.thumbnail');
+
+        Route::post('pdfUploads/{id}/approve', [AdminInstructorMemberController::class, 'approve'])
+            ->name('pdfUploads.approve');
+        Route::post('pdfUploads/{id}/reject', [AdminInstructorMemberController::class, 'reject'])
+            ->name('pdfUploads.reject');
+        // ↑ 元は同一定義がこの下にもう1組あったので削除（重複登録）
+
         // 指導士審査・承認
         Route::get('approvals', [AdminApprovalController::class, 'index'])
             ->name('approvals.index');
         // 指導士会員詳細（PDF一覧）
         Route::get('approvals/{member}', [AdminApprovalController::class, 'show'])
             ->name('approvals.show');
-        // 指導士会員一覧
+
+        // 指導士会員一覧（事務局）
         Route::get('instructorMembers', [AdminInstructorMemberController::class, 'index'])
             ->name('instructorMembers.index');
-
         // 指導士会員詳細（PDF一覧）
         Route::get('instructorMembers/{member}', [AdminInstructorMemberController::class, 'show'])
             ->name('instructorMembers.show');
         // インストラクター更新サイクルの審査結果送信
-        Route::post('instructorUpdateCycles/{cycle}/review',[AdminInstructorUpdateCycleController::class, 'review']
-            )->name('instructorUpdateCycles.review');
+        Route::post('instructorUpdateCycles/{cycle}/review', [AdminInstructorUpdateCycleController::class, 'review'])
+            ->name('instructorUpdateCycles.review');
+        Route::post('instructorMembers/bulkUpdate', [AdminInstructorMemberController::class, 'bulkUpdate'])
+            ->name('instructorMembers.bulkUpdate');
+
+        Route::get('instructorMembers/pdfUploads/{id}/view', [AdminInstructorMemberController::class, 'view'])
+            ->name('instructorMembers.view');
+        Route::get('instructorMembers/pdfUploads/{id}/thumbnail', [AdminInstructorMemberController::class, 'thumbnail'])
+            ->name('instructorMembers.thumbnail');
+        Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
+        Route::post('invoices/issueTransfer', [InvoiceController::class, 'issueTransfer'])->name('invoices.issueTransfer');
+        Route::post('invoices/issueStripe', [InvoiceController::class, 'issueStripe'])->name('invoices.issueStripe');
+        Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'viewPdf'])->name('invoices.viewPdf');            
+        // 審査員
+        Route::get('reviewer', [ReviewerController::class, 'index'])
+            ->name('reviewer.index');
+        Route::get('reviewer/instructorUpdateCycles/{cycle}', [ReviewerController::class, 'show'])
+            ->name('reviewer.show');
+        Route::post('reviewer/instructorUpdateCycles/{cycle}/judge', [ReviewerController::class, 'judge'])
+            ->name('reviewer.judge');
+        Route::post('reviewer/pdfUploads/{id}/approve', [ReviewerController::class, 'approve'])
+            ->name('reviewer.approve');
+        Route::post('reviewer/pdfUploads/{id}/reject', [ReviewerController::class, 'reject'])
+            ->name('reviewer.reject');
+        // ▼ 追加案（要確認）
+        Route::get('reviewer/pdfUploads/{id}/view', [ReviewerController::class, 'view'])
+            ->name('reviewer.view');
+        Route::get('reviewer/pdfUploads/{id}/thumbnail', [ReviewerController::class, 'thumbnail'])
+            ->name('reviewer.thumbnail');
+
+
+        // 審査委員長
+        Route::get('chief', [ChiefReviewController::class, 'index'])
+            ->name('chief.index');
+        Route::get('chief/instructorUpdateCycles/{cycle}', [ChiefReviewController::class, 'show'])
+            ->name('chief.show');
+        Route::post('chief/instructorUpdateCycles/{cycle}/review', [ChiefReviewController::class, 'review'])
+            ->name('chief.review');
+        Route::post('chief/instructorUpdateCycles/bulkReview', [ChiefReviewController::class, 'bulkReview'])
+            ->name('chief.bulkReview');
+        Route::post('chief/instructorUpdateCycles/{cycle}/sendBack', [ChiefReviewController::class, 'sendBackToReviewer'])
+            ->name('chief.sendBack');    
+        // ▼ 追加案（要確認）
+        Route::get('chief/pdfUploads/{id}/view', [ChiefReviewController::class, 'view'])
+            ->name('chief.view');
+        Route::get('chief/pdfUploads/{id}/thumbnail', [ChiefReviewController::class, 'thumbnail'])
+            ->name('chief.thumbnail');
+
+        // サブリーダー
+        Route::get('subleader', [SubLeaderAssignmentController::class, 'index'])
+            ->name('subleader.index');
+        Route::post('subleader/instructorUpdateCycles/{cycle}/assign', [SubLeaderAssignmentController::class, 'assign'])
+            ->name('subleader.assign');
+        Route::post('subleader/instructorUpdateCycles/autoAssign', [SubLeaderAssignmentController::class, 'autoAssign'])
+           ->name('subleader.autoAssign');    
+        // ▼ 追加案（要確認）
+        Route::post('subleader/instructorUpdateCycles/{cycle}/autoAssign', [SubLeaderAssignmentController::class, 'autoAssign'])
+            ->name('subleader.autoAssign');
+        Route::post('subleader/instructorUpdateCycles/bulkAssign', [SubLeaderAssignmentController::class, 'bulkAssign'])
+            ->name('subleader.bulkAssign');
+
+        Route::get('schedules', [ScheduleController::class, 'index'])->name('schedules.index');
+        Route::post('schedules', [ScheduleController::class, 'store'])->name('schedules.store');
+        Route::put('schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
+        Route::delete('schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
+
         // PDF承認 / Reject
         Route::post('pdf/{upload}/approve', [PdfUploadController::class, 'approve'])
             ->name('pdf.approve');
-
         Route::post('pdf/{upload}/reject', [PdfUploadController::class, 'reject'])
-                ->name('pdf.reject');
+            ->name('pdf.reject');
+                
         // 管理画面で一覧表示
         Route::get('/rehab-applications', [RehabApplicationController::class, 'index'])
             ->name('admin.rehab.index');
@@ -144,11 +251,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/rehab-applications/{application}/approve', [RehabApplicationController::class, 'approve'])
             ->name('rehab.approve');
 
+        Route::get('import', [AdminImportController::class, 'index'])->name('import.index');
+        Route::post('import', [AdminImportController::class, 'store'])->name('import.store');
+
+
         Route::prefix('member')->name('member.')->group(function () {
-            Route::get('/import', [MemberImportController::class, 'index'])->name('import');
-
-            Route::post('/import', [MemberImportController::class, 'store'])->name('import.store');
-
             Route::get('/', [AdminMemberController::class, 'index'])->name('index');
             Route::get('/pdf/{id}', [AdminMemberController::class, 'pdfPreview'])->name('pdf.preview');
             Route::get('/{member}', [AdminMemberController::class, 'show'])->name('show');
@@ -256,8 +363,6 @@ Route::middleware([
     
     Route::resource('exams', ExamController::class);
     Route::resource('reports', ReportController::class);
-
-    Route::resource('annual-fees', AnnualFeeController::class);
     // ----------------------------------------
     // ユーザー向け
     // ----------------------------------------

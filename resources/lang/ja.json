@@ -52,6 +52,7 @@
   "points": "単位数",
   "change": "変更",
   "all":"すべて",
+  "import":"インポート",
   "require":"[必須]",
   "actions": {
     "action": "操 作",

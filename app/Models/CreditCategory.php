@@ -11,15 +11,8 @@ class CreditCategory extends Model
 
     protected $fillable = ['name'];
 
-    public function conferences()
-    {
-        return $this->hasMany(CreditConference::class, 'credit_category_id');
-    }
-
-    public function roles()
+    public function rolePoints()
     {
         return $this->hasMany(CreditRolePoint::class, 'credit_category_id');
     }
 }
-
-

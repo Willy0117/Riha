@@ -21,7 +21,7 @@ class ApprovalController extends Controller
             ->with([
                 'updateCycles' => fn ($q) => $q->where('status', 'pending'),
                 'pdfUploads',
-                'annualFees'
+                'invoices'
             ]);
 
         if (!empty($search)) {
@@ -67,7 +67,7 @@ class ApprovalController extends Controller
     }
 
     // Show: 会員の PDF 一覧
-    public function show(Request $request,Member $member)
+    public function show(Request $request, Member $member)
     {
         // 会員関連データを読み込む
         $member->load([
@@ -75,7 +75,8 @@ class ApprovalController extends Controller
             'pdfUploads.creditCategory',
             'pdfUploads.creditConference',
             'pdfUploads.creditRole',
-            'annualFees' 
+            'pdfUploads.reviewer',
+            'invoices'
         ]);
 
         // 最新のサイクル
@@ -98,9 +99,36 @@ class ApprovalController extends Controller
                 ->sum('points');
         }
 
+        // ★ session + 区分 + 学会 でグループ化
+        $groupedUploads = $member->pdfUploads
+            ->groupBy(function ($upload) {
+                return implode('|', [
+                    $upload->session,
+                    $upload->credit_category_id,
+                    $upload->credit_conference_id,
+                ]);
+            })
+            ->map(function ($items) {
+                $first = $items->first();
+
+                return [
+                    'session'                => $first->session,
+                    'credit_category_id'     => $first->credit_category_id,
+                    'credit_category_name'   => $first->creditCategory?->name,
+                    'credit_conference_id'   => $first->credit_conference_id,
+                    'credit_conference_name' => $first->creditConference?->name,
+                    'points'                 => $items->sum('points'),
+                    'date'                   => $first->issued_date,
+                    'roles'                  => $items->pluck('creditRole.role')->filter()->unique()->values(),
+                    'statuses'               => $items->pluck('status')->unique()->values(),
+                    'items'                  => $items->values(), // グループ内の個々のアップロード明細
+                ];
+            })
+            ->values();
+
         return inertia('Admin/Approvals/Show', [
             'member'  => $member,
-            'uploads' => $member->pdfUploads,
+            'uploads' => $groupedUploads,
             'filters' => [
                 'search' => $request->search,
                 'page'   => $request->page,
@@ -129,6 +157,7 @@ class ApprovalController extends Controller
     {
         $upload = PdfUpload::findOrFail($id);
         $upload->status = 'approved';
+        $upload->reviewed_by = auth()->id();
         $upload->save();
 
         return back()->with('success', 'PDF approved.');
@@ -139,7 +168,8 @@ class ApprovalController extends Controller
     {
         $upload = PdfUpload::findOrFail($id);
         $upload->status = 'rejected';
-        $upload->reject_reason = $request->reason ?? '';
+        $upload->rejection_message = $request->reason ?? '';
+        $upload->reviewed_by = auth()->id();
         $upload->save();
 
         return back()->with('success', 'PDF rejected.');

@@ -83,6 +83,14 @@ class Admin extends Authenticatable
     {
         return $this->hasRole('super_admin');
     }
-    
+    // App\Models\Admin に以下を追加してください（サブリーダー画面の担当件数カウント用）
+
+    /**
+     * この審査員が担当している更新申請
+     */
+    public function reviewingCycles()
+    {
+        return $this->hasMany(InstructorUpdateCycle::class, 'reviewer_admin_id');
+    }
 }
 

@@ -2,290 +2,354 @@
   <AppLayout :title="$t('pdf_upload')">
 
     <template #header>{{ $t('pdf_upload') }}</template>
- <div class="dashboard">
+    <div class="max-w-none mx-auto p-8 flex flex-col gap-6 font-sans text-[#1a1a2e]">
 
-    <!-- 上段：資格更新状況 + 認定・更新期間 -->
-    <!--div class="grid-top" -->
-    <div class="grid grid-cols-6 gap-6">  
-
-      <!-- 資格更新状況 -->
-      <!-- div class="card card-main" -->
-      <div class="col-span-6 md:col-span-4 bg-white rounded-xl border border-gray-200 p-6">
-        <div class="card-header">
-          <div class="card-title">
-            <Award class="w-5 h-5 text-blue-600" />
-            <h2>資格更新状況</h2>
+      <!-- 更新手続きフェーズ（新規追加レイアウト） -->
+      <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div class="border border-gray-300 rounded-lg px-4 py-2.5">
+            <p class="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
+              <Calendar class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+              認定期間 {{ cycleYears }} 年間
+              <span v-if="cycleYears > 5" class="text-red-500">
+                （原則5年だが延長されている扱い）
+              </span>
+            </p>
+            <p class="text-lg font-bold text-gray-900">
+              {{ props.cycle?.start_date ? dayjs(props.cycle.start_date).format('YYYY-MM-DD') : '' }}
+              〜
+              {{ props.cycle?.end_date ? dayjs(props.cycle.end_date).format('YYYY-MM-DD') : '' }}
+            </p>
           </div>
-          <span class="badge-draft">蓄積中（一時保存）</span>
-        </div>
-        <p class="card-desc">現在の獲得単位数と更新要件の達成度です。</p>
+          <div class="bg-orange-50 rounded-lg px-4 py-2.5">
+            <p class="flex items-center gap-1.5 text-sm text-orange-500 font-semibold mb-1">
+              <Clock class="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
+              更新申請受付期間
+            </p>
+            <p class="text-lg font-bold text-orange-500">
+              {{ props.cycle?.renewal_start_date ? dayjs(props.cycle.renewal_start_date).format('YYYY-MM-DD') : '' }}
+              〜
+              {{ props.cycle?.renewal_end_date ? dayjs(props.cycle.renewal_end_date).format('YYYY-MM-DD') : '' }}
+            </p>
+          </div>
 
-        <div class="progress-area">
-          <div class="progress-info">
-            <div class="unit-display">
-              <span class="unit-current">{{ totalCredits }}</span>
-              <span class="unit-separator"> / {{ props?.requiredUnits }} 単位</span>
+          <!-- [今回追加] 現在の期区分（応募期間・審査期間） -->
+          <div v-if="props.schedule" class="border border-blue-200 bg-blue-50 rounded-lg px-4 py-2.5">
+            <p class="flex items-center gap-1.5 text-sm text-blue-600 font-semibold mb-1.5">
+              <Calendar class="w-3.5 h-3.5 text-blue-400 flex-shrink-0" />
+              {{ props.schedule.period_name }}
+            </p>
+            <div class="space-y-1">
+              <p class="text-xs text-blue-700">
+                <span class="font-semibold">応募期間：</span>
+                {{ dayjs(props.schedule.application_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.application_end).format('YYYY-MM-DD') }}
+              </p>
+              <p class="text-xs text-blue-700">
+                <span class="font-semibold">審査期間：</span>
+                {{ dayjs(props.schedule.chief_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.chief_end).format('YYYY-MM-DD') }}
+              </p>
             </div>
-            <div class="unit-right">
-              <span class="unit-remaining">あと {{ Math.max((props.requiredUnits || 0) - (props.approvedTotal || 0), 0) }} 単位</span>
-              <span class="gakkai-info">腎リハ学術集会参加: {{ props?.conference_count }} / 2 回</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ここから、更新を辞退している場合はグレーアウト -->
+      <div :class="['flex flex-col gap-6', isNoUpdate ? 'opacity-40 pointer-events-none' : '']">
+
+      <!-- 更新手続きフェーズ ステッパー -->
+      <div class="bg-white rounded-xl border border-gray-200 p-6">
+        <p class="text-sm font-semibold text-gray-500 mb-5 text-center">更新手続きフェーズ（現在の進捗状況）</p>
+
+        <div class="flex items-center">
+          <template v-for="(phase, idx) in phases" :key="phase">
+            <div class="flex flex-col items-center flex-1">
+              <div :class="phaseCircleClass(idx)">
+                <CheckCircle2 v-if="idx < currentPhaseIndex" class="w-4 h-4" />
+                <span v-else>{{ idx + 1 }}</span>
+              </div>
+              <span :class="['text-sm mt-2 text-center whitespace-nowrap', idx === currentPhaseIndex ? 'font-bold text-gray-900' : 'text-gray-500']">
+                {{ phase }}
+              </span>
+            </div>
+            <div v-if="idx < phases.length - 1" class="flex-1 h-px bg-gray-200 -mt-6"></div>
+          </template>
+        </div>
+      </div>
+
+      <!-- 上段：資格更新状況 -->
+      <div class="grid grid-cols-6 gap-6">
+
+        <!-- 資格更新状況 -->
+        <div class="col-span-6 bg-white rounded-xl border border-gray-200 p-6">
+          <div class="grid grid-cols-1 lg:grid-cols-5 gap-4">
+
+            <!-- 左側：① 更新要件充足チェック（横並び3カード） -->
+            <div class="lg:col-span-4 border border-gray-200 rounded-xl p-4">
+              <p class="text-sm font-semibold text-gray-500 mb-3">① 更新要件充足チェック</p>
+              <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+
+                <!-- (a) 学術集会への参加 -->
+                <div class="relative border border-emerald-300 rounded-xl p-4">
+                  <div v-if="false && hasConferenceCount" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                    <Check class="w-3.5 h-3.5 text-white" stroke-width="3" />
+                  </div>
+                  <p class="font-semibold text-gray-900 text-base mb-1 pr-4">(a) 腎リハ学術集会に2回以上参加</p>
+                  <p class="text-sm text-gray-500 mb-3">
+                    5年間に日本腎臓リハビリテーション学会学術集会に2回以上参加している（参加証明書を提出してください）。
+                  </p>
+                  <div class="flex items-center gap-3">
+                    <div class="flex items-baseline gap-0.5 flex-shrink-0">
+                      <span class="text-lg font-bold text-blue-600">{{ props?.conference_count ?? 0 }}</span>
+                      <span class="text-sm text-gray-500">/ 2 回</span>
+                    </div>
+                    <div class="flex flex-col gap-1.5 flex-1">
+                      <div class="bg-amber-50 border border-amber-200 rounded-lg text-center py-1.5">
+                        <span class="text-sm text-amber-700 font-semibold">蓄積中：{{ props?.pendingConferenceCount ?? 0 }} 回</span>
+                      </div>
+                      <div class="bg-emerald-50 border border-emerald-200 rounded-lg text-center py-1.5">
+                        <span class="text-sm text-emerald-700 font-semibold">承認済み：{{ props?.approvedConferenceCount ?? 0 }} 回</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- (b) 単位取得 -->
+                <div class="relative border border-emerald-300 rounded-xl p-4">
+                  <div v-if="false && isCreditsRequirementMet" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                    <Check class="w-3.5 h-3.5 text-white" stroke-width="3" />
+                  </div>
+                  <p class="font-semibold text-gray-900 text-base mb-1 pr-4">(b) {{ props?.requiredUnits }}単位以上取得</p>
+                  <p class="text-sm text-gray-500 mb-3">
+                    5年間に{{ props?.requiredUnits }}単位以上取得している（参加証あるいは抄録・論文のコピーを提出してください）。
+                  </p>
+                  <div class="flex items-center gap-3">
+                    <div class="flex items-baseline gap-0.5 flex-shrink-0">
+                      <span class="text-lg font-bold text-blue-600">{{ totalCredits }}</span>
+                      <span class="text-sm text-gray-500">/ {{ props?.requiredUnits }} 単位</span>
+                    </div>
+                    <div class="flex flex-col gap-1.5 flex-1">
+                      <div class="bg-amber-50 border border-amber-200 rounded-lg text-center py-1.5">
+                        <span class="text-sm text-amber-700 font-semibold">蓄積中：{{ props?.pendingTotal ?? 0 }} 単位</span>
+                      </div>
+                      <div class="bg-emerald-50 border border-emerald-200 rounded-lg text-center py-1.5">
+                        <span class="text-sm text-emerald-700 font-semibold">承認済み：{{ props?.approvedTotal ?? 0 }} 単位</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <!-- (c) 年会費完納 -->
+                <div class="relative border border-emerald-300 rounded-xl p-4">
+                  <div v-if="false && props?.annualFeeStatus" class="absolute -top-2 -right-2 w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shadow">
+                    <Check class="w-3.5 h-3.5 text-white" stroke-width="3" />
+                  </div>
+                  <p class="font-semibold text-gray-900 text-base mb-1 pr-4">(c) 学会年会費の完納</p>
+                  <p class="text-sm text-gray-500 mb-3">会費を完納している（更新年度の会費も含む）。</p>
+                  <span :class="badgeClasses(props?.annualFeeStatus ? 'met' : 'pending')">
+                    <CheckCircle2 v-if="props?.annualFeeStatus" class="w-3.5 h-3.5" />
+                    <Clock v-else class="w-3.5 h-3.5" />
+                    年会費：{{ annualFeeStatus }}
+                  </span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    class="w-full whitespace-nowrap text-blue-600 bg-blue-50 border-blue-200 hover:bg-blue-100 mt-3"
+                    @click="showFeeDialog = true"
+                  >
+                    年会費納入状況
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            <!-- 右側：② 更新申請 / ③ 資格更新料納付（縦並び） -->
+            <div class="lg:col-span-1 flex flex-col gap-3">
+              <div class="border border-gray-200 rounded-xl p-4">
+                <p class="text-sm font-semibold text-gray-500 mb-3">② 更新申請を行う</p>
+                <div class="flex items-center gap-2">
+                  <div class="flex-1">
+                    <Button
+                      v-if="!applyBadgeState"
+                      :disabled="!isEligible"
+                      :class="[
+                        'w-full whitespace-nowrap',
+                        isEligible
+                          ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                          : 'text-gray-400 bg-gray-100 border border-gray-200'
+                      ]"
+                      @click="submitUpdateApplication"
+                    >
+                      更新申請を行う
+                    </Button>
+                    <span v-else :class="badgeClasses(applyBadgeState.tone)">
+                      <CheckCircle2 v-if="applyBadgeState.tone === 'met'" class="w-3.5 h-3.5" />
+                      <Clock v-else-if="applyBadgeState.tone === 'pending'" class="w-3.5 h-3.5" />
+                      <AlertCircle v-else class="w-3.5 h-3.5" />
+                      {{ applyBadgeState.label }}
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    :disabled="props.cycle?.status === 'pending'"
+                    :class="[
+                      'flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold whitespace-nowrap transition',
+                      props.cycle?.status === 'pending'
+                        ? 'text-orange-300 bg-orange-100 border border-orange-200 cursor-not-allowed'
+                        : isDeclined
+                          ? 'bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200'
+                          : 'bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100'
+                    ]"
+                    @click="onDeclineButtonClick"
+                  >
+                    <CheckCircle2 v-if="isDeclined" class="w-3.5 h-3.5" />
+                    {{ isDeclined ? '更新手続きを再開する' : '更新をしない' }}
+                  </button>
+                </div>
+              </div>
+
+              <div class="border border-gray-200 rounded-xl p-4">
+                <p class="text-sm font-semibold text-gray-500 mb-3">③ 資格更新料納付</p>
+                <span :class="badgeClasses(paymentBadgeToneMap[paymentBadgeState.tone])">
+                  <CheckCircle2 v-if="paymentBadgeState.tone === 'paid'" class="w-3.5 h-3.5" />
+                  <Clock v-else-if="paymentBadgeState.tone === 'unpaid'" class="w-3.5 h-3.5" />
+                  <AlertCircle v-else class="w-3.5 h-3.5" />
+                  {{ paymentBadgeState.label }}
+                </span>
+              </div>
             </div>
           </div>
-          <Progress :value="progressPercent" class="h-3" />
-        </div>
-        <div class="flex items-center justify-between p-4 bg-gray-50 border border-gray-200 rounded-xl">
-          <div class="flex items-center gap-3">
-            <AlertCircle 
-              :class="['w-8 h-8 flex-shrink-0', isEligible ? 'text-blue-500' : 'text-gray-400']" 
-            />
-            <div>
-              <p class="font-semibold text-gray-700">更新要件の確認中</p>
-              <p class="text-sm text-gray-500">すべての要件を満たすと申請ボタンが有効になります。</p>
-            </div>
-          </div>
-          <Button
-            :disabled="!isEligible"
-            :class="[
-              'whitespace-nowrap',
-              isEligible
-                ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                : 'text-gray-400 bg-gray-100 border border-gray-200'
-            ]"
-            @click="showUpdateDialog = true"
-          >
-            更新申請を行う
-          </Button>
-        </div>
-        <div class="stats-row">
-          <div class="stat-box">
-            <span class="stat-label">既得単位</span>
-            <span class="stat-value">{{ props?.approvedTotal }}</span>
-          </div>
-          <div class="stat-box">
-            <span class="stat-label">申請中・承認待ち</span>
-            <span class="stat-value pending">+{{ props?.pendingTotal }}</span>
-          </div>
+
         </div>
       </div>
-
-      <!-- 認定・更新期間 -->
-      <!-- div class="card card-side" -->
-      <div class="col-span-6 md:col-span-2 bg-white rounded-xl border border-gray-200 p-6">  
-        <div class="card-title">
-          <Calendar class="card-icon orange" :size="20" />
-          <h2>認定・更新期間</h2>
-        </div>
-
-        <div class="period-block">
-          <p class="period-label">
-            認定期間 {{ cycleYears }} 年間
-            <span v-if="cycleYears > 5" class="text-red-500">
-              （原則5年だが延長されている扱い）
-            </span>
-          </p>
-          <p class="period-value">{{ props.cycle?.start_date }} 〜 {{ props.cycle?.end_date }}</p>
-        </div>
-
-        <div class="period-block renewal">
-          <p class="period-label orange">更新申請受付期間</p>
-          <p class="period-value orange">{{ props.cycle?.renewal_start_date }} 〜 {{ props.cycle?.renewal_end_date }}</p>
-        </div>
-
-        <div class="info-box">
-          <Info class="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-          <p>更新申請は認定期間最終年の指定期間内（上記）にのみ受け付けています。</p>
-        </div>
-      </div>
-    </div>
-   <div class="grid grid-cols-6 gap-6">
-    <!-- 支払い状況 -->
-    <div class="col-span-6 md:col-span-4 bg-white rounded-xl border border-gray-200 p-6">
-      <div class="card-title">
-        <CreditCard class="card-icon green" :size="20" />
-        <h2>支払い状況</h2>
-      </div>
-      <p class="card-desc">年会費および更新料の納入状況です。</p>
-
-      <div class="payment-row">
-        <div class="payment-box cursor-pointer hover:opacity-80" @click="showFeeDialog = true">
-          <span class="payment-label">本年度年会費</span>
-          <div class="payment-status">
-            <span :class="['payment-value', annualFeeStatus === '未納' ? 'unpaid' : 'paid']">
-              {{ annualFeeStatus }}
-            </span>
-            <Clock class="w-4 h-4 text-gray-300" />
-          </div>
-        </div>
-        <div class="payment-box cursor-pointer hover:opacity-80" @click="showFeeDialog = true">
-          <span class="payment-label">更新料</span>
-          <div class="payment-status">
-            <span :class="['payment-value', renewalFeeStatus === '未請求' ? 'unpaid' : 'paid']">
-              {{ renewalFeeStatus }}
-            </span>
-            <Clock class="w-4 h-4 text-gray-300" />
-          </div>
-        </div>
-      </div>
-      
-      <div class="warning-box">
-        <Info class="w-4 h-4 text-blue-500 flex-shrink-0 mt-0.5" />
-        <p>更新料の支払いが確認できるまで、更新手続きは完了しません。振込後、反映まで数日かかる場合があります。</p>
-      </div>
-    </div>  
-    <!-- 認定・更新期間 -->
-    <div class="col-span-6 md:col-span-2 bg-white rounded-xl border border-gray-200 p-6"> 
-      <div class="card-title">
-        <Award class="card-icon orange" :size="20" />
-        <h2>更新を辞退する</h2>
-      </div>
-
-      <div class="info-box">
-        <Info class="w-4 h-4 text-orange-500 flex-shrink-0 mt-0.5" />
-        <p>更新を辞退される場合は、右記のボタンよりお知らせください。</p>
-        <Button size="sm" class="bg-orange-600 hover:bg-orange-700 text-white" @click="updateStatus('no_update'); showUpdateDialog = false">
-          {{ t('instructors.cancel') }}
+      <!-- 提出書類・申請履歴 -->
+      <div class="flex items-center gap-3">
+        <h2 class="text-lg font-extrabold text-[#1e3a6e] italic">提出書類・申請履歴</h2>
+        <Button 
+          :disabled="props.cycle?.status === 'pending'"
+          :class="[
+            'rounded-lg px-5 py-2.5 text-sm font-semibold whitespace-nowrap flex items-center gap-2',
+            props.cycle?.status === 'pending'
+              ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          ]"
+          @click="isOpen = true"
+        >
+          <Upload class="w-4 h-4" /> 新規書類アップロード
         </Button>
       </div>
-    </div>
-    
-   </div>    
-    <!-- 提出書類・申請履歴 -->
-    <div class="section-header">
-      <h2 class="section-title">提出書類・申請履歴</h2>
-      <Button 
-        class="bg-blue-600 hover:bg-blue-700 text-white rounded-lg px-5 py-2.5 text-xs font-semibold whitespace-nowrap flex items-center gap-2" 
-        @click="isOpen = true"
-      >
-        <Upload class="w-4 h-4" /> 新規申請・書類アップロード
-      </Button>
-    </div>
 
-    <div class="card card-table">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>書類名 / 区分</th>
-            <th>日付</th>
-            <th>単位</th>
-            <th>ステータス</th>
-            <th>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="props.uploads?.length === 0">
-            <td colspan="5" class="empty-row">
-              <div class="empty-state">
-                <p>申請履歴がありません</p>
-              </div>
-            </td>
-          </tr>
-          <tr v-for="app in props.uploads" :key="app.id">
-            <td>
-              <div class="flex items-center gap-2">
-                <FileText class="w-4 h-4 text-gray-400 flex-shrink-0" />
-                <div>
-                  <p class="font-medium">{{ app.session }}{{ app.credit_conference_name }}</p>
-                  <Badge variant="outline" class="text-xs mt-1">{{ app.role_name }}</Badge>
-                  <p class="text-xs text-blue-600 font-semibold mt-1">認定学会: {{ app.credit_category_name }}</p>
+      <div class="bg-white rounded-xl border border-gray-200 p-0 overflow-hidden">
+        <table class="w-full border-collapse text-[13px]">
+          <thead>
+            <tr>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">書類名 / 区分</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">参加日 / 発行日</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">単位</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">ステータス</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">却下理由</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">操作</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr v-if="props.uploads?.length === 0">
+              <td colspan="6" class="!p-12 border-b border-gray-100">
+                <div class="text-center text-gray-400 text-[13px]">
+                  <p>申請履歴がありません</p>
                 </div>
-              </div>
-            </td>
-            <td>{{ app.date }}</td>
-            <td>{{ app.points }} {{ t('instructors.point') }}</td>
-            <td><span
-                class="text-xs"
-                :class="{
-                  'text-amber-500': app.status === 'pending',
-                  'text-green-600': app.status === 'approved',
-                  'text-red-500': app.status === 'rejected'
-                }"
+              </td>
+            </tr>
+            <tr v-for="app in props.uploads" :key="app.id">
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">
+                <div class="flex items-center gap-2">
+                  <FileText class="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <div>
+                    <p class="font-medium">
+                      <template v-if="app.session">第{{ app.session }}回 </template>{{ app.credit_conference_name }}
+                    </p>
+                    <Badge variant="outline" class="text-xs mt-1">{{ app.role_name }}</Badge>
+                    <p class="text-xs text-blue-600 font-semibold mt-1">認定学会: {{ app.credit_category_name }}</p>
+                  </div>
+                </div>
+              </td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">{{ app.issued_date }}</td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">{{ app.points }} {{ t('instructors.point') }}</td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">
+                <span
+                  class="inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold whitespace-nowrap"
+                  :class="{
+                    'bg-gray-50 text-gray-500 border-gray-300': app.status === 'pending',
+                    'bg-emerald-50 text-emerald-700 border-emerald-200': app.status === 'approved',
+                    'bg-red-50 text-red-600 border-red-300': app.status === 'rejected',
+                    'bg-blue-50 text-blue-600 border-blue-200': app.status === 'under_review',
+                    'bg-slate-50 text-slate-400 border-slate-200': app.status === 'out_of_period'
+                  }"
+                >
+                  {{ uploadStatusLabel(app.status) }}
+                </span>
+              </td>
+              <td
+                v-if="app.status === 'rejected'"
+                class="px-5 py-3.5 border-b border-gray-100 text-xs text-red-500 mt-1"
               >
-              {{ t(app.status) }}
-            </span>
-            </td>
-            <td
-              v-if="app.status === 'rejected'"
-              class="text-xs text-red-500 mt-1"
-            >
-            {{ app.rejection_message }}
-            </td>
-            <td v-else class="text-xs text-gray-400 mt-1">
-              -
-            </td>
-            <td>
-              <div class="flex items-center gap-2">
-                <button
-                  @click="previewPdf = `/pdf-uploads/${app.id}/view`"
-                  class="text-xs text-gray-500 hover:text-sky-700 transition flex items-center gap-1"
-                >
-                  <FileText class="w-4 h-4" />
-                  詳細
-                </button>
-                <button
-                  @click=""
-                  class="text-xs text-red-500 hover:text-red-600 transition flex items-center gap-1"
-                >
-                  <Trash2 class="w-4 h-4" />
-                  削除
-                </button>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+              {{ app.rejection_message }}
+              </td>
+              <td v-else class="px-5 py-3.5 border-b border-gray-100 text-xs text-gray-400 mt-1">
+                -
+              </td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">
+                <div class="flex items-center gap-2">
+                  <button
+                    @click="previewPdf = `/pdf-uploads/${app.id}/view`"
+                    class="text-xs text-gray-500 hover:text-sky-700 transition flex items-center gap-1"
+                  >
+                    <FileText class="w-4 h-4" />
+                    詳細
+                  </button>
+                  <button
+                    :disabled="props.cycle?.status === 'pending'"
+                    :class="[
+                      'text-xs transition flex items-center gap-1',
+                      props.cycle?.status === 'pending'
+                        ? 'text-gray-300 cursor-not-allowed'
+                        : 'text-red-500 hover:text-red-600'
+                    ]"
+                    @click="deleteUpload(app.id)"
+                  >
+                    <Trash2 class="w-4 h-4" />
+                    削除
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
-  </div>
+      </div>
+      <!-- グレーアウトラッパーここまで -->
+
+    </div>
 
     <div>
-      <Dialog :open="showUpdateDialog" @update:open="showUpdateDialog = false">
-        <DialogContent class="sm:max-w-2xl bg-white">
+      <Dialog :open="showDeclineConfirm" @update:open="showDeclineConfirm = false">
+        <DialogContent class="sm:max-w-lg bg-white">
           <DialogHeader>
-            <DialogTitle>更新申請</DialogTitle>
-            <DialogDescription>
-              以下の情報を確認の上、送信してください。
-            </DialogDescription>
+            <DialogTitle>資格更新の辞退確認</DialogTitle>
           </DialogHeader>
 
-          <form @submit.prevent="submit" class="space-y-4">
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div>
-                <InputLabel :value="t('members.code')" />
-                <TextInput v-model="form.code" type="text" class="input-field" />
-                <InputError :message="form.errors?.code" />
-              </div>
-              <div class="sm:col-span-2">
-                <InputLabel :value="t('name')" />
-                <div class="grid grid-cols-2 gap-2 mt-1">
-                  <div>
-                    <TextInput v-model="form.last_name" class="input-field" />
-                    <InputError :message="form.errors?.last_name" />
-                  </div>
-                  <div>
-                    <TextInput v-model="form.first_name" class="input-field" />
-                    <InputError :message="form.errors?.first_name" />
-                  </div>
-                </div>
-              </div>
-              <div>
-                <InputLabel :value="t('instructors.code')" />
-                <TextInput v-model="form.instructor_code" type="text" class="input-field" />
-                <InputError :message="form.errors?.instructor_code" />
-              </div>
-              <div>
-                <InputLabel :value="t('exams.email')" />
-                <TextInput v-model="form.email" type="email" class="input-field" />
-                <InputError :message="form.errors?.email" />
-              </div>
-            </div>
-          </form>
+          <p class="text-sm text-gray-700 leading-relaxed">
+            資格更新の手続きを辞退（キャンセル）します。資格更新を辞退すると、現在の認定期間終了に伴い指導士資格を喪失し、その後は「腎臓リハビリテーション指導士」と称することができなくなります。本当によろしいですか？
+          </p>
 
           <DialogFooter>
-            <Button variant="outline" size="sm" @click="showUpdateDialog = false">
-              {{ t('cancel') }}
-            </Button>
-            <Button size="sm" class="bg-blue-600 hover:bg-blue-700 text-white" @click="updateStatus('pending'); showUpdateDialog = false">
-              {{ t('instructors.send') }}
+            <SecondaryButton @click="showDeclineConfirm = false">
+              いいえ（元の画面に戻る）
+            </SecondaryButton>
+            <Button
+              class="bg-red-600 hover:bg-red-700 text-white ms-3"
+              @click="confirmDecline"
+            >
+              はい（指導士資格を更新しない）
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,12 +361,11 @@
             <DialogTitle>年会費詳細</DialogTitle>
           </DialogHeader>
 
-          <table class="w-full text-sm">
+          <table class="w-full text-base">
             <thead>
               <tr class="border-b text-gray-500">
                 <th class="py-2 text-left">年度</th>
                 <th class="py-2 text-right">年会費</th>
-                <th class="py-2 text-right">更新費</th>
                 <th class="py-2 text-right">納入額</th>
                 <th class="py-2 text-center">状態</th>
               </tr>
@@ -311,11 +374,10 @@
               <tr v-for="fee in props.fees" :key="fee.id" class="border-b">
                 <td class="py-2">{{ fee.fiscal_year }}年度</td>
                 <td class="py-2 text-right">{{ fee.annual_fee.toLocaleString() }}円</td>
-                <td class="py-2 text-right">{{ fee.renewal_fee.toLocaleString() }}円</td>
                 <td class="py-2 text-right">{{ fee.payment_amount.toLocaleString() }}円</td>
                 <td class="py-2 text-center">
                   <span :class="[
-                    'px-2 py-0.5 rounded-full text-xs font-medium',
+                    'px-2 py-0.5 rounded-full text-sm font-medium',
                     fee.status === 'paid' ? 'bg-blue-50 text-blue-600' : 'bg-red-50 text-red-500'
                   ]">
                     {{ fee.status === 'paid' ? '納入済' : '未納' }}
@@ -332,7 +394,7 @@
       </Dialog>
 
       <Dialog :open="!!previewPdf" @update:open="previewPdf = null">
-        <DialogOverlay class="fixed inset-0 z-40 bg-black/50" />
+        <DialogOverlay class="fixed inset-0 z-40 bg-white" />
         <DialogContent class="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col sm:rounded-lg">
           <DialogHeader class="px-4 py-3 border-b">
             <DialogTitle>{{ t('PDFpreview') }}</DialogTitle>
@@ -340,7 +402,7 @@
           <div class="flex-1 overflow-hidden">
             <iframe
               v-if="previewPdf"
-              :src="previewPdf"
+              :src="`${previewPdf}#toolbar=0&navpanes=0`"
               class="w-full h-full border-0"
             />
           </div>
@@ -351,9 +413,9 @@
           </DialogFooter>
         </DialogContent>
       </Dialog>
-        <!-- Dialog -->
+      <!-- Dialog -->
       <Dialog :open="isOpen" @update:open="isOpen = false">
-        <DialogContent class="sm:max-w-2xl bg-white"">
+        <DialogContent class="sm:max-w-2xl bg-white">
           <DialogHeader>
             <DialogTitle>新規書類アップロード</DialogTitle>
             <DialogDescription>
@@ -363,44 +425,94 @@
 
           <form @submit.prevent="submit" class="space-y-5 py-2">
 
-            <!-- 書類名（session） -->
-            <div class="space-y-2">
-              <Label for="session">書類名</Label>
-              <TextInput
-                id="session"
-                v-model="form.session"
-                placeholder="例: 第16回学術集会 参加証"
-                class="w-full"
-              />
-              <InputError :message="form.errors?.session" />
-            </div>
-
             <!-- 区分 -->
             <div class="space-y-2">
               <Label>区分</Label>
-              <select v-model.number="form.credit_category_id" class="input-field">
-                <option value="" disabled>区分を選択してください</option>
-                <option v-for="c in props.creditCategories" :key="c.id" :value="c.id">{{ c.name }}</option>
-              </select>
+              <Select v-model="form.credit_category_id">
+                <SelectTrigger class="w-full">
+                  <SelectValue placeholder="区分を選択してください" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="c in props.creditCategories" :key="c.id" :value="c.id">
+                    {{ c.name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
               <InputError :message="form.errors?.credit_category_id" />
             </div>
 
-            <!-- conference -->
+            <!-- conference（コンボボックス：部分一致で検索して選択） -->
             <div v-if="props.conferences.length > 0" class="space-y-2">
               <Label>学会名</Label>
-              <select v-model.number="form.credit_conference_id" class="input-field">
-                <option value="" disabled>学会を選択してください</option>
-                <option v-for="conf in filteredConferences" :key="conf.id" :value="conf.id">{{ conf.name }}</option>
-              </select>
+              <Popover v-model:open="isConferencePopoverOpen">
+                <PopoverTrigger as-child>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    role="combobox"
+                    :aria-expanded="isConferencePopoverOpen"
+                    class="w-full justify-between font-normal"
+                  >
+                    <span :class="selectedConferenceName ? 'text-gray-900' : 'text-gray-400'">
+                      {{ selectedConferenceName || '学会を選択してください' }}
+                    </span>
+                    <ChevronsUpDown class="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent class="w-[--reka-popover-trigger-width] p-0">
+                  <Command>
+                    <CommandInput placeholder="例: 腎臓 と入力して検索" />
+                    <CommandEmpty>該当する学会が見つかりません</CommandEmpty>
+                    <CommandList>
+                      <CommandGroup>
+                        <CommandItem
+                          v-for="conf in filteredConferences"
+                          :key="conf.id"
+                          :value="conf.name"
+                          @select="selectConference(conf)"
+                        >
+                          <Check
+                            :class="['mr-2 h-4 w-4', form.credit_conference_id === conf.id ? 'opacity-100' : 'opacity-0']"
+                          />
+                          {{ conf.name }}
+                        </CommandItem>
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
+              <InputError :message="form.errors?.credit_conference_id" />
             </div>
 
             <!-- role -->
             <div v-if="props.roles.length > 0" class="space-y-2">
               <Label>役割</Label>
-              <select v-model="form.role_id" class="input-field">
-                <option value="" disabled>役割を選択してください</option>
-                <option v-for="r in filteredRoles" :key="r.id" :value="r.id">{{ r.name }}</option>
-              </select>
+              <Select v-model="form.role_id">
+                <SelectTrigger class="w-full">
+                  <SelectValue placeholder="役割を選択してください" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem v-for="r in filteredRoles" :key="r.id" :value="r.id">
+                    {{ r.name }}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <!-- 書類名（session：回数） -->
+            <div v-if="selectedRolePointRequiresSession" class="space-y-2">
+              <Label for="session">回数</Label>
+              <TextInput
+                id="session"
+                v-model="form.session"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                class="w-full"
+                placeholder="例: 16"
+                @input="form.session = form.session.replace(/[^0-9]/g, '')"
+              />
+              <InputError :message="form.errors?.session" />
             </div>
 
             <!-- 参加日/発行日 -->
@@ -417,20 +529,26 @@
               @click="fileInput?.click()"
             >
               <FileUp class="w-8 h-8 text-gray-400 mx-auto mb-2" />
-              <p class="text-sm text-gray-500">ファイルをドラッグ＆ドロップ、またはクリックして選択</p>
-              <p class="text-xs text-gray-400 mt-1">PDF, JPG, PNG (最大 10MB)</p>
-              <p v-if="form.file" class="text-xs text-indigo-600 mt-2 font-medium">{{ form.file.name }}</p>
+              <p class="text-base text-gray-500">ファイルをドラッグ＆ドロップ、またはクリックして選択</p>
+              <p class="text-sm text-gray-400 mt-1">PDF, JPG, PNG (最大 10MB)</p>
+              <p v-if="form.file" class="text-sm text-indigo-600 mt-2 font-medium">{{ form.file.name }}</p>
               <input type="file" class="hidden" ref="fileInput" @change="onFileChange" />
               <InputError :message="form.errors?.file" />
             </div>
 
           </form>
+          <div v-if="uploadError" class="bg-red-50 border border-red-200 rounded-lg p-4 shadow-sm">
+            <p class="text-base font-semibold text-red-600 flex items-center gap-2">
+              <AlertTriangle class="w-4 h-4 text-red-500" />
+              {{ uploadError }}
+            </p>
+          </div>
           <div v-if="warnings.length > 0" class="bg-white border border-gray-200 rounded-lg p-4 space-y-1 shadow-sm">
-            <p class="text-sm font-semibold text-red-600 flex items-center gap-2">
+            <p class="text-base font-semibold text-red-600 flex items-center gap-2">
               <AlertTriangle class="w-4 h-4 text-red-500" />
               AI検証で不一致が検出されました
             </p>
-            <ul class="text-sm text-gray-700 list-disc list-inside mt-2">
+            <ul class="text-base text-gray-700 list-disc list-inside mt-2">
               <li v-for="(w, i) in warnings" :key="i">{{ w }}</li>
             </ul>
           </div>
@@ -442,7 +560,7 @@
               @click="upload"
             >
               <Save class="w-4 h-4 mr-2" />
-              保存（下書き保存）
+              アップロード
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -461,14 +579,22 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
+import {
+  Popover, PopoverContent, PopoverTrigger
+} from '@/components/ui/popover'
+import {
+  Command, CommandInput, CommandEmpty, CommandGroup, CommandItem, CommandList
+} from '@/components/ui/command'
+import {
+  Select, SelectTrigger, SelectValue, SelectContent, SelectItem
+} from '@/components/ui/select'
 
 import { ref, computed , watch } from 'vue'
-import InputLabel from '@/Components/InputLabel.vue';
 import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Eye, FileText, Calendar, CreditCard, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle } from 'lucide-vue-next'
+import { Eye, FileText, Calendar, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle, CheckCircle2, Check, ChevronsUpDown } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 
 import { useI18n } from 'vue-i18n'
@@ -478,6 +604,7 @@ const { t } = useI18n()
 const page = usePage()
 
 const warnings = computed(() => page.props.flash?.warnings ?? [])
+const uploadError = computed(() => page.props.flash?.error ?? null)
 
 const props = defineProps({
   uploads: { type: Array, required: true },
@@ -490,12 +617,15 @@ const props = defineProps({
   totalPaid: Number,
   isFeeOk: Boolean,
   conference_count: Number,
+  pendingConferenceCount: Number,
+  approvedConferenceCount: Number,
   requiredUnits: Number,
   creditCategories: { type: Array, required: true },
   conferences: { type: Array, required: true },
   roles: { type: Array, required: true },
   fees: Object,
   annualFeeStatus: Boolean, 
+  schedule: Object, // [今回追加] 現在の期区分（応募期間・審査期間）
 })
 
 const totalCredits = computed(() => (props.approvedTotal ?? 0) + (props.pendingTotal ?? 0))
@@ -527,14 +657,151 @@ const progressPercent = computed(() => {
   return Math.min(Math.round((approved / required) * 100), 100)
 })
 
+const isNoUpdate = computed(() => props.cycle?.status === 'no_update')
+
+const isDeclined = computed(() => props.cycle?.status === 'no_update')
+
+const showDeclineConfirm = ref(false)
+
+// ボタンクリック時：辞退する場合のみ確認ダイアログを挟む。再開する場合は確認なしで直接切り替える。
+const onDeclineButtonClick = () => {
+  if (isDeclined.value) {
+    updateStatus('before_update')
+    return
+  }
+  showDeclineConfirm.value = true
+}
+
+// 確認ダイアログで「はい」を選んだ場合
+const confirmDecline = () => {
+  showDeclineConfirm.value = false
+  updateStatus('no_update')
+}
+
+// ---- 更新手続きフェーズ ステッパー ----
+
+const phases = ['単位蓄積', '更新申請', '審査', '更新料納付', '資格認定更新']
+
+// 「審査結果まち」「資格更新認定」は四角、それ以外は丸
+const squarePhaseIndexes = [2, 4]
+const isSquarePhase = (idx) => squarePhaseIndexes.includes(idx)
+
+// ①(a)(b)(c) の3つの要件チェックが全て満たされているか
+// [今回追加] これがtrueのとき、まだ申請前（before_update）でも
+// ①単位蓄積を完了扱い（緑）にし、②更新申請を現在地点（青）に進める
+const allRequirementsMet = computed(() =>
+  hasConferenceCount.value && isCreditsRequirementMet.value && !!props.annualFeeStatus
+)
+
+const currentPhaseIndex = computed(() => {
+  switch (props.cycle?.status) {
+    case 'pending':  return 2
+    case 'approved': return 3
+    case 'updated':  return 4
+    case 'reject':   return 2
+    case 'before_update':
+      // [今回追加] 3要件を全て満たしていれば①を緑、②を現在地点（青）にする
+      return allRequirementsMet.value ? 1 : 0
+    default:
+      return 0 // no_update 等
+  }
+})
+
+const isRejectedPhase = computed(() => props.cycle?.status === 'reject')
+
+const phaseCircleClass = (idx) => {
+  const shape = isSquarePhase(idx) ? 'rounded-md' : 'rounded-full'
+  const base = `w-9 h-9 ${shape} flex items-center justify-center text-base font-bold flex-shrink-0`
+
+  // 達成済み（通過済み）＝グリーン
+  if (idx < currentPhaseIndex.value) return `${base} bg-emerald-500 text-white`
+
+  // 現在地点が却下の場合だけ特別に赤で強調
+  if (idx === currentPhaseIndex.value && isRejectedPhase.value) {
+    return `${base} bg-red-500 text-white`
+  }
+
+  // 現在地点＝ブルー
+  if (idx === currentPhaseIndex.value) return `${base} bg-blue-600 text-white`
+
+  // まだ到達していない先のステップ＝グレー
+  return `${base} bg-gray-300 text-white`
+}
+
+// ---- 資格更新状況チェックリスト用ロジック ----
+
+// レ点表示専用：参加登録の抜けは別問題として扱い、回数のみで判定
+const hasConferenceCount = computed(() => (props.conference_count ?? 0) >= 2)
+
+const isCreditsRequirementMet = computed(() =>
+  totalCredits.value >= (props.requiredUnits ?? 0)
+)
+
+// 4. 更新申請の状態（before_update以外はボタンではなくバッジ表示にする）
+const applyBadgeState = computed(() => {
+  switch (props.cycle?.status) {
+    case 'pending':  return { label: '更新申請 提出完了', tone: 'met' }
+    case 'approved': return { label: '承認済み', tone: 'met' }
+    case 'updated':  return { label: '完了', tone: 'met' }
+    case 'reject':   return { label: '不合格', tone: 'reject' }
+    default:         return null // before_update → ボタン表示
+  }
+})
+
+// 5. 更新料送金の状態：未請求（審査承認前）／未納（承認済み・送金待ち）／納付済み（updated）
+const paymentBadgeState = computed(() => {
+  switch (props.cycle?.status) {
+    case 'approved': return { label: '未納', tone: 'unpaid' }
+    case 'updated':  return { label: '納付済み', tone: 'paid' }
+    default:         return { label: '未請求', tone: 'unbilled' }
+  }
+})
+
+// paymentBadgeState.tone（unbilled/unpaid/paid）を、②と共通のbadgeClassesトーン（neutral/pending/met）に変換
+const paymentBadgeToneMap = {
+  unbilled: 'neutral',
+  unpaid: 'pending',
+  paid: 'met',
+}
+
+const badgeClasses = (tone) => [
+  'inline-flex items-center gap-1 text-sm font-semibold px-2.5 py-1 rounded-full border whitespace-nowrap',
+  {
+    met:     'bg-emerald-50 text-emerald-700 border-emerald-200',
+    pending: 'bg-amber-50 text-amber-700 border-amber-200',
+    reject:  'bg-red-50 text-red-600 border-red-200',
+    neutral: 'bg-gray-50 text-gray-400 border-gray-200',
+  }[tone]
+]
+
+// ---- カード右上バッジ（全体ステータス、現在は未表示） ----
+
 const previewPdf = ref(null)
 
 const openPdf = (pdfPath) => {
   console.log('PDF PATH:', pdfPath)
   if (!pdfPath) return
 
-  // 例：フルパス化
   previewPdf.value = pdfPath
+}
+
+const deleteUpload = (id) => {
+  if (!confirm('この書類を削除しますか？この操作は取り消せません。')) return
+
+  router.delete(`/pdf-uploads/${id}`, {
+    preserveScroll: true,
+  })
+}
+
+const uploadStatusLabel = (status) => {
+  switch (status) {
+    case 'pending':       return '蓄積中'
+    case 'approved':      return '承認'
+    case 'rejected':      return '却下'
+    case 'under_review':  return '審査中'
+    case 'out_of_period': return '期間外'
+    default:              return status
+  }
 }
 
 const updateStatus = (status) => {
@@ -545,29 +812,13 @@ const updateStatus = (status) => {
   })
 }
 
+// ②更新申請ボタン：ダイアログを挟まず、確認だけして直接送信する
+const submitUpdateApplication = () => {
+  if (!confirm('更新申請を提出します。よろしいですか？')) return
+  updateStatus('pending')
+}
+
 const isOpen = ref(false)
-
-// --- 検索・フィルター ---
-const searchQuery = ref('')
-const filterYear = ref('')
-
-// --- 選択 ---
-const selectedIds = ref([])
-
-// --- フィルタリング ---
-const filteredMembers = computed(() => {
-  return members.value.filter((m) => {
-    const matchYear = filterYear.value === '' || m.renewalYear === Number(filterYear.value)
-    const q = searchQuery.value.toLowerCase()
-    const matchSearch =
-      q === '' ||
-      m.name.includes(q) ||
-      m.memberNo.toLowerCase().includes(q)
-    return matchYear && matchSearch
-  })
-})
-
-const showUpdateDialog = ref(false)
 
 const isEligible = computed(() => {
   const now = new Date()
@@ -584,39 +835,6 @@ const isEligible = computed(() => {
     (totalCredits.value ?? 0) >= (props.requiredUnits ?? 50)
   )
 })
-
-// --- 全選択 ---
-const isAllSelected = computed(
-  () =>
-    filteredMembers.value.length > 0 &&
-    filteredMembers.value.every((m) => selectedIds.value.includes(m.id))
-)
-
-const toggleSelectAll = () => {
-  if (isAllSelected.value) {
-    selectedIds.value = []
-  } else {
-    selectedIds.value = filteredMembers.value.map((m) => m.id)
-  }
-}
-
-const toggleSelect = (id) => {
-  if (selectedIds.value.includes(id)) {
-    selectedIds.value = selectedIds.value.filter((i) => i !== id)
-  } else {
-    selectedIds.value = [...selectedIds.value, id]
-  }
-}
-
-// --- アクション ---
-const handleDeleteSelected = () => {
-  if (confirm(`選択した ${selectedIds.value.length} 名を削除しますか？`)) {
-    members.value = members.value.filter((m) => !selectedIds.value.includes(m.id))
-    selectedIds.value = []
-  }
-}
-
-const handleEdit = (member) => alert(`編集: ${member.name}`)
 
 const fileInput = ref(null);
 
@@ -635,7 +853,6 @@ const onFileDrop = (e) => {
 };
 
 function upload() {
-  console.log(form)
   const issuedDate = dayjs(form.issued_date)
   const startDate = dayjs(props.cycle?.start_date)
   const endDate = dayjs(props.cycle?.end_date)
@@ -646,23 +863,40 @@ function upload() {
   }
 
   if (issuedDate.isBefore(startDate) || issuedDate.isAfter(endDate)) {
-    alert(`参加日/発行日は認定期間（${props.cycle?.start_date} 〜 ${props.cycle?.end_date}）内である必要があります`)
+    alert(`参加日/発行日は認定期間外のため登録できません。認定期間（${startDate.format('YYYY-MM-DD')} 〜 ${endDate.format('YYYY-MM-DD')}）`)
     return
   }
 
   form.post('/pdf-uploads', {
-    file: form.file,
-    credit_category_id: form.credit_category_id,
-    credit_conference_id: form.credit_conference_id,
-    role_id: form.role_id, 
-    session: form.session,
-    issued_date: form.issued_date,
+    forceFormData: true,
+    onSuccess: () => {
+      // store()側は例外時もback()で通常レスポンスを返すため、
+      // flash.error が立っていたら保存失敗とみなしダイアログは開いたままにする
+      if (!page.props.flash?.error) {
+        isOpen.value = false
+      }
+    },
   })
 }
 
 const filteredConferences = computed(() =>
-  props.conferences.filter(c => c.credit_category_id == form.credit_category_id)
+  props.conferences.filter(c =>
+    (c.available_category_ids ?? []).map(String).includes(String(form.credit_category_id))
+  )
 )
+
+// --- 学会名コンボボックス ---
+const isConferencePopoverOpen = ref(false)
+
+const selectedConferenceName = computed(() => {
+  const selected = props.conferences.find(c => c.id === form.credit_conference_id)
+  return selected?.name ?? ''
+})
+
+function selectConference(conf) {
+  form.credit_conference_id = conf.id
+  isConferencePopoverOpen.value = false
+}
 
 const filteredRoles = computed(() =>
   props.roles.filter(r =>
@@ -671,377 +905,64 @@ const filteredRoles = computed(() =>
   )
 );
 
-const selectedRole = computed(() =>
-  filteredRoles.value.find(r => r.id == form.role_id) || null
-)
-
-const selectedCategoryIsAcademic = computed(() => {
-  const cat = props.creditCategories.find(c => c.id == form.credit_category_id)
-  return cat ? cat.name === '学術集会' : false
-})
-
 const isWithinPeriod = computed(() => {
   return true
-  if (!props.cycle) return false
-
-  const now = form.issued_date // new Date()
-
-  return (
-    now >= new Date(props.cycle.start_date) &&
-    now <= new Date(props.cycle.end_date)
-  )
 })
 
 const annualFeeStatus = computed(() => props.annualFeeStatus ? '納入済' : '未納')
 
 const showFeeDialog = ref(false)
+const missingParticipationSessions = computed(() => {
+  const uploads = props.uploads || []
+
+  const groups = {}
+  for (const app of uploads) {
+    if (!app.session) continue
+    if (!groups[app.session]) groups[app.session] = []
+    groups[app.session].push(app)
+  }
+
+  const missing = []
+  for (const [session, items] of Object.entries(groups)) {
+    const targetItems = items.filter(
+      (a) =>
+        a.credit_category_name === '学術集会' &&
+        a.credit_conference_name === '日本腎臓リハビリテーション学会'
+    )
+    if (targetItems.length === 0) continue
+
+    const hasParticipation = targetItems.some((a) => a.role_name === '参加')
+    if (!hasParticipation) {
+      missing.push(session)
+    }
+  }
+  return missing
+})
+
+// 選択中のrole(=credit_role_pointsの1行)が「回数入力」を必要とするかどうか
+const selectedRolePointRequiresSession = computed(() => {
+  const selected = props.roles.find(r => r.id === form.role_id)
+  return selected ? !!selected.requires_session : true
+})
+
+// 区分が変わると選べる学会も変わるので、学会名の選択もリセットする
+watch(() => form.credit_category_id, () => {
+  form.credit_conference_id = ''
+  form.role_id = ''
+  form.session = ''
+})
+
+// 学会が変わると選べるroleも変わるのでリセット
+watch(() => form.credit_conference_id, () => {
+  form.role_id = ''
+  form.session = ''
+})
+
+// roleが変わったタイミングで、回数入力が不要になったら session をクリアしておく
+watch(() => form.role_id, () => {
+  if (!selectedRolePointRequiresSession.value) {
+    form.session = ''
+  }
+})
 
 </script>
-<style>
-.input-field {
-  @apply w-full rounded-md border border-gray-300 px-3 py-2 text-sm
-         shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500;
-}
-.dashboard {
-  margin: 0 auto;
-  padding: 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 24px;
-  font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  color: #1a1a2e;
-}
-
-/* 上段グリッド */
-.grid-top {
-  display: grid;
-  grid-template-columns: 1fr 340px;
-  gap: 24px;
-}
-
-/* カード共通 */
-.card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  padding: 24px;
-}
-
-.card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 4px;
-}
-
-.card-title {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 6px;
-}
-
-.card-title h2 {
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.card-icon { font-size: 18px; }
-.card-icon.orange { color: #f97316; }
-.card-icon.green  { color: #10b981; }
-
-.card-desc {
-  font-size: 13px;
-  color: #6b7280;
-  margin-bottom: 20px;
-}
-
-/* 蓄積中バッジ */
-.badge-draft {
-  font-size: 11px;
-  font-weight: 600;
-  color: #d97706;
-  background: #fef3c7;
-  border: 1px solid #fde68a;
-  border-radius: 20px;
-  padding: 3px 10px;
-  white-space: nowrap;
-}
-
-/* プログレス */
-.progress-area {
-  margin-bottom: 20px;
-}
-
-.progress-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-end;
-  margin-bottom: 10px;
-}
-
-.unit-display {
-  display: flex;
-  align-items: baseline;
-  gap: 4px;
-}
-
-.unit-current {
-  font-size: 28px;
-  font-weight: 700;
-  color: #2563eb;
-}
-
-.unit-separator {
-  font-size: 14px;
-  color: #6b7280;
-}
-
-.unit-right {
-  text-align: right;
-}
-
-.unit-remaining {
-  display: block;
-  font-size: 13px;
-  color: #2563eb;
-  font-weight: 600;
-}
-
-.gakkai-info {
-  display: block;
-  font-size: 12px;
-  color: #dc2626;
-  font-weight: 600;
-  margin-top: 2px;
-}
-
-.progress-bar-bg {
-  height: 8px;
-  background: #e5e7eb;
-  border-radius: 99px;
-  overflow: hidden;
-}
-
-.progress-bar-fill {
-  height: 100%;
-  background: #2563eb;
-  border-radius: 99px;
-  transition: width 0.4s ease;
-}
-
-/* 統計ボックス */
-.stats-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-top: 8px;
-}
-
-.stat-box {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px 16px;
-}
-
-.stat-label {
-  display: block;
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 6px;
-}
-
-.stat-value {
-  display: block;
-  font-size: 24px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.stat-value.pending {
-  color: #2563eb;
-}
-
-/* 認定・更新期間 */
-.period-block {
-  margin-bottom: 16px;
-}
-
-.period-block.renewal {
-  background: #fff7ed;
-  border-radius: 8px;
-  padding: 12px;
-  margin-bottom: 16px;
-}
-
-.period-label {
-  font-size: 12px;
-  color: #6b7280;
-  margin-bottom: 4px;
-}
-
-.period-label.orange { color: #f97316; font-weight: 600; }
-
-.period-value {
-  font-size: 18px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.period-value.orange { color: #f97316; }
-
-/* 情報ボックス */
-.info-box {
-  display: flex;
-  gap: 8px;
-  background: #f0f9ff;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 12px;
-  color: #374151;
-  line-height: 1.6;
-}
-
-.info-icon { flex-shrink: 0; }
-
-/* 支払い */
-.card-payment { max-width: calc(100% - 340px - 24px); }
-
-.payment-row {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-.payment-box {
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  padding: 14px 16px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.payment-label {
-  font-size: 12px;
-  color: #6b7280;
-  display: block;
-  margin-bottom: 4px;
-}
-
-.payment-status {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.payment-value {
-  font-size: 16px;
-  font-weight: 600;
-}
-
-.payment-value.unpaid { color: #111827; }
-.payment-value.paid   { color: #10b981; }
-
-.payment-clock { font-size: 18px; color: #d1d5db; }
-
-.warning-box {
-  display: flex;
-  gap: 8px;
-  background: #eff6ff;
-  border-radius: 8px;
-  padding: 12px;
-  font-size: 12px;
-  color: #374151;
-  line-height: 1.6;
-}
-
-.warning-icon { flex-shrink: 0; }
-
-/* セクションヘッダー */
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.section-title {
-  font-size: 18px;
-  font-weight: 800;
-  color: #1e3a6e;
-  font-style: italic;
-}
-
-/* テーブル */
-.card-table { padding: 0; overflow: hidden; }
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.data-table th {
-  padding: 12px 20px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.data-table td {
-  padding: 14px 20px;
-  border-bottom: 1px solid #f3f4f6;
-  color: #374151;
-}
-
-.empty-row { padding: 48px 20px !important; }
-
-.empty-state {
-  text-align: center;
-  color: #9ca3af;
-  font-size: 13px;
-}
-
-/* ステータスバッジ */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.status-approved  { background: #d1fae5; color: #065f46; }
-.status-reviewing { background: #fef3c7; color: #d97706; }
-.status-applied   { background: #dbeafe; color: #1d4ed8; }
-.status-rejected  { background: #fee2e2; color: #dc2626; }
-
-.action-btn {
-  padding: 5px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 12px;
-  cursor: pointer;
-  color: #374151;
-  transition: all 0.15s;
-}
-
-.action-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-}
-/* DialogのOverlayを薄くする */
-[data-radix-popper-content-wrapper],
-.fixed.inset-0.z-50.bg-black\/80 {
-  background-color: rgba(0, 0, 0, 0.4) !important;
-}
-
-</style>
-
