@@ -18,7 +18,6 @@ class User extends Authenticatable
 
     protected $fillable = [
         'username',
-        'name',
         'email',
         'password',
         'tenant_id',
@@ -32,8 +31,10 @@ class User extends Authenticatable
         'two_factor_secret',
     ];
 
+    // [今回変更] name は実カラムではなく member.name 経由のアクセサに変更
     protected $appends = [
         'profile_photo_url',
+        'name',
     ];
 
     protected $casts = [
@@ -85,5 +86,11 @@ class User extends Authenticatable
     {
         return $this->hasRole('super_admin');
     }
-}
 
+    // [今回変更] users.name を削除したため、member.name（last_name+first_name のアクセサ）を返す。
+    // member_id は NOT NULL 制約により、この時点で必ず紐づいている前提。
+    public function getNameAttribute()
+    {
+        return $this->member?->name;
+    }
+}

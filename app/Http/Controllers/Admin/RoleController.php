@@ -32,7 +32,7 @@ class RoleController extends Controller
         $sortOrder = $request->get('order', 'desc');
 
         $roles = $query->orderBy($sortField, $sortOrder)
-                       ->paginate($request->get('per_page', 10))
+                       ->paginate($request->get('per_page', 20))
                        ->withQueryString();
 
         return Inertia::render('Admin/Roles/Index', [

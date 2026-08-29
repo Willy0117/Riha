@@ -24,7 +24,7 @@ use App\Http\Controllers\Admin\SubLeaderAssignmentController as SubLeaderAssignm
 use App\Http\Controllers\Admin\ScheduleController as ScheduleController;
 use App\Http\Controllers\Admin\InvoiceController;
 
-use App\Http\Controllers\ApplicationController;
+// use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\PdfUploadController;
 use App\Http\Controllers\RehabApplicationController;
 use App\Http\Controllers\InstructorUpdateCycleController;
@@ -32,9 +32,26 @@ use App\Http\Controllers\ExamController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\AnnualFeeController;
 
+use App\Http\Controllers\Auth\UsernamePasswordResetLinkController;
+use App\Http\Controllers\Auth\UsernameNewPasswordController;
+
 use Laravel\Fortify\Fortify;
 use Laravel\Fortify\Http\Controllers\AuthenticatedSessionController;
-
+ 
+// [今回追加] 会員番号（ID）ベースのパスワードリセット（Fortify標準のresetPasswords機能を無効化した代わり）
+Route::middleware('guest')->group(function () {
+    Route::get('/forgot-password', [UsernamePasswordResetLinkController::class, 'create'])
+        ->name('password.request');
+ 
+    Route::post('/forgot-password', [UsernamePasswordResetLinkController::class, 'store'])
+        ->name('password.email');
+ 
+    Route::get('/reset-password/{token}', [UsernameNewPasswordController::class, 'create'])
+        ->name('password.reset');
+ 
+    Route::post('/reset-password', [UsernameNewPasswordController::class, 'store'])
+        ->name('password.update');
+});
 
 Route::get('/compose-image', [\App\Http\Controllers\PrintController::class, 'composeImage'])->name('composeImage');
 
@@ -114,7 +131,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('credit-role-points.update');
         Route::delete('credit-role-points/{rolePoint}', [CreditRolePointController::class, 'destroyRolePoint'])
             ->name('credit-role-points.destroy');
-
+/*
         Route::post(
             'applications/{application}/upload-document',
             [\App\Http\Controllers\Admin\ApplicationController::class, 'uploadDocument']
@@ -144,7 +161,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             'applications',
             \App\Http\Controllers\Admin\ApplicationController::class
         )->only(['index','show','create','store']);
-
+*/
         Route::get('pdf-uploads', [AdminPdfUploadController::class, 'index'])->name('pdf-uploads.index');
         Route::post('pdf-uploads/{pdf}/approve', [AdminPdfUploadController::class, 'approve'])->name('pdf-uploads.approve');
         Route::post('pdf-uploads/{pdf}/reject', [AdminPdfUploadController::class, 'reject'])->name('pdf-uploads.reject');
@@ -340,7 +357,7 @@ Route::middleware([
     'verified',
 ])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
-
+/*
     Route::post('applications/{application}/upload-document', [ApplicationController::class, 'uploadDocument'])->name('applications.uploadDocument');
     Route::get('applications/{application}/print-document', [ApplicationController::class, 'printDocument'])->name('applications.printDocument');
     Route::put('applications/{application}/status', [ApplicationController::class, 'updateStatus'])->name('updateStatus');
@@ -351,14 +368,14 @@ Route::middleware([
 
     Route::get('applications/fax', [ApplicationController::class, 'fax'])->name('applications.fax');
     Route::post('applications/faxstore', [ApplicationController::class, 'faxstore'])->name('applications.faxstore');
-
+*/
    // PDFを会員が閲覧
     Route::get('/pdf-uploads/{pdf}/view', [PdfUploadController::class, 'view'])->name('pdf-uploads.view');
     // サムネイルを返す
     Route::get('/pdf-uploads/{pdf}/thumbnail', [PdfUploadController::class, 'thumbnail'])->name('pdf-uploads.thumbnail');
-
+/*
     Route::resource('applications', ApplicationController::class);
-
+*/
     Route::resource('pdf-uploads', PdfUploadController::class);
     
     Route::resource('exams', ExamController::class);

@@ -75,7 +75,8 @@ class SubLeaderAssignmentController extends Controller
 
         // 審査員一覧 + 現在の担当件数（負荷の目安）
         // アサイン担当者も審査員としてアサイン対象に含める
-        $reviewers = Admin::role(['審査員', 'アサイン担当者'], 'admin')
+        // [今回追加] 動作確認しやすいよう、super_adminも一覧に含める
+        $reviewers = Admin::role(['審査員', 'アサイン担当者', 'super_admin'], 'admin')
             ->withCount([
                 'reviewingCycles as active_count' => function ($q) {
                     $q->where('status', 'pending');
@@ -183,7 +184,8 @@ class SubLeaderAssignmentController extends Controller
     public function autoAssign(Request $request)
     {
         // アサイン担当者も審査員としてアサイン対象に含める
-        $reviewers = Admin::role(['審査員', 'アサイン担当者'], 'admin')
+        // [今回追加] 動作確認しやすいよう、super_adminも一覧に含める
+        $reviewers = Admin::role(['審査員', 'アサイン担当者', 'super_admin'], 'admin')
             ->orderBy('id') // 上から順（＝一覧の並び順）に固定
             ->get(['id', 'name', 'member_code']);
 

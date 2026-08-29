@@ -59,7 +59,7 @@
         <Home class="w-5 h-5"/>
         <span v-if="!collapsed" class="ml-2">{{ t('dashboard') }}</span>
       </Link>
-      <div v-if="can('members.view ')" class="mt-2">
+      <div v-if="can('members.view')" class="mt-2">
         <button
           @click="toggleSubMenu('members')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -82,7 +82,7 @@
         </button>
 
         <transition name="slide-fade">
-          <div v-show="openSubMenu === 'member' && !collapsed" class="pl-6 mt-1 space-y-1">
+          <div v-show="openSubMenu === 'members' && !collapsed" class="pl-6 mt-1 space-y-1">
             <Link
               :href="route('admin.members.index')"
               class="flex items-center py-2 px-2 rounded hover:bg-gray-100"
@@ -132,7 +132,7 @@
       </div>
 
       <!-- 審査委員長ポータル（新規：最終判定） -->
-      <div v-if="can('chief.view') || can('chief.edit')" class="mt-2">
+      <div v-if="can('chiefs.view') || can('chiefs.edit')" class="mt-2">
         <button
           @click="toggleSubMenu('chief')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -168,7 +168,7 @@
       </div>
 
       <!-- アサイン担当者ポータル（新規：審査員アサイン） -->
-      <div v-if="can('subleader.view')" class="mt-2">
+      <div v-if="can('subleaders.view')" class="mt-2">
         <button
           @click="toggleSubMenu('subleader')"
           class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
@@ -242,6 +242,13 @@
               <GraduationCap class="w-4 h-4 mr-1"/>
               <span v-if="!collapsed" class="ml-2">スケジュールリマインダー設定</span>
             </Link>
+            <Link v-if="can('imports.view')|| can('imports.edit')" :href="route('admin.import.index')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.import.index') ? 'bg-gray-300 font-semibold' : ''">
+              <Upload class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('import') }}</span>
+            </Link>
+
           </div>
         </transition>
       </div>    
@@ -307,12 +314,6 @@
         </button>
         <transition name="slide-fade">
           <div v-show="openSubMenu === 'invoices' && !collapsed" class="pl-6 mt-1 space-y-1">
-            <Link :href="route('admin.annual-fees.index')"
-                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('admin.invoices') ? 'bg-gray-300 font-semibold' : ''">
-              <Calendar class="w-5 h-5"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('invoices') }}</span>
-            </Link>
           </div>
         </transition>
       </div>
@@ -379,13 +380,6 @@
             >
               <Upload class="w-4 h-4 mr-1"/>
               {{ t('import') }}
-            </Link>
-
-            <Link :href="route('admin.import.index')"
-                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('admin.import.index') ? 'bg-gray-300 font-semibold' : ''">
-              <Upload class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('import') }}</span>
             </Link>
           </div>
         </transition>
@@ -555,12 +549,8 @@ const toggleCollapse = () => (collapsed.value = !collapsed.value)
 
 const { props } = usePage()
 
-console.log(props)
-console.log(props.auth)
-console.log(props.auth.user)
-
-const roles = props.auth?.user?.roles ?? []
-const permissions = props.auth?.user?.permissions ?? []
+const roles = props.auth?.admin?.roles ?? []
+const permissions = props.auth?.admin?.permissions ?? []
 
 const hasRole = (role) => roles.includes(role)
 

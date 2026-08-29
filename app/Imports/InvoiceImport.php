@@ -13,32 +13,30 @@ class InvoiceImport implements ToCollection, WithChunkReading
 {
     private const HEADER_ROWS = 4;
 
-    // Excelカラムインデックス
     private const COL_MEMBER_NUMBER          = 0;
     private const COL_INVOICE_NUMBER         = 17;
-    private const COL_PAYMENT_METHOD         = 18;  // 支払方法
-    private const COL_INVOICE_TYPE           = 20;  // 請求区分
-    private const COL_INVOICE_NAME           = 21;  // 請求名称
-    private const COL_BILLING_START          = 23;  // 引当期間開始
-    private const COL_BILLING_END            = 24;  // 引当期間終了
-    private const COL_INVOICE_DATE           = 25;  // 請求日
-    private const COL_DUE_DATE               = 26;  // 支払期限
+    private const COL_PAYMENT_METHOD         = 18;
+    private const COL_INVOICE_TYPE           = 20;
+    private const COL_INVOICE_NAME           = 21;
+    private const COL_BILLING_START          = 23;
+    private const COL_BILLING_END            = 24;
+    private const COL_INVOICE_DATE           = 25;
+    private const COL_DUE_DATE               = 26;
 
-    // 料金明細
-    private const COL_ANNUAL_FEE             = 29;  // 年会費・請求金額
-    private const COL_EXAM_FEE               = 33;  // 受験料・請求金額
-    private const COL_RENEWAL_FEE            = 37;  // 更新料・請求金額
-    private const COL_SEMINAR_FEE            = 41;  // 講習会参加費・請求金額
-    private const COL_MEMBER_ADJUSTMENT      = 43;  // 会員調整額（恒久）
-    private const COL_MEMBER_ADJUSTMENT_TEMP = 44;  // 会員調整額（一時）
-    private const COL_INVOICE_ADJUSTMENT     = 45;  // 請求調整額
-    private const COL_TAX_AMOUNT             = 47;  // 消費税額
-    private const COL_TOTAL_AMOUNT           = 48;  // 請求額合計
-    private const COL_PAYMENT_AMOUNT         = 49;  // 入金額合計
-    private const COL_BALANCE                = 50;  // 支払残高
-    private const COL_STATUS                 = 51;  // 状況
-    private const COL_MEMO_MEMBER            = 52;  // 会員向け備考
-    private const COL_MEMO_ADMIN             = 53;  // 事務局向け備考
+    private const COL_ANNUAL_FEE             = 29;
+    private const COL_EXAM_FEE               = 33;
+    private const COL_RENEWAL_FEE            = 37;
+    private const COL_SEMINAR_FEE            = 41;
+    private const COL_MEMBER_ADJUSTMENT      = 43;
+    private const COL_MEMBER_ADJUSTMENT_TEMP = 44;
+    private const COL_INVOICE_ADJUSTMENT     = 45;
+    private const COL_TAX_AMOUNT             = 47;
+    private const COL_TOTAL_AMOUNT           = 48;
+    private const COL_PAYMENT_AMOUNT         = 49;
+    private const COL_BALANCE                = 50;
+    private const COL_STATUS                 = 51;
+    private const COL_MEMO_MEMBER            = 52;
+    private const COL_MEMO_ADMIN             = 53;
 
     public int $insertCount = 0;
     public int $updateCount = 0;
@@ -95,15 +93,12 @@ class InvoiceImport implements ToCollection, WithChunkReading
             return;
         }
 
-        // membersの支払方法を最新に更新
+        // [今回修正] members テーブルに payment_method カラムは存在しないため、
+        // member 側への反映は行わない（invoices 側にはそのまま保存する）
         $paymentMethod = $row[self::COL_PAYMENT_METHOD] ?? null;
-        if ($paymentMethod && $member->payment_method !== $paymentMethod) {
-            $member->update(['payment_method' => $paymentMethod]);
-        }
 
-        // 引当期間開始から fiscal_year を取得（例: 2012/12 → 2012）
         $billingStart = $row[self::COL_BILLING_START] ?? null;
-        $fiscalYear   = $billingStart ? (int) explode('/', (string) $billingStart)[0] : null;
+        $fiscalYear   = $this->extractYear($billingStart);
 
         $invoiceData = [
             'member_id'               => $member->id,
@@ -149,6 +144,35 @@ class InvoiceImport implements ToCollection, WithChunkReading
     // ============================================================
     // ヘルパー
     // ============================================================
+
+    // [今回追加] fiscal_year の抽出を、toDate() と同じく複数形式に対応させる
+    private function extractYear($value): ?int
+    {
+        if (empty($value)) {
+            return null;
+        }
+
+        // "2012/12" 形式
+        if (preg_match('/^(\d{4})\/(\d{1,2})$/', (string) $value, $m)) {
+            return (int) $m[1];
+        }
+
+        // Excelシリアル値
+        if (is_numeric($value)) {
+            try {
+                return (int) \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y');
+            } catch (\Throwable) {
+                return null;
+            }
+        }
+
+        // その他の文字列（Carbonでパースできる形式）
+        try {
+            return (int) \Carbon\Carbon::parse($value)->format('Y');
+        } catch (\Throwable) {
+            return null;
+        }
+    }
 
     private function toDate($value, string $edge = 'none'): ?string
     {
@@ -199,21 +223,31 @@ class InvoiceImport implements ToCollection, WithChunkReading
         return null;
     }
 
+    // [今回修正] null/空文字/Carbon型の揺れを吸収する
     private function hasChanges($model, array $data): bool
     {
         foreach ($data as $key => $value) {
             $modelValue = $model->{$key};
 
-            // Carbonオブジェクトは日付文字列に変換
-            if ($modelValue instanceof \Carbon\Carbon) {
-                $modelValue = $modelValue->format('Y-m-d');
-            }
+            $normalizedModel = $this->normalizeForCompare($modelValue);
+            $normalizedNew   = $this->normalizeForCompare($value);
 
-            if ((string) $modelValue !== (string) $value) {
+            if ($normalizedModel !== $normalizedNew) {
                 return true;
             }
         }
         return false;
+    }
+
+    private function normalizeForCompare($value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+        if ($value instanceof \Carbon\Carbon) {
+            return $value->format('Y-m-d');
+        }
+        return (string) $value;
     }
 
     public function chunkSize(): int

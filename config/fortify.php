@@ -145,7 +145,9 @@ return [
 
     'features' => [
         Features::registration(),
-        Features::resetPasswords(),
+        // [今回変更] resetPasswords はFortify標準（emailベース固定）のため無効化。
+        // 会員番号（username）ベースのパスワードリセットを routes/web.php で独自実装する。
+        // Features::resetPasswords(),
         // Features::emailVerification(),
         Features::updateProfileInformation(),
         Features::updatePasswords(),
