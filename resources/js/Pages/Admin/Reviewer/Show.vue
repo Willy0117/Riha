@@ -3,79 +3,74 @@
     <template #header>{{ member.name }} の審査</template>
 
     <div class="p-6 space-y-6">
-      <button
-        @click="backToIndex"
-        class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
-      >
-        <ArrowLeft class="w-4 h-4" />
-        一覧に戻る
-      </button>
+      <div class="flex items-center justify-between">
+        <button
+          @click="backToIndex"
+          class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+        >
+          <ArrowLeft class="w-4 h-4" />
+          一覧に戻る
+        </button>
+        <div class="flex gap-3">
+          <Button
+            class="bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!canPass"
+            @click="handleJudge('pass')"
+          >
+            <CheckCircle2 class="w-4 h-4 mr-2" />
+            合格
+          </Button>
+          <Button
+            variant="outline"
+            class="text-red-600 border-red-300 hover:bg-red-50 font-bold disabled:opacity-40 disabled:cursor-not-allowed"
+            :disabled="!canFail"
+            @click="handleJudge('fail')"
+          >
+            <XCircle class="w-4 h-4 mr-2" />
+            不合格
+          </Button>
+        </div>
+      </div>
 
-      <Card>
-        <CardContent class="p-4 space-y-4">
-          <div class="grid grid-cols-2 md:grid-cols-7 gap-4 text-sm">
-            <div>
-              <p class="text-xs text-gray-500">氏名</p>
-              <p class="font-semibold">{{ member.name }}</p>
-              <p class="text-xs text-gray-400 mt-0.5">会員番号：{{ member.code }}</p>
+      <div class="sticky top-0 z-20">
+        <Card class="shadow-md bg-white">
+          <CardContent class="p-3 space-y-2">
+            <div class="grid grid-cols-2 md:grid-cols-7 gap-3 text-sm">
+              <div>
+                <p class="text-xs text-gray-500">氏名</p>
+                <p class="font-semibold leading-tight">{{ member.name }}</p>
+                <p class="text-xs text-gray-400">会員番号：{{ member.code }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">申込日時</p>
+                <p class="font-semibold leading-tight">{{ appliedAtLabel }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">認定・更新期間</p>
+                <p class="font-semibold leading-tight">{{ cycle.start_date?.split('T')[0] }} - {{ cycle.end_date?.split('T')[0] }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">審査数 / 総審査</p>
+                <p class="font-semibold leading-tight">{{ reviewedCount }} / {{ totalCount }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">合計単位</p>
+                <p class="font-semibold leading-tight">{{ totalPoints }} / {{ requiredPoints }} 単位</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">学術集会参加</p>
+                <p class="font-semibold leading-tight">{{ conferenceCount }} / {{ requiredConferenceCount }} 回</p>
+              </div>
+              <div v-if="cycle.reviewer_judgment === 're_review'">
+                <p class="text-xs text-gray-500">審査員による判定</p>
+                <span class="inline-block text-xs px-2 py-0.5 rounded-full font-medium bg-orange-50 text-orange-600 border border-orange-200">
+                  {{ judgmentLabel(cycle.reviewer_judgment) }}
+                </span>
+              </div>
             </div>
-            <div>
-              <p class="text-xs text-gray-500">申込日時</p>
-              <p class="font-semibold">{{ appliedAtLabel }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">認定・更新期間</p>
-              <p class="font-semibold">{{ cycle.start_date?.split('T')[0] }} - {{ cycle.end_date?.split('T')[0] }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">審査数 / 総審査</p>
-              <p class="font-semibold">{{ reviewedCount }} / {{ totalCount }}</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">合計単位</p>
-              <p class="font-semibold">{{ totalPoints }} / {{ requiredPoints }} 単位</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500">学術集会参加</p>
-              <p class="font-semibold">{{ conferenceCount }} / {{ requiredConferenceCount }} 回</p>
-            </div>
-            <div>
-              <p class="text-xs text-gray-500 mb-1">審査員による判定</p>
-              <span
-                class="text-sm px-2 py-1 rounded-full font-medium"
-                :class="{
-                  'bg-gray-100 text-gray-500': cycle.reviewer_judgment === 'unreviewed' || !cycle.reviewer_judgment,
-                  'bg-green-50 text-green-600 border border-green-200': cycle.reviewer_judgment === 'pass',
-                  'bg-red-50 text-red-600 border border-red-200': cycle.reviewer_judgment === 'fail',
-                  'bg-orange-50 text-orange-600 border border-orange-200': cycle.reviewer_judgment === 're_review',
-                }"
-              >
-                {{ judgmentLabel(cycle.reviewer_judgment) }}
-              </span>
-            </div>
-          </div>
-
-          <div class="flex justify-end gap-3 pt-2 border-t border-gray-100">
-            <Button
-              class="bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!canPass"
-              @click="handleJudge('pass')"
-            >
-              <CheckCircle2 class="w-4 h-4 mr-2" />
-              合格
-            </Button>
-            <Button
-              variant="outline"
-              class="text-red-600 border-red-300 hover:bg-red-50 font-bold disabled:opacity-40 disabled:cursor-not-allowed"
-              :disabled="!canFail"
-              @click="handleJudge('fail')"
-            >
-              <XCircle class="w-4 h-4 mr-2" />
-              不合格
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
 
       <div>
         <h2 class="text-xl font-bold text-gray-800 mb-4">提出書類</h2>

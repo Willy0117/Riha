@@ -125,12 +125,15 @@ class AdminController extends Controller
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255|unique:admins,email',
             'password' => 'required|string|confirmed|min:8',
+            // [今回追加] 会員番号（任意入力・審査員/アサイン担当者ロールの場合のみフロントで表示）
+            'member_code' => 'nullable|string|max:50',
         ]);
 
         $admin = Admin::create([
             'name' => $request->name,
             'email' => $request->email,
             'password' => Hash::make($request->password),
+            'member_code' => $request->member_code ?: null, // [今回追加]
         ]);
 
         $role = Role::findOrFail($request->role_id);
@@ -188,11 +191,14 @@ class AdminController extends Controller
             'password' => 'nullable|string|confirmed|min:4',
             'tenant_id' => 'nullable|exists:tenants,id',
             'role_id' => 'required|exists:roles,id',
+            // [今回追加] 会員番号
+            'member_code' => 'nullable|string|max:50',
         ]);
 
         $admin->name = $validated['name'];
         $admin->email = $validated['email'];
         $admin->tenant_id = $validated['tenant_id'] ?? null;
+        $admin->member_code = $validated['member_code'] ?: null; // [今回追加]
 
         if ($request->filled('password')) {
             $admin->password = Hash::make($validated['password']);

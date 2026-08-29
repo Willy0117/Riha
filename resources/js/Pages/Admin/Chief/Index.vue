@@ -184,11 +184,10 @@
           <select v-model="modal.status" class="w-full border rounded p-2">
             <option value="approved">承認</option>
             <option value="reject">却下</option>
-            <option value="no_update">更新なし</option>
           </select>
         </div>
 
-        <div class="mb-4" v-if="modal.status === 'reject' || modal.status === 'no_update'">
+        <div class="mb-4" v-if="modal.status === 'reject'">
           <label class="block mb-2 text-sm font-medium">理由（必須）</label>
           <textarea
             v-model="modal.reason"

@@ -3,6 +3,7 @@ import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 
 export default defineConfig({
+    base: '/vite-dev/',
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
@@ -24,8 +25,16 @@ export default defineConfig({
         },
     },
     server: {
-        watch: {
-        ignored: ['**/vendor/**', '**/node_modules/**'],
+        host: '0.0.0.0',
+        port: 5173,
+        strictPort: true,
+        origin: 'https://stage.vision-bridge.org',
+        hmr: {
+            host: 'stage.vision-bridge.org',
+            clientPort: 443,
         },
-    },    
+        watch: {
+            ignored: ['**/vendor/**', '**/node_modules/**'],
+        },
+    },
 });

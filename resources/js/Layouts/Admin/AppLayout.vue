@@ -1,11 +1,11 @@
 <template>
   <div class="flex flex-col h-screen bg-white">
-    <div class="flex flex-1">
+    <div class="flex flex-1 min-h-0">
       <!-- 左メニュー -->
     <Navigation class="flex flex-col h-full bg-gray-100" />
 
     <!-- メインエリア -->
-    <div class="flex-1 flex flex-col">
+    <div class="flex-1 flex flex-col min-h-0">
       <!-- ヘッダー -->
       <header class="bg-white shadow flex items-center justify-between px-4 h-16">
         <!-- ロゴ（左端に追加） -->
@@ -73,7 +73,7 @@
       </header>
 
       <!-- コンテンツ -->
-      <main class="flex-1 overflow-y-auto p-6 bg-gray-50">
+      <main class="flex-1 min-h-0 overflow-y-auto p-6 bg-gray-50">
         <slot />
 
         <Toast />

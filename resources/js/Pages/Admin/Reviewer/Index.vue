@@ -103,7 +103,7 @@ import Pagination from '@/Components/Pagination.vue'
 
 const props = defineProps({
   cycles: Object,
-  sortBy: { type: String, default: 'reviewer_assigned_at' },
+  sortBy: { type: String, default: 'updated_at' },
   sortDir: { type: String, default: 'asc' },
 })
 

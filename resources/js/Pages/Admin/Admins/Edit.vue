@@ -82,6 +82,21 @@
           <p v-if="form.errors.role_id" class="text-sm text-destructive">{{ form.errors.role_id }}</p>
         </div>
 
+        <!-- [今回追加] 会員番号（審査員/アサイン担当者ロールのときのみ表示） -->
+        <div v-if="showMemberCodeField" class="space-y-1.5">
+          <Label for="member_code">会員番号</Label>
+          <Input
+            id="member_code"
+            v-model="form.member_code"
+            type="text"
+            placeholder="この管理者が会員（申請者）でもある場合、会員番号を入力してください"
+          />
+          <p class="text-xs text-gray-400">
+            入力しておくと、この管理者自身が申請者となる案件へは、利益相反防止のためアサインできなくなります。
+          </p>
+          <p v-if="form.errors.member_code" class="text-sm text-destructive">{{ form.errors.member_code }}</p>
+        </div>
+
         <!-- ボタン -->
         <div class="flex justify-end gap-2 pt-2">
           <Button variant="outline" as-child>
@@ -135,12 +150,19 @@ const isSuperAdmin = computed(() =>
 // フォーム
 // ──────────────────────────────────────────
 const form = useForm({
-  name:                  props.admin?.name      ?? '',
-  email:                 props.admin?.email     ?? '',
+  name:                  props.admin?.name        ?? '',
+  email:                 props.admin?.email       ?? '',
   password:              '',
   password_confirmation: '',
-  role_id:               props.selected_role    ?? null,
-  tenant_id:             props.admin?.tenant_id ?? null,
+  role_id:               props.selected_role      ?? null,
+  tenant_id:             props.admin?.tenant_id   ?? null,
+  member_code:           props.admin?.member_code ?? '', // [今回追加]
+})
+
+// [今回追加] 選択中のロール名が「審査員」または「アサイン担当者」かどうか
+const showMemberCodeField = computed(() => {
+  const selected = props.roles.find(r => r.id === form.role_id)
+  return ['審査員', 'アサイン担当者'].includes(selected?.name)
 })
 
 const submit = () => {

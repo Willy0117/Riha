@@ -22,7 +22,7 @@ class ReviewerController extends Controller
 
         // 申請日（updated_at）・アサイン日（reviewer_assigned_at）でソート可能にする
         $sortableColumns = ['updated_at', 'reviewer_assigned_at'];
-        $sortBy = in_array($request->sort_by, $sortableColumns) ? $request->sort_by : 'reviewer_assigned_at';
+        $sortBy = in_array($request->sort_by, $sortableColumns) ? $request->sort_by : 'updated_at';
         $sortDir = $request->sort_dir === 'desc' ? 'desc' : 'asc';
 
         $cycles = InstructorUpdateCycle::with(['member'])

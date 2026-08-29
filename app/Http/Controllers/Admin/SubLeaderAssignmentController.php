@@ -103,6 +103,7 @@ class SubLeaderAssignmentController extends Controller
 
     // 1申請に審査員をアサイン（初回・再アサインいずれも常に可能。
     // 審査着手済みの申請を別の審査員に変更した場合、フロント側で警告を出す運用とする）
+    // [今回追加] 審査員自身が申請者本人（member_codeが一致）の場合は利益相反のためアサイン不可
     // [重要] updated_at は My Page 側で「申請した瞬間」の基準時刻として使われているため、
     // アサイン操作では更新しない（timestamps を一時的に無効化して保存する）
     public function assign(Request $request, InstructorUpdateCycle $cycle)
@@ -110,6 +111,13 @@ class SubLeaderAssignmentController extends Controller
         $request->validate([
             'reviewer_admin_id' => 'required|exists:admins,id',
         ]);
+
+        $reviewer = Admin::find($request->reviewer_admin_id);
+        $cycle->loadMissing('member');
+
+        if ($this->isConflictOfInterest($reviewer, $cycle)) {
+            return back()->withErrors(['reviewer_admin_id' => 'この審査員は申請者本人のため、利益相反によりアサインできません。']);
+        }
 
         $cycle->timestamps = false;
         $cycle->reviewer_admin_id = $request->reviewer_admin_id;
@@ -123,6 +131,7 @@ class SubLeaderAssignmentController extends Controller
     /**
      * 選択した複数の申請を、指定した1名の審査員にまとめてアサインする。
      * 審査着手済みの申請も対象に含む（変更は常に可能）。
+     * [今回追加] 利益相反（審査員本人＝申請者）に該当する申請はスキップする。
      */
     public function bulkAssign(Request $request)
     {
@@ -132,13 +141,22 @@ class SubLeaderAssignmentController extends Controller
             'reviewer_admin_id' => 'required|exists:admins,id',
         ]);
 
-        $cycles = InstructorUpdateCycle::whereIn('id', $request->ids)
+        $reviewer = Admin::find($request->reviewer_admin_id);
+
+        $cycles = InstructorUpdateCycle::with('member')
+            ->whereIn('id', $request->ids)
             ->where('status', 'pending')
             ->get();
 
         $assignedCount = 0;
+        $skippedForConflict = 0;
 
         foreach ($cycles as $cycle) {
+            if ($this->isConflictOfInterest($reviewer, $cycle)) {
+                $skippedForConflict++;
+                continue;
+            }
+
             $cycle->timestamps = false;
             $cycle->reviewer_admin_id = $request->reviewer_admin_id;
             $cycle->reviewer_assigned_at = now();
@@ -148,25 +166,33 @@ class SubLeaderAssignmentController extends Controller
             $assignedCount++;
         }
 
-        return redirect()->back()->with('success', "{$assignedCount}件をアサインしました。");
+        $message = "{$assignedCount}件をアサインしました。";
+        if ($skippedForConflict > 0) {
+            $message .= "（申請者本人のため{$skippedForConflict}件をスキップしました）";
+        }
+
+        return redirect()->back()->with('success', $message);
     }
 
     /**
      * 未アサインの申請を、審査員一覧の並び順（上から順）にラウンドロビンで均等に割り振る。
      * 既にアサイン済みの申請は対象外（上書きしない）。
+     * [今回追加] 利益相反（審査員本人＝申請者）に該当する場合は、次の審査員にスライドする。
+     * 全審査員が利益相反に該当する場合のみ、その申請は未アサインのままスキップする。
      */
     public function autoAssign(Request $request)
     {
         // アサイン担当者も審査員としてアサイン対象に含める
         $reviewers = Admin::role(['審査員', 'アサイン担当者'], 'admin')
             ->orderBy('id') // 上から順（＝一覧の並び順）に固定
-            ->get(['id', 'name']);
+            ->get(['id', 'name', 'member_code']);
 
         if ($reviewers->isEmpty()) {
             return back()->withErrors(['reviewer' => '割り振り可能な審査員がいません。']);
         }
 
-        $unassigned = InstructorUpdateCycle::where('status', 'pending')
+        $unassigned = InstructorUpdateCycle::with('member')
+            ->where('status', 'pending')
             ->whereNull('reviewer_admin_id')
             // 一覧画面と同じく、前日までに申請されたものだけを自動割振の対象にする
             // ->whereDate('updated_at', '<=', now()->subDay()->toDateString())
@@ -180,27 +206,67 @@ class SubLeaderAssignmentController extends Controller
         }
 
         $reviewerCount = $reviewers->count();
+        $rotationIndex = 0;
         $assignedCount = 0;
+        $skippedForConflict = 0;
         $assignedAt = now();
 
-        foreach ($unassigned as $index => $cycle) {
-            // 上から順に1人ずつ、1件ずつ均等に割り振る（ラウンドロビン）
-            $reviewer = $reviewers[$index % $reviewerCount];
+        foreach ($unassigned as $cycle) {
+            $assigned = false;
 
-            $cycle->timestamps = false;
-            $cycle->reviewer_admin_id = $reviewer->id;
-            $cycle->reviewer_assigned_at = $assignedAt;
-            $cycle->save();
-            $cycle->timestamps = true;
+            // 利益相反の審査員はスキップしながら、次の候補を順に試す（最大 reviewerCount 回）
+            for ($attempt = 0; $attempt < $reviewerCount; $attempt++) {
+                $candidate = $reviewers[$rotationIndex % $reviewerCount];
+                $rotationIndex++;
 
-            $assignedCount++;
+                if ($this->isConflictOfInterest($candidate, $cycle)) {
+                    continue;
+                }
+
+                $cycle->timestamps = false;
+                $cycle->reviewer_admin_id = $candidate->id;
+                $cycle->reviewer_assigned_at = $assignedAt;
+                $cycle->save();
+                $cycle->timestamps = true;
+
+                $assignedCount++;
+                $assigned = true;
+                break;
+            }
+
+            if (!$assigned) {
+                // 全審査員が利益相反に該当（＝審査員が本人1名しかいない等）：未アサインのまま残す
+                $skippedForConflict++;
+            }
         }
 
-        $perReviewer = intdiv($assignedCount, $reviewerCount);
+        $perReviewer = $reviewerCount > 0 ? intdiv($assignedCount, $reviewerCount) : 0;
 
-        return back()->with(
-            'success',
-            "{$assignedCount}件を{$reviewerCount}名の審査員に自動割振しました（1人あたり約{$perReviewer}件）。"
-        );
+        $message = "{$assignedCount}件を{$reviewerCount}名の審査員に自動割振しました（1人あたり約{$perReviewer}件）。";
+        if ($skippedForConflict > 0) {
+            $message .= "（申請者本人のため{$skippedForConflict}件は未アサインのままです）";
+        }
+
+        return back()->with('success', $message);
+    }
+
+    /**
+     * 利益相反判定：審査員（アサイン先候補）の member_code が、
+     * 申請者本人（cycle.member.code）と一致するかどうか。
+     * どちらかが未設定（null/空文字）の場合は判定不能として false（相反なし）を返す。
+     */
+    private function isConflictOfInterest(?Admin $reviewer, InstructorUpdateCycle $cycle): bool
+    {
+        if (!$reviewer || !$reviewer->member_code) {
+            return false;
+        }
+
+        $applicantCode = $cycle->member?->code;
+
+        if (!$applicantCode) {
+            return false;
+        }
+
+        return $reviewer->member_code === $applicantCode;
     }
 }

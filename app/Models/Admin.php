@@ -21,6 +21,7 @@ class Admin extends Authenticatable
         'email',
         'password',
         'tenant_id',
+        'member_code',
     ];
 
     protected $hidden = [

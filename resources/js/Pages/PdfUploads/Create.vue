@@ -4,24 +4,40 @@
     <template #header>{{ $t('pdf_upload') }}</template>
     <div class="max-w-none mx-auto p-8 flex flex-col gap-6 font-sans text-[#1a1a2e]">
 
+      <!-- [今回追加] 委員長が却下した場合、最上部に表示（×で閉じられる） -->
+      <div
+        v-if="showRejectNotice && props.cycle?.status === 'reject' && props.cycle?.reason"
+        class="relative bg-red-50 border border-red-500 rounded-xl p-4 pr-10"
+      >
+        <button
+          type="button"
+          class="absolute top-3 right-3 text-red-400 hover:text-red-600"
+          @click="showRejectNotice = false"
+        >
+          <X class="w-4 h-4" />
+        </button>
+        <p class="text-sm font-semibold text-red-700 mb-1">今回の更新申請は却下されました</p>
+        <p class="text-sm text-red-600 whitespace-pre-wrap">{{ props.cycle.reason }}</p>
+      </div>
+
       <!-- 更新手続きフェーズ（新規追加レイアウト） -->
       <div class="bg-white rounded-xl border border-gray-200 p-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div class="border border-gray-300 rounded-lg px-4 py-2.5">
             <p class="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
               <Calendar class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
               認定期間 {{ cycleYears }} 年間
-              <span v-if="cycleYears > 5" class="text-red-500">
-                （原則5年だが延長されている扱い）
-              </span>
             </p>
             <p class="text-lg font-bold text-gray-900">
               {{ props.cycle?.start_date ? dayjs(props.cycle.start_date).format('YYYY-MM-DD') : '' }}
               〜
               {{ props.cycle?.end_date ? dayjs(props.cycle.end_date).format('YYYY-MM-DD') : '' }}
             </p>
+            <p v-if="cycleYears > 5" class="text-xs text-red-500 mt-1">
+              （原則5年だが延長されている扱い）
+            </p>
           </div>
-          <div class="bg-orange-50 rounded-lg px-4 py-2.5">
+          <div v-if="isWithinRenewalPeriod" class="bg-orange-50 rounded-lg px-4 py-2.5">
             <p class="flex items-center gap-1.5 text-sm text-orange-500 font-semibold mb-1">
               <Clock class="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />
               更新申請受付期間
@@ -48,6 +64,29 @@
                 <span class="font-semibold">審査期間：</span>
                 {{ dayjs(props.schedule.chief_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.chief_end).format('YYYY-MM-DD') }}
               </p>
+            </div>
+          </div>
+
+          <!-- [今回追加] ステータスバッジ（独立カード・期間内のみ表示） -->
+          <div v-if="isWithinRenewalPeriod" class="border border-gray-300 rounded-lg px-4 py-2.5">
+            <p class="flex items-center gap-1.5 text-sm text-gray-500 mb-1">
+              ステータス
+            </p>
+            <div class="flex items-center gap-2 flex-wrap">
+              <span
+                class="inline-block w-fit text-base px-3 py-1.5 rounded-full font-semibold"
+                :class="cycleStatusBadgeClass"
+              >
+                {{ cycleStatusLabel }}
+              </span>
+              <button
+                v-if="isDeclined"
+                type="button"
+                class="text-xs px-2.5 py-1 rounded-full font-semibold bg-blue-600 text-white border border-blue-600 hover:bg-blue-700 transition"
+                @click="onDeclineButtonClick"
+              >
+                更新手続きを再開する
+              </button>
             </div>
           </div>
         </div>
@@ -166,10 +205,10 @@
             <div class="lg:col-span-1 flex flex-col gap-3">
               <div class="border border-gray-200 rounded-xl p-4">
                 <p class="text-sm font-semibold text-gray-500 mb-3">② 更新申請を行う</p>
-                <div class="flex items-center gap-2">
-                  <div class="flex-1">
+                <div class="flex flex-col gap-2">
+                  <div>
                     <Button
-                      v-if="!applyBadgeState"
+                      v-if="isWithinRenewalPeriod && !applyBadgeState"
                       :disabled="!isEligible"
                       :class="[
                         'w-full whitespace-nowrap',
@@ -181,28 +220,24 @@
                     >
                       更新申請を行う
                     </Button>
-                    <span v-else :class="badgeClasses(applyBadgeState.tone)">
+                    <span v-else-if="applyBadgeState" :class="badgeClasses(applyBadgeState.tone)">
                       <CheckCircle2 v-if="applyBadgeState.tone === 'met'" class="w-3.5 h-3.5" />
                       <Clock v-else-if="applyBadgeState.tone === 'pending'" class="w-3.5 h-3.5" />
                       <AlertCircle v-else class="w-3.5 h-3.5" />
                       {{ applyBadgeState.label }}
                     </span>
+                    <span v-else :class="badgeClasses('neutral')">
+                      受付期間外
+                    </span>
                   </div>
                   <button
+                    v-if="isWithinRenewalPeriod && !isDeclined"
                     type="button"
                     :disabled="props.cycle?.status === 'pending'"
-                    :class="[
-                      'flex-1 flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold whitespace-nowrap transition',
-                      props.cycle?.status === 'pending'
-                        ? 'text-orange-300 bg-orange-100 border border-orange-200 cursor-not-allowed'
-                        : isDeclined
-                          ? 'bg-orange-100 text-orange-700 border border-orange-300 hover:bg-orange-200'
-                          : 'bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100'
-                    ]"
+                    class="w-full flex items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-semibold whitespace-nowrap transition bg-orange-50 text-orange-600 border border-orange-200 hover:bg-orange-100 disabled:text-orange-300 disabled:bg-orange-100 disabled:border-orange-200 disabled:cursor-not-allowed"
                     @click="onDeclineButtonClick"
                   >
-                    <CheckCircle2 v-if="isDeclined" class="w-3.5 h-3.5" />
-                    {{ isDeclined ? '更新手続きを再開する' : '更新をしない' }}
+                    更新をしない
                   </button>
                 </div>
               </div>
@@ -594,7 +629,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Eye, FileText, Calendar, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle, CheckCircle2, Check, ChevronsUpDown } from 'lucide-vue-next'
+import { Eye, FileText, Calendar, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle, CheckCircle2, Check, ChevronsUpDown, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 
 import { useI18n } from 'vue-i18n'
@@ -738,13 +773,37 @@ const isCreditsRequirementMet = computed(() =>
 )
 
 // 4. 更新申請の状態（before_update以外はボタンではなくバッジ表示にする）
+// [今回追加] 更新申請受付期間カード右横に表示するステータスバッジ
+const cycleStatusLabel = computed(() => {
+  const map = {
+    before_update: '未申請',
+    pending: '更新申請済',
+    no_update: '辞退',
+    reject: '却下',
+    approved: '委員長が承認',
+    updated: '更新完了',
+  }
+  return map[props.cycle?.status] ?? '未申請'
+})
+
+const cycleStatusBadgeClass = computed(() => {
+  const map = {
+    before_update: 'bg-gray-100 text-gray-500',
+    pending: 'bg-blue-100 text-blue-700',
+    no_update: 'bg-orange-100 text-orange-700',
+    reject: 'bg-red-100 text-red-700',
+    approved: 'bg-emerald-100 text-emerald-700',
+    updated: 'bg-emerald-100 text-emerald-700',
+  }
+  return map[props.cycle?.status] ?? 'bg-gray-100 text-gray-500'
+})
+
 const applyBadgeState = computed(() => {
   switch (props.cycle?.status) {
     case 'pending':  return { label: '更新申請 提出完了', tone: 'met' }
     case 'approved': return { label: '承認済み', tone: 'met' }
     case 'updated':  return { label: '完了', tone: 'met' }
-    case 'reject':   return { label: '不合格', tone: 'reject' }
-    default:         return null // before_update → ボタン表示
+    default:         return null // before_update・reject → ボタン表示
   }
 })
 
@@ -820,17 +879,23 @@ const submitUpdateApplication = () => {
 
 const isOpen = ref(false)
 
-const isEligible = computed(() => {
+// [今回追加] 却下メッセージの表示状態（×で閉じられる）
+const showRejectNotice = ref(true)
+
+// [今回追加] 更新申請受付期間内かどうか（①充足チェック・②申請ボタンの表示可否に使う）
+const isWithinRenewalPeriod = computed(() => {
   const now = new Date()
   const renewalStart = props.cycle?.renewal_start_date ? new Date(props.cycle.renewal_start_date) : null
   const renewalEnd = props.cycle?.renewal_end_date ? new Date(props.cycle.renewal_end_date) : null
 
-  const isWithinPeriod = renewalStart && renewalEnd
+  return renewalStart && renewalEnd
     ? now >= renewalStart && now <= renewalEnd
     : false
+})
 
+const isEligible = computed(() => {
   return (
-    isWithinPeriod &&
+    isWithinRenewalPeriod.value &&
     (props.conference_count ?? 0) > 1 &&
     (totalCredits.value ?? 0) >= (props.requiredUnits ?? 50)
   )

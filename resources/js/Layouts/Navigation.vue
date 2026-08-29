@@ -25,6 +25,11 @@ const mobileOpen = ref(false)       // モバイル用の開閉状態
 
 const collapsed = ref(false)
 
+// [修正] 未定義だった折りたたみ切り替え関数を追加
+const toggleCollapse = () => {
+  collapsed.value = !collapsed.value
+}
+
 const openMenu = ref(null)
 const openChildMenu = ref(null)
 
@@ -96,15 +101,11 @@ const menus = [
 ]
 
 const { props } = usePage()
-console.log(props)
 // Jetstream props
+// [修正] props.jetstream・current_team 等はテンプレートで未使用かつ、
+// Jetstream未導入の場合 props.jetstream が undefined となりページ読み込み時に
+// エラーになるリスクがあったため削除
 const authUser = props.auth.user
-const currentTeam = authUser.current_team
-const currentTeamId = authUser.current_team_id
-const allTeams = authUser.all_teams
-const hasApiFeatures = props.jetstream.hasApiFeatures
-const hasTeamFeatures = props.jetstream.hasTeamFeatures
-const canCreateTeams = props.jetstream.canCreateTeams
 
 watchEffect(() => {
 
@@ -146,15 +147,12 @@ watchEffect(() => {
 })
 // ヘッダー操作
 const logout = () => { router.post(route('logout')) }
-const switchTeam = (team) => { router.put(route('current-team.update'), { team_id: team.id }) }
 const isActive = (name) => route().current(name)
 
 // ---------------------------
 // Permission helper (Vue側)
 // ---------------------------
 const user = usePage().props.auth.user || null
-
-console.log(user)
 
 const can = (permissionName) => {
   if (!user) return false
@@ -417,12 +415,10 @@ const showAccessControl = computed(() => {
     @click="mobileOpen = false"
   ></div>
   </div>
-  <style>
-    .slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.2s ease; }
-    .slide-fade-enter-from, .slide-fade-leave-to { opacity: 0; max-height: 0; }
-    .slide-fade-enter-to, .slide-fade-leave-from { opacity: 1; max-height: 500px; }
-  </style>
 </template>
 
-
-
+<style>
+  .slide-fade-enter-active, .slide-fade-leave-active { transition: all 0.2s ease; }
+  .slide-fade-enter-from, .slide-fade-leave-to { opacity: 0; max-height: 0; }
+  .slide-fade-enter-to, .slide-fade-leave-from { opacity: 1; max-height: 500px; }
+</style>
