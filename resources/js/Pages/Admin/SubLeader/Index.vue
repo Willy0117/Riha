@@ -2,7 +2,7 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold text-[#1D4E89]">アサイン担当者ポータル</h2>
+        <h2 class="text-2xl font-bold page-title-navy">アサイン担当者ポータル</h2>
         <p class="text-xs text-gray-500 mt-1">更新申請ごとに担当審査員を割り当てます。</p>
       </div>
     </template>
@@ -12,7 +12,8 @@
       <!-- ツールバー -->
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
-          <select v-model="perPage" @change="changePerPage" class="border rounded pl-2 pr-7 py-1.5 text-sm h-9">
+          <span class="text-sm text-gray-500">表示件数</span>
+          <select v-model="perPage" @change="changePerPage" class="border rounded pl-2 pr-7 py-1 text-sm">
             <option :value="10">10件</option>
             <option :value="20">20件</option>
             <option :value="50">50件</option>
@@ -100,28 +101,28 @@
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th class="px-3 py-3 w-10 bg-[#1D4E89] border-b border-[#163B68]">
+              <th class="px-3 py-3 w-10 table-header-navy-cell">
                 <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">会員番号</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">氏名</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">会員番号</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">氏名</th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68] cursor-pointer select-none hover:text-white"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('updated_at')"
               >
                 申請日 <span class="text-white/60">{{ sortArrow('updated_at') }}</span>
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">担当審査員</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">担当審査員</th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68] cursor-pointer select-none hover:text-white"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('reviewer_assigned_at')"
               >
                 アサイン日時 <span class="text-white/60">{{ sortArrow('reviewer_assigned_at') }}</span>
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">承認済回数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">承認済単位数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-white/90 bg-[#1D4E89] border-b border-[#163B68]">操作</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査状況</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済回数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済単位数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -144,13 +145,13 @@
               <td class="px-5 py-3.5 border-b border-gray-100">
                 <span
                   v-if="cycle.reviewer_admin"
-                  class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
+                  class="status-badge-common status-badge-emerald"
                 >
                   {{ cycle.reviewer_admin.name }}
                 </span>
                 <span
                   v-else
-                  class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
+                  class="status-badge-common status-badge-yellow"
                 >
                   未アサイン
                 </span>

@@ -32,8 +32,15 @@ class InstructorMemberController extends Controller
         $renewalYear = $request->renewal_year;
         $page = $request->page ?? 1;
         $per_page = $request->per_page ?? 20;
+        // [今回変更] 複合フィルタ（申請ステータス／更新料／年会費、それぞれ独立してAND絞り込み）
+        $cycleStatus = $request->cycle_status;
+        $renewalFeeStatus = $request->renewal_fee_status;
+        $annualFeeStatus = $request->annual_fee_status;
 
         $query = Member::whereHas('user')
+            // [今回追加] 退会した会員は資格喪失済み（MemberController側で即時処理済み）のため、
+            // 指導士一覧そのものの対象から外す
+            ->where('status_id', '!=', Member::STATUS_WITHDRAWN)
             ->with([
                 'updateCycles',
                 'pdfUploads',
@@ -48,6 +55,33 @@ class InstructorMemberController extends Controller
             $query->whereHas('updateCycles', function ($q) use ($renewalYear) {
                 $q->whereYear('renewal_start_date', $renewalYear);
             });
+        }
+
+        // [今回追加] 申請ステータスで絞り込み
+        if (!empty($cycleStatus)) {
+            $query->whereHas('updateCycles', fn ($q) => $q->where('status', $cycleStatus));
+        }
+
+        // [今回追加] 更新料の納付状況で絞り込み
+        if (!empty($renewalFeeStatus)) {
+            if ($renewalFeeStatus === 'unbilled') {
+                $query->whereDoesntHave('invoices', fn ($q) => $q->where('renewal_fee', '>', 0));
+            } elseif ($renewalFeeStatus === 'unpaid') {
+                $query->whereHas('invoices', fn ($q) => $q->where('renewal_fee', '>', 0)->where('status', '!=', 'paid'));
+            } elseif ($renewalFeeStatus === 'paid') {
+                $query->whereHas('invoices', fn ($q) => $q->where('renewal_fee', '>', 0)->where('status', 'paid'))
+                    ->whereDoesntHave('invoices', fn ($q) => $q->where('renewal_fee', '>', 0)->where('status', '!=', 'paid'));
+            }
+        }
+
+        // [今回追加] 年会費の納付状況で絞り込み
+        if (!empty($annualFeeStatus)) {
+            if ($annualFeeStatus === 'unpaid') {
+                $query->whereHas('invoices', fn ($q) => $q->where('annual_fee', '>', 0)->where('status', '!=', 'paid'));
+            } elseif ($annualFeeStatus === 'paid') {
+                $query->whereHas('invoices', fn ($q) => $q->where('annual_fee', '>', 0)->where('status', 'paid'))
+                    ->whereDoesntHave('invoices', fn ($q) => $q->where('annual_fee', '>', 0)->where('status', '!=', 'paid'));
+            }
         }
 
         $members = $query->paginate($per_page)->through(function ($member) {
@@ -77,6 +111,9 @@ class InstructorMemberController extends Controller
             'filters' => [
                 'search' => $search,
                 'renewal_year' => $renewalYear,
+                'cycle_status' => $cycleStatus,
+                'renewal_fee_status' => $renewalFeeStatus,
+                'annual_fee_status' => $annualFeeStatus,
                 'page' => $page,
                 'per_page' => $per_page,
             ],
@@ -84,7 +121,8 @@ class InstructorMemberController extends Controller
     }
 
     // Show: 会員の PDF 一覧（事務局が内容を閲覧する用途。承認/差し戻しは審査員画面へ移動）
-    public function show(Request $request, Member $member)
+    // [今回変更] 閲覧専用のshow()を廃止し、編集可能なedit()に統一する
+    public function edit(Request $request, Member $member)
     {
         $member->load([
             'updateCycles',
@@ -101,7 +139,6 @@ class InstructorMemberController extends Controller
                 return array_merge($upload->toArray(), [
                     'credit_conference_name' => $upload->creditConference?->name ?? '',
                     'category_name' => $upload->creditCategory?->name ?? '',
-                    // [修正] creditRole は creditRole.creditRole のネストで、属性名は role ではなく name
                     'role_name' => $upload->creditRole?->creditRole?->name ?? '',
                     'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
                 ]);
@@ -114,7 +151,6 @@ class InstructorMemberController extends Controller
                 ->whereHas('creditConference', fn ($q) => $q->where('name', '日本腎臓リハビリテーション学会'))
                 ->whereDate('issued_date', '>=', $cycle->start_date)
                 ->whereDate('issued_date', '<=', $cycle->end_date)
-                // [修正] creditRole は creditRole.creditRole のネストで、属性名は role ではなく name
                 ->whereHas('creditRole.creditRole', fn ($q) => $q->where('name', '参加'))
                 ->count();
 
@@ -125,14 +161,47 @@ class InstructorMemberController extends Controller
                 ->sum('points');
         }
 
-        return inertia('Admin/InstructorMembers/Show', [
+        return inertia('Admin/InstructorMembers/Edit', [
             'member' => $member,
             'uploads' => $uploads,
+            // [今回追加] 会員一覧と同じ「閲覧はできるが保存できない」ガード用フラグ
+            'can_edit' => $request->user('admin')->can('instructorMembers.edit'),
             'filters' => [
                 'search' => $request->search,
                 'page' => $request->page,
             ],
         ]);
+    }
+
+    /**
+     * [今回追加] 指導士サイクルの end_date・renewal_end_date を事務局が直接編集する。
+     * instructorMembers.edit 権限が無ければ保存を拒否する（Members側と同じガード方式）。
+     */
+    public function update(Request $request, Member $member)
+    {
+        if (! $request->user('admin')->can('instructorMembers.edit')) {
+            return back()->withErrors([
+                'permission' => 'あなたには編集権限がありません。登録・変更はできません。',
+            ]);
+        }
+
+        $validated = $request->validate([
+            'cycle_id' => 'required|integer|exists:instructor_update_cycles,id',
+            'end_date' => 'required|date',
+            'renewal_end_date' => 'required|date',
+        ]);
+
+        $cycle = InstructorUpdateCycle::where('id', $validated['cycle_id'])
+            ->where('member_id', $member->id)
+            ->firstOrFail();
+
+        $cycle->update([
+            'end_date' => $validated['end_date'],
+            'renewal_end_date' => $validated['renewal_end_date'],
+        ]);
+
+        return redirect()->route('admin.instructorMembers.index')
+            ->with('success', '認定期間を更新しました。');
     }
 
     /**
@@ -209,6 +278,74 @@ class InstructorMemberController extends Controller
         }
 
         return redirect()->back()->with('success', $message);
+    }
+
+    /**
+     * [今回追加] 一覧で選択した複数の申請を、まとめて「指導士資格喪失」にする。
+     * 事務局が「資格喪失候補」フィルタで抽出した上で、内容を確認してから実行する想定。
+     * 通知メールは送信しない。
+     */
+    public function bulkLapse(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+        ]);
+
+        $updatedCount = InstructorUpdateCycle::whereIn('id', $request->ids)
+            ->update(['status' => 'lapsed']);
+
+        return redirect()->back()->with('success', "{$updatedCount}件を指導士資格喪失にしました。");
+    }
+
+    /**
+     * [今回追加] 一覧で選択した複数の申請を、まとめて「審査前（before_update）」に戻す。
+     * 更新年度に入った会員を、次の更新申請ができる状態にするために事務局が実行する。
+     * status を問わず、選択したものは無条件で before_update にする。
+     */
+    public function bulkResetToBeforeUpdate(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+        ]);
+
+        $updatedCount = InstructorUpdateCycle::whereIn('id', $request->ids)
+            ->update(['status' => 'before_update']);
+
+        return redirect()->back()->with('success', "{$updatedCount}件を審査前に戻しました。");
+    }
+
+    /**
+     * [今回追加・現在未実装] 選択した対象のStripe請求書を作成する。
+     * ②更新料支払いスキーム設計時に、具体的な処理を実装する想定でメソッドのみ用意している。
+     */
+    public function bulkCreateStripeInvoice(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+        ]);
+
+        // TODO: Stripe請求書の作成処理を実装する
+
+        return redirect()->back()->with('success', '処理内容は未実装です。');
+    }
+
+    /**
+     * [今回追加・現在未実装] 選択した対象の通常の請求書（PDF）を作成する。
+     * ②更新料支払いスキーム設計時に、具体的な処理を実装する想定でメソッドのみ用意している。
+     */
+    public function bulkCreateInvoice(Request $request)
+    {
+        $request->validate([
+            'ids' => 'required|array|min:1',
+            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+        ]);
+
+        // TODO: 請求書（PDF）の作成処理を実装する
+
+        return redirect()->back()->with('success', '処理内容は未実装です。');
     }
 
     // PDF本体プレビュー（署名URLへリダイレクト・閲覧専用のため権限チェックなし）

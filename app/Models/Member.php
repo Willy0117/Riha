@@ -6,6 +6,23 @@ use Illuminate\Database\Eloquent\Model;
 
 class Member extends Model
 {
+    // [今回追加] MemberController@index()・formatMember() が参照する定数
+    public const STATUS_ACTIVE     = 1;
+    public const STATUS_SUSPENDED  = 2;
+    public const STATUS_WITHDRAWN  = 3;
+
+    public const STATUS_LABELS = [
+        self::STATUS_ACTIVE    => '通常',
+        self::STATUS_SUSPENDED => '休会',
+        self::STATUS_WITHDRAWN => '退会',
+    ];
+
+    public const GENDER_LABELS = [
+        'male'   => '男性',
+        'female' => '女性',
+        'other'  => 'その他',
+    ];
+
     protected $fillable = [
         'organization_id',
         'code',
@@ -23,6 +40,7 @@ class Member extends Model
         'personal_email',
         'status_id',
         'member_type',
+        'payment_method',
         'joined_at',
         'withdrawn_at',
     ];
@@ -46,6 +64,8 @@ class Member extends Model
         'name_kana',
         'full_name',
         'full_address',
+        'status_label',
+        'gender_label',
     ];
 
     public function user()
@@ -137,6 +157,18 @@ class Member extends Model
             $this->last_name,
             $this->first_name,
         ])->filter()->implode('');
+    }
+
+    // [今回追加] status_id に対応する表示ラベル
+    public function getStatusLabelAttribute()
+    {
+        return self::STATUS_LABELS[$this->status_id] ?? '不明';
+    }
+
+    // [今回追加] gender に対応する表示ラベル
+    public function getGenderLabelAttribute()
+    {
+        return self::GENDER_LABELS[$this->gender] ?? '';
     }
 
     // [今回変更] postal_code/address1〜3 は members から削除したため、

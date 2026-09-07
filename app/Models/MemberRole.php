@@ -2,21 +2,31 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class MemberRole extends Model
 {
+    use HasFactory;
+
     protected $table = 'member_roles';
 
     protected $fillable = [
         'member_id',
-        'role',
-        'started_at',
-        'ended_at',
+        'role_name',
+        'start_date',
+        'end_date',
     ];
 
-    public function member(): BelongsTo
+    protected $casts = [
+        'start_date' => 'date',
+        'end_date' => 'date',
+    ];
+
+    /**
+     * 会員（親）
+     */
+    public function member()
     {
         return $this->belongsTo(Member::class);
     }

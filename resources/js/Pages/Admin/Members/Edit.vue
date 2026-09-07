@@ -32,6 +32,22 @@ function handleCancel() {
       </h1>
     </template>
     <div class="h-full flex flex-col">
+      <!-- [今回追加] members.edit 権限が無い場合の警告バナー -->
+      <div
+        v-if="!can_edit"
+        class="mx-6 mt-4 bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg px-4 py-3"
+      >
+        閲覧はできますが、編集・登録はできません。
+      </div>
+
+      <!-- [今回追加] 保存時に権限エラーが返ってきた場合の表示（根本的なガード） -->
+      <div
+        v-if="errors.permission"
+        class="mx-6 mt-4 bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg px-4 py-3"
+      >
+        {{ errors.permission }}
+      </div>
+
       <MemberForm
         v-bind="props"
         :errors="errors"

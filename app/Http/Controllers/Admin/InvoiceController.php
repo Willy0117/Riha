@@ -82,6 +82,9 @@ class InvoiceController extends Controller
             DB::transaction(function () use ($member, $cycle, &$issuedCount) {
                 $invoice = $this->createInvoiceRecord($member, $cycle, '振込');
 
+                // [今回追加] 今回選んだ支払い方法を、会員の直近の支払い方法として反映する
+                $member->update(['payment_method' => '銀行振込']);
+
                 $pdfPath = $this->generateInvoicePdf($member, $invoice);
                 $invoice->update(['pdf_path' => $pdfPath]);
 
@@ -124,6 +127,9 @@ class InvoiceController extends Controller
             try {
                 DB::transaction(function () use ($member, $cycle, $stripeInvoiceService, &$issuedCount) {
                     $invoice = $this->createInvoiceRecord($member, $cycle, 'Stripe');
+
+                    // [今回追加] 今回選んだ支払い方法を、会員の直近の支払い方法として反映する
+                    $member->update(['payment_method' => 'クレジットカード']);
 
                     $hostedInvoiceUrl = $stripeInvoiceService->createAndFinalize($member, $invoice);
 
@@ -175,8 +181,10 @@ class InvoiceController extends Controller
             'member_id' => $member->id,
             'invoice_number' => null, // 保存後にIDを使って採番する
             'fiscal_year' => now()->year,
-            'billing_start' => $cycle->start_date,
-            'billing_end' => $cycle->end_date,
+            // [今回修正] 認定期間（5年間）ではなく、今回の更新申請受付期間で紐付ける
+            // （PdfUploadController側の renewalFeeStatus 判定と対応させるため）
+            'billing_start' => $cycle->renewal_start_date,
+            'billing_end' => $cycle->renewal_end_date,
             'invoice_date' => $invoiceDate,
             'due_date' => $dueDate,
             'invoice_type' => self::INVOICE_TYPE_RENEWAL,

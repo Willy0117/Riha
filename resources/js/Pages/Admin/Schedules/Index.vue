@@ -2,8 +2,8 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">期間スケジュール管理</h2>
-        <p class="text-xs text-gray-500 mt-1">申請受付期間・サブリーダー/審査員/審査委員長の作業期間を管理します。</p>
+        <h2 class="text-2xl font-bold page-title-navy">期間スケジュール管理</h2>
+        <p class="text-xs text-gray-500 mt-1">申請受付期間・アサイン担当者/審査員/審査委員長の作業期間を管理します。</p>
       </div>
     </template>
 
@@ -17,7 +17,7 @@
       </div>
 
       <div class="flex justify-end">
-        <Button size="sm" class="bg-blue-600 hover:bg-blue-700 text-white" @click="openCreateModal">
+        <Button size="sm" class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100" @click="openCreateModal">
           <Plus class="w-3.5 h-3.5 mr-1" />
           新規期区分を追加
         </Button>
@@ -27,13 +27,13 @@
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">区分</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">申請受付期間</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">サブリーダー作業期間</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">審査員作業期間</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">審査員長作業期間</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">通知状況</th>
-              <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">操作</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">区分</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">申請受付期間</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">アサイン担当者作業期間</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員作業期間</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員長作業期間</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">通知状況</th>
+              <th class="px-4 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -95,11 +95,11 @@
             </div>
 
             <div>
-              <label class="text-xs font-medium text-gray-600">サブリーダー作業開始</label>
+              <label class="text-xs font-medium text-gray-600">アサイン担当者作業開始</label>
               <input v-model="form.subleader_start" type="date" class="w-full border rounded p-2 text-sm mt-1" />
             </div>
             <div>
-              <label class="text-xs font-medium text-gray-600">サブリーダー作業終了</label>
+              <label class="text-xs font-medium text-gray-600">アサイン担当者作業終了</label>
               <input v-model="form.subleader_end" type="date" class="w-full border rounded p-2 text-sm mt-1" />
             </div>
 
@@ -129,7 +129,7 @@
 
         <DialogFooter>
           <Button variant="outline" @click="showModal = false">キャンセル</Button>
-          <Button class="bg-blue-600 hover:bg-blue-700 text-white" @click="submit">
+          <Button class="bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100" @click="submit">
             {{ editingId ? '更新する' : '登録する' }}
           </Button>
         </DialogFooter>
@@ -222,7 +222,7 @@ const formatRange = (start, end) => {
 }
 
 const notifiedBadgeClass = (notified) => [
-  'text-[10px] px-1.5 py-0.5 rounded-full font-medium',
-  notified ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400',
+  'status-badge-common',
+  notified ? 'status-badge-emerald' : 'status-badge-gray',
 ]
 </script>

@@ -114,11 +114,15 @@ class ReviewerController extends Controller
 
         $cycle->reviewer_judgment = $cycle->reviewer_judgment ?? 'unreviewed';
 
-        $uploads = $uploads->map(function (PdfUpload $upload) {
+        $flaggedIds = $cycle->chief_flagged_upload_ids ?? [];
+
+        $uploads = $uploads->map(function (PdfUpload $upload) use ($flaggedIds) {
             return array_merge($upload->toArray(), [
                 'credit_conference_name' => $upload->creditConference?->name ?? '',
                 'role_name' => $upload->creditRole?->creditRole?->name ?? '',
                 'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
+                // 委員長が差し戻し時に指摘した書類かどうか
+                'chief_flagged' => in_array($upload->id, $flaggedIds),
             ]);
         });
 
@@ -198,7 +202,14 @@ class ReviewerController extends Controller
 
         $request->validate([
             'judgment' => 'required|in:pass,fail',
+            // [今回変更] 不合格の場合は必須（従来、委員長が却下時に入力していた理由をここで入力する）
+            // 合格の場合は、差し戻し（re_review）再提出時の委員長宛任意メッセージとして使う
+            'message' => 'nullable|string|max:1000',
         ]);
+
+        if ($request->judgment === 'fail' && empty($request->message)) {
+            return back()->withErrors(['message' => '不合格の場合は理由の入力が必須です。']);
+        }
 
         // サーバー側でも基準を再計算し、クライアント側の表示と実データがズレていないか確認する
         $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole.creditRole'])
@@ -235,11 +246,26 @@ class ReviewerController extends Controller
             abort_unless($canFail, 422, '残りの書類が全て承認された場合、基準を満たす可能性があるため不合格にはできません。');
         }
 
+        // [今回修正] statusの変更は審査員には行わせない（委員長の承認操作で確定する）。
+        // 不合格の場合、理由だけを先に cycle.reason に保存しておき、委員長が承認した時点で
+        // status: pending → reject が確定する。合格の場合は status: pending のまま変わらない。
+        $isReReview = $cycle->reviewer_judgment === 're_review';
+
         $cycle->reviewer_judgment = $request->judgment;
         $cycle->reviewer_judged_at = now();
+
+        if ($request->judgment === 'fail') {
+            // 却下理由として保存（委員長が承認した時点で status: reject が確定し、
+            // 更新者側 create.vue の却下メッセージ表示にそのまま使われる）
+            $cycle->reason = $request->message;
+        } elseif ($isReReview) {
+            // 合格・差し戻し案件の場合のみ、委員長宛の任意メッセージを保存する
+            $cycle->reviewer_response_message = $request->message ?: null;
+        }
         $cycle->save();
 
-        return back()->with('success', $request->judgment === 'pass' ? '合格と判定しました。' : '不合格と判定しました。');
+        return redirect()->route('admin.reviewer.index')
+            ->with('success', $request->judgment === 'pass' ? '合格と判定しました。' : '不合格と判定しました。');
     }
 
     // その書類が、ログイン中審査員にアサインされた申請に属するかチェック

@@ -2,8 +2,8 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">審査委員長ポータル</h2>
-        <p class="text-xs text-gray-500 mt-1">更新申請の最終判定（承認・却下・更新なし）を行います。</p>
+        <h2 class="text-2xl font-bold page-title-navy">審査委員長ポータル</h2>
+        <p class="text-xs text-gray-500 mt-1">審査員の判定（合格/不合格）を承認します。合格は承認、不合格は却下として確定します。</p>
       </div>
     </template>
 
@@ -15,22 +15,12 @@
           <div class="flex items-center gap-2">
             <Button
               size="sm"
-              class="bg-emerald-600 hover:bg-emerald-700 text-white"
+              class="bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100"
               :disabled="selectedIds.length === 0"
-              @click="openBulkModal('approved')"
+              @click="openBulkModal"
             >
               <CheckCircle2 class="w-3.5 h-3.5 mr-1" />
               選択した{{ selectedIds.length }}件を承認
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              class="text-red-600 border-red-300 hover:bg-red-50"
-              :disabled="selectedIds.length === 0"
-              @click="openBulkModal('reject')"
-            >
-              <XCircle class="w-3.5 h-3.5 mr-1" />
-              選択した{{ selectedIds.length }}件を却下
             </Button>
           </div>
           <div class="flex items-center gap-2 text-sm text-gray-500">
@@ -52,40 +42,41 @@
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th class="px-3 py-3 w-10 bg-gray-50 border-b border-gray-200">
+              <th class="px-3 py-3 w-10 table-header-navy-cell">
                 <input type="checkbox" :checked="isAllSelected" @change="toggleSelectAll" />
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">会員番号</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">氏名</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">申請日</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">書類の審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">未審査件数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">会員番号</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">氏名</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">申請日</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">書類の審査状況</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">未審査件数</th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200 cursor-pointer select-none hover:text-gray-700"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('approved_points_total')"
               >
-                承認済み単位数 <span class="text-gray-300">{{ sortArrow('approved_points_total') }}</span>
+                承認済み単位数 <span class="text-white/60">{{ sortArrow('approved_points_total') }}</span>
               </th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200 cursor-pointer select-none hover:text-gray-700"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('approved_conference_count')"
               >
-                承認済み参加回数 <span class="text-gray-300">{{ sortArrow('approved_conference_count') }}</span>
+                承認済み参加回数 <span class="text-white/60">{{ sortArrow('approved_conference_count') }}</span>
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">担当審査員</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">審査員判定</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">担当審査員</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員判定</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員からのメッセージ</th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200 cursor-pointer select-none hover:text-gray-700"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('reviewer_judged_at')"
               >
-                審査日時 <span class="text-gray-300">{{ sortArrow('reviewer_judged_at') }}</span>
+                審査日時 <span class="text-white/60">{{ sortArrow('reviewer_judged_at') }}</span>
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">操作</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>
           </thead>
           <tbody>
             <tr v-if="cycles.data.length === 0">
-              <td colspan="12" class="!p-12 text-center text-gray-400">
+              <td colspan="13" class="!p-12 text-center text-gray-400">
                 判定待ちの申請はありません
               </td>
             </tr>
@@ -127,17 +118,15 @@
                 {{ cycle.reviewer_admin?.name ?? '未アサイン' }}
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100">
-                <span
-                  class="text-xs px-2 py-1 rounded-full font-medium"
-                  :class="{
-                    'bg-gray-100 text-gray-500': cycle.reviewer_judgment === 'unreviewed' || !cycle.reviewer_judgment,
-                    'bg-green-50 text-green-600 border border-green-200': cycle.reviewer_judgment === 'pass',
-                    'bg-red-50 text-red-600 border border-red-200': cycle.reviewer_judgment === 'fail',
-                    'bg-orange-50 text-orange-600 border border-orange-200': cycle.reviewer_judgment === 're_review',
-                  }"
-                >
+                <span class="status-badge-common" :class="judgmentClass(cycle.reviewer_judgment)">
                   {{ judgmentLabel(cycle.reviewer_judgment) }}
                 </span>
+              </td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-600 max-w-xs">
+                <p v-if="displayMessage(cycle)" class="text-xs whitespace-pre-wrap line-clamp-2">
+                  {{ displayMessage(cycle) }}
+                </p>
+                <span v-else class="text-xs text-gray-300">-</span>
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.reviewer_judged_at?.split('T')[0] ?? '-' }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100">
@@ -149,18 +138,13 @@
                     詳細
                   </Link>
                   <button
-                    class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed"
-                    :disabled="!isJudgedByReviewer(cycle)"
-                    :title="!isJudgedByReviewer(cycle) ? '審査員の判定（合格/不合格）が出ると判定できます' : ''"
-                    @click="openModal(cycle)"
+                    class="px-3 py-1.5 rounded text-xs font-semibold border disabled:opacity-40 disabled:cursor-not-allowed"
+                    :class="cycle.reviewer_judgment === 'fail' ? 'bg-red-50 text-red-700 border-red-200 hover:bg-red-100' : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'"
+                    :disabled="!['pass', 'fail'].includes(cycle.reviewer_judgment)"
+                    :title="!['pass', 'fail'].includes(cycle.reviewer_judgment) ? '審査員の判定（合格/不合格）が出ると承認できます' : ''"
+                    @click="approveOne(cycle)"
                   >
-                    判定する
-                  </button>
-                  <button
-                    class="px-3 py-1.5 border border-orange-300 text-orange-600 rounded hover:bg-orange-50 text-xs font-semibold"
-                    @click="sendBack(cycle)"
-                  >
-                    差し戻す
+                    承認
                   </button>
                 </div>
               </td>
@@ -175,54 +159,32 @@
       </div>
     </div>
 
-    <!-- 個別判定モーダル -->
+    <!-- 個別承認モーダル -->
     <DialogModal :show="modal.show" @close="modal.show = false">
-      <template #title>{{ modal.memberName }} の最終判定</template>
+      <template #title>
+        {{ modal.memberName }} を承認しますか？
+      </template>
       <template #content>
-        <div class="mb-4">
-          <label class="block mb-2 text-sm font-medium">判定</label>
-          <select v-model="modal.status" class="w-full border rounded p-2">
-            <option value="approved">承認</option>
-            <option value="reject">却下</option>
-          </select>
-        </div>
-
-        <div class="mb-4" v-if="modal.status === 'reject'">
-          <label class="block mb-2 text-sm font-medium">理由（必須）</label>
-          <textarea
-            v-model="modal.reason"
-            class="w-full border rounded p-2"
-            rows="4"
-            placeholder="理由を入力してください"
-          ></textarea>
-        </div>
+        <p v-if="modal.judgment === 'fail'" class="text-sm text-red-600">
+          審査員の不合格判定を承認します。この申請は「却下」として確定します。この操作は取り消せません。
+        </p>
+        <p v-else class="text-sm text-gray-500">この操作は取り消せません。</p>
       </template>
       <template #footer>
         <SecondaryButton @click="modal.show = false">キャンセル</SecondaryButton>
-        <PrimaryButton class="ms-3" @click="submit">送信</PrimaryButton>
+        <PrimaryButton class="ms-3" @click="submit">承認</PrimaryButton>
       </template>
     </DialogModal>
 
-    <!-- 一括判定モーダル -->
+    <!-- 一括承認モーダル -->
     <DialogModal :show="bulkModal.show" @close="bulkModal.show = false">
       <template #title>
-        選択した{{ selectedIds.length }}件を{{ bulkModal.status === 'approved' ? '承認' : '却下' }}
+        選択した{{ selectedIds.length }}件を承認
       </template>
       <template #content>
-        <!--
-        <p class="text-sm text-gray-500 mb-4">
-          書類の審査が完了していない申請は自動的にスキップされます。
+        <p class="text-sm text-gray-500">
+          審査員の判定（合格→承認／不合格→却下）に応じて、それぞれ確定します。書類の審査が完了していない申請、および審査員の判定がまだ出ていない申請は自動的にスキップされます。
         </p>
-        -->
-        <div class="mb-4" v-if="bulkModal.status === 'reject'">
-          <label class="block mb-2 text-sm font-medium">却下理由（必須・選択した全件に共通で適用されます）</label>
-          <textarea
-            v-model="bulkModal.reason"
-            class="w-full border rounded p-2"
-            rows="4"
-            placeholder="理由を入力してください"
-          ></textarea>
-        </div>
       </template>
       <template #footer>
         <SecondaryButton @click="bulkModal.show = false">キャンセル</SecondaryButton>
@@ -235,7 +197,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
-import { CheckCircle2, XCircle } from 'lucide-vue-next'
+import { CheckCircle2 } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import DialogModal from '@/Components/DialogModal.vue'
@@ -267,12 +229,23 @@ const changePerPage = () => {
 }
 
 const judgmentLabel = (judgment) => {
-  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '再審査' }
+  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '差し戻し' }
   return map[judgment] ?? '未判定'
 }
 
-const isJudgedByReviewer = (cycle) => {
-  return cycle.reviewer_judgment === 'pass' || cycle.reviewer_judgment === 'fail'
+// [今回追加] 審査員判定バッジ用（共通クラス名を返す）
+const judgmentClass = (judgment) => {
+  const map = {
+    pass: 'status-badge-green',
+    fail: 'status-badge-red',
+    re_review: 'status-badge-orange',
+  }
+  return map[judgment] ?? 'status-badge-gray'
+}
+
+// [今回追加] 不合格の場合は却下理由（reason）、それ以外は差し戻し後の返信メッセージを表示する
+const displayMessage = (cycle) => {
+  return cycle.reviewer_judgment === 'fail' ? cycle.reason : cycle.reviewer_response_message
 }
 
 // ---- ソート ----
@@ -309,32 +282,25 @@ const toggleSelect = (id) => {
   }
 }
 
-// ---- 個別判定 ----
+// ---- 個別承認 ----
 const modal = reactive({
   show: false,
   cycleId: null,
   memberName: '',
-  status: 'approved',
-  reason: '',
+  judgment: null,
 })
 
-const openModal = (cycle) => {
+const approveOne = (cycle) => {
   modal.show = true
   modal.cycleId = cycle.id
   modal.memberName = cycle.member?.name ?? ''
-  modal.status = 'approved'
-  modal.reason = ''
+  modal.judgment = cycle.reviewer_judgment
 }
 
 const submit = () => {
-  if ((modal.status === 'reject' || modal.status === 'no_update') && !modal.reason) {
-    alert('理由を入力してください')
-    return
-  }
-
   router.post(
     route('admin.chief.review', modal.cycleId),
-    { status: modal.status, reason: modal.reason },
+    {},
     {
       onSuccess: () => {
         modal.show = false
@@ -343,42 +309,20 @@ const submit = () => {
   )
 }
 
-// ---- 差し戻し（審査員へ） ----
-const sendBack = (cycle) => {
-  if (!confirm(`${cycle.member?.name ?? ''}の申請を審査員に差し戻しますか？`)) return
-
-  router.post(
-    route('admin.chief.sendBack', cycle.id),
-    {},
-    { preserveScroll: true }
-  )
-}
-
-// ---- 一括判定 ----
+// ---- 一括承認 ----
 const bulkModal = reactive({
   show: false,
-  status: 'approved',
-  reason: '',
 })
 
-const openBulkModal = (status) => {
+const openBulkModal = () => {
   bulkModal.show = true
-  bulkModal.status = status
-  bulkModal.reason = ''
 }
 
 const submitBulk = () => {
-  if (bulkModal.status === 'reject' && !bulkModal.reason) {
-    alert('却下理由を入力してください')
-    return
-  }
-
   router.post(
     route('admin.chief.bulkReview'),
     {
       ids: selectedIds.value,
-      status: bulkModal.status,
-      reason: bulkModal.reason,
     },
     {
       onSuccess: () => {

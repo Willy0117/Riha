@@ -32,7 +32,9 @@ class ChiefReviewController extends Controller
             ->whereIn('reviewer_judgment', ['pass', 'fail'])
             // 前日までに審査員が判定を出したものだけを表示する
             // （審査員からリアルタイムで上がってくる判定を、委員長画面に即座に反映させないためのバッファ）
-            ->whereDate('reviewer_judged_at', '<=', now()->subDay()->toDateString());
+            // ->whereDate('reviewer_judged_at', '<=', now()->subDay()->toDateString());
+            // [変更] 一旦リアルタイム反映に近づけるため、当日分まで含めて取得する
+            ->whereDate('reviewer_judged_at', '<=', now()->toDateString());
 
         // DB上の実カラムでの並び替えはここで先に済ませる
         if (in_array($sortBy, ['reviewer_judged_at', 'updated_at'])) {
@@ -161,57 +163,74 @@ class ChiefReviewController extends Controller
 
     /**
      * 最終判定を保存する（1件ずつ）。
+     * [今回修正] 委員長の操作は「承認する」の1種類のみ。
+     * 実際に確定する status は、審査員の判定（reviewer_judgment）に応じて自動的に決まる：
+     *   pass → approved / fail → reject（理由は審査員が入力済みの cycle.reason をそのまま使う）
      */
     public function review(Request $request, InstructorUpdateCycle $cycle)
     {
-        $request->validate([
-            'status' => 'required|in:approved,reject,no_update',
-            'reason' => 'nullable|string|max:1000',
-        ]);
+        abort_unless(
+            in_array($cycle->reviewer_judgment, ['pass', 'fail']),
+            422,
+            '審査員の判定（合格/不合格）が出ていない申請は承認できません。'
+        );
 
-        if (in_array($request->status, ['reject', 'no_update']) && empty($request->reason)) {
-            return back()->withErrors(['reason' => '却下・更新なしの場合は理由の入力が必須です。']);
-        }
-
-        $cycle->status = $request->status;
-        $cycle->reason = $request->reason;
+        $cycle->status = $cycle->reviewer_judgment === 'fail' ? 'reject' : 'approved';
         $cycle->save();
 
-        return redirect()->back()->with('success', '判定を保存しました。');
+        return redirect()->back()->with('success', '承認しました。');
     }
 
     /**
      * 審査員の判定を「再審査」に戻し、審査員に差し戻す。
      * 委員長が審査員の合否判定に納得できない場合に使用する。
+     * 理由と、指摘対象の書類（pdf_uploads.id の配列、1件以上必須）を受け取る。
      */
     public function sendBackToReviewer(Request $request, InstructorUpdateCycle $cycle)
     {
+        $request->validate([
+            'reason' => 'required|string|max:1000',
+            'flagged_upload_ids' => 'required|array|min:1',
+            'flagged_upload_ids.*' => 'integer',
+        ]);
+
         $cycle->reviewer_judgment = 're_review';
         $cycle->reviewer_judged_at = null;
+        $cycle->chief_feedback = $request->reason;
+        $cycle->chief_flagged_upload_ids = $request->flagged_upload_ids;
+        // [今回追加] 新しいラウンドなので、前回の審査員からの返信メッセージ・不合格理由はクリアする
+        $cycle->reviewer_response_message = null;
+        $cycle->reason = null;
         $cycle->save();
 
-        return redirect()->back()->with('success', '審査員に差し戻しました。');
+        // [今回追加] 指摘対象の書類を「未審査」に戻し、審査員が再度承認/差し戻しの判定を
+        // できるようにする（承認済みのまま止まっていると、審査員側の一覧に再表示されないため）
+        PdfUpload::whereIn('id', $request->flagged_upload_ids)
+            ->where('member_id', $cycle->member_id)
+            ->update([
+                'status' => 'pending',
+                'rejection_message' => null,
+            ]);
+
+        return redirect()->route('admin.chief.index')
+            ->with('success', '審査員に差し戻しました。');
     }
 
     /**
-     * 一覧で選択した複数の申請を、まとめて承認 or 却下する。
-     * 書類の審査が全て終わっていない申請は対象外にし、スキップした件数を返す。
+     * 一覧で選択した複数の申請を、まとめて承認する。
+     * [今回修正] 各申請の確定ステータスは、それぞれの審査員判定（pass→approved / fail→reject）に
+     * 応じて自動的に決まる。書類の審査が全て終わっていない申請は対象外にし、スキップした件数を返す。
      */
     public function bulkReview(Request $request)
     {
         $request->validate([
             'ids' => 'required|array|min:1',
             'ids.*' => 'integer|exists:instructor_update_cycles,id',
-            'status' => 'required|in:approved,reject',
-            'reason' => 'nullable|string|max:1000',
         ]);
-
-        if ($request->status === 'reject' && empty($request->reason)) {
-            return back()->withErrors(['reason' => '却下の場合は理由の入力が必須です。']);
-        }
 
         $cycles = InstructorUpdateCycle::whereIn('id', $request->ids)
             ->where('status', 'pending')
+            ->whereIn('reviewer_judgment', ['pass', 'fail'])
             ->get();
 
         $updatedCount = 0;
@@ -232,13 +251,12 @@ class ChiefReviewController extends Controller
                 continue;
             }
 
-            $cycle->status = $request->status;
-            $cycle->reason = $request->reason;
+            $cycle->status = $cycle->reviewer_judgment === 'fail' ? 'reject' : 'approved';
             $cycle->save();
             $updatedCount++;
         }
 
-        $message = "{$updatedCount}件を更新しました。";
+        $message = "{$updatedCount}件を承認しました。";
         if ($skippedCount > 0) {
             $message .= " (書類の審査が未完了のため{$skippedCount}件をスキップしました)";
         }

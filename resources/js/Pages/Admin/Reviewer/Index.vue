@@ -2,7 +2,7 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold text-gray-800">審査員ポータル</h2>
+        <h2 class="text-2xl font-bold page-title-navy">審査員ポータル</h2>
         <p class="text-xs text-gray-500 mt-1">担当申請の書類を確認し、承認/差し戻しを行います。</p>
       </div>
     </template>
@@ -25,26 +25,26 @@
         <table class="w-full border-collapse text-sm">
           <thead>
             <tr>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">会員番号</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">氏名</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">認定期間</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">会員番号</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">氏名</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">認定期間</th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200 cursor-pointer select-none hover:text-gray-700"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('updated_at')"
               >
-                申請日 <span class="text-gray-300">{{ sortArrow('updated_at') }}</span>
+                申請日 <span class="text-white/60">{{ sortArrow('updated_at') }}</span>
               </th>
               <th
-                class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200 cursor-pointer select-none hover:text-gray-700"
+                class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('reviewer_assigned_at')"
               >
-                アサイン日 <span class="text-gray-300">{{ sortArrow('reviewer_assigned_at') }}</span>
+                アサイン日 <span class="text-white/60">{{ sortArrow('reviewer_assigned_at') }}</span>
               </th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">書類審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">承認済み回数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">承認済み単位数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">判定</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold text-gray-500 bg-gray-50 border-b border-gray-200">操作</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">書類審査状況</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済み回数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済み単位数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">判定</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>
           </thead>
           <tbody>
@@ -64,13 +64,8 @@
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.approved_points_total }} 単位</td>
               <td class="px-5 py-3.5 border-b border-gray-100">
                 <span
-                  class="text-xs px-2 py-1 rounded-full font-medium"
-                  :class="{
-                    'bg-gray-100 text-gray-500': cycle.reviewer_judgment === 'unreviewed' || !cycle.reviewer_judgment,
-                    'bg-green-50 text-green-600 border border-green-200': cycle.reviewer_judgment === 'pass',
-                    'bg-red-50 text-red-600 border border-red-200': cycle.reviewer_judgment === 'fail',
-                    'bg-orange-50 text-orange-600 border border-orange-200': cycle.reviewer_judgment === 're_review',
-                  }"
+                  class="status-badge-common"
+                  :class="[judgmentClass(cycle.reviewer_judgment), { 'font-bold': cycle.reviewer_judgment === 're_review' }]"
                 >
                   {{ judgmentLabel(cycle.reviewer_judgment) }}
                 </span>
@@ -78,7 +73,7 @@
               <td class="px-5 py-3.5 border-b border-gray-100">
                 <Link
                   :href="route('admin.reviewer.show', cycle.id)"
-                  class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold"
+                  class="px-3 py-1.5 rounded text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100"
                 >
                   審査する
                 </Link>
@@ -144,7 +139,17 @@ const sortArrow = (column) => {
 }
 
 const judgmentLabel = (judgment) => {
-  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '再審査' }
+  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '差し戻し' }
   return map[judgment] ?? '未判定'
+}
+
+// [今回追加] 審査員判定バッジ用（共通クラス名を返す）
+const judgmentClass = (judgment) => {
+  const map = {
+    pass: 'status-badge-green',
+    fail: 'status-badge-red',
+    re_review: 'status-badge-red', // 差し戻しは目立たせるため赤系（font-boldと併用）
+  }
+  return map[judgment] ?? 'status-badge-gray'
 }
 </script>

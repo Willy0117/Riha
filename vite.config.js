@@ -2,8 +2,10 @@ import { defineConfig } from 'vite';
 import laravel from 'laravel-vite-plugin';
 import vue from '@vitejs/plugin-vue';
 
-export default defineConfig({
-    base: '/vite-dev/',
+export default defineConfig(({ command }) => ({
+    // [今回修正] base は開発サーバー（npm run dev）のときだけ '/vite-dev/' にする。
+    // ビルド時（npm run build）は通常のルートパス（'/build/'）のままにする。
+    base: command === 'serve' ? '/vite-dev/' : '/build/',
     plugins: [
         laravel({
             input: ['resources/css/app.css', 'resources/js/app.js'],
@@ -37,4 +39,4 @@ export default defineConfig({
             ignored: ['**/vendor/**', '**/node_modules/**'],
         },
     },
-});
+}));

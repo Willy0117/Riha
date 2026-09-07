@@ -14,6 +14,9 @@ class InstructorUpdateCycle extends Model
         'end_date',
         'status',
         'reason',
+        'chief_feedback',
+        'chief_flagged_upload_ids',
+        'reviewer_response_message',
         'renewal_start_date',
         'renewal_end_date',
         'reviewer_admin_id',
@@ -25,12 +28,13 @@ class InstructorUpdateCycle extends Model
     ];
 
     protected $casts = [
-        'start_date'            => 'date',
-        'end_date'              => 'date',
-        'renewal_start_date'    => 'date',
-        'renewal_end_date'      => 'date',
-        'reviewer_assigned_at'  => 'datetime',
-        'reviewer_judged_at'    => 'datetime',
+        'start_date'                 => 'date',
+        'end_date'                   => 'date',
+        'renewal_start_date'         => 'date',
+        'renewal_end_date'           => 'date',
+        'reviewer_assigned_at'       => 'datetime',
+        'reviewer_judged_at'         => 'datetime',
+        'chief_flagged_upload_ids'   => 'array',
     ];
 
     public function member()

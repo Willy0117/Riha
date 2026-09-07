@@ -1,6 +1,8 @@
 <template>
   <AppLayout>
-    <template #header>会員一覧</template>
+    <template #header>
+      <h2 class="text-2xl font-bold page-title-navy">会員一覧</h2>
+    </template>
 
     <div class="p-6 space-y-4">
 
@@ -8,12 +10,13 @@
       <div class="flex items-center justify-between gap-3">
         <div class="flex items-center gap-2">
           <!-- 件数 -->
+          <span class="text-sm text-muted-foreground">表示件数</span>
           <Select v-model="form.per_page" @update:modelValue="submitSearch">
-            <SelectTrigger class="w-20 h-9">
+            <SelectTrigger class="w-24 h-9">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}</SelectItem>
+              <SelectItem v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}件</SelectItem>
             </SelectContent>
           </Select>
 
@@ -52,44 +55,39 @@
           種別: {{ form.member_type }}
           <button @click="form.member_type = ''; submitSearch()"><X class="w-3 h-3" /></button>
         </Badge>
-        <!-- 受講状況絞り込みバッジ（追加） -->
-        <Badge v-if="form.elearning_status" variant="secondary" class="gap-1">
-          受講状況: {{ form.elearning_status === 'completed' ? '受講済み' : '未受講' }}
-          <button @click="form.elearning_status = ''; submitSearch()"><X class="w-3 h-3" /></button>
-        </Badge>
       </div>
 
       <!-- テーブル -->
       <div class="border rounded-lg overflow-hidden">
         <table class="w-full text-sm">
-          <thead class="bg-muted/50">
+          <thead>
             <tr>
-              <th class="px-3 py-2.5 w-8">
+              <th class="px-3 py-2.5 w-8 table-header-navy-cell">
                 <Checkbox :checked="selectAll" @update:checked="toggleSelectAll" />
               </th>
-              <th class="px-3 py-2.5 text-left font-medium cursor-pointer hover:text-foreground text-muted-foreground" @click="sortBy('code')">
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell table-header-navy-sortable" @click="sortBy('code')">
                 会員番号
                 <SortIcon field="code" :current="form.sort_by" :dir="form.sort_dir" />
               </th>
-              <th class="px-3 py-2.5 text-left font-medium cursor-pointer hover:text-foreground text-muted-foreground" @click="sortBy('last_name')">
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell table-header-navy-sortable" @click="sortBy('last_name')">
                 氏名
                 <SortIcon field="last_name" :current="form.sort_by" :dir="form.sort_dir" />
               </th>
-              <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">所属</th>
-              <th class="px-3 py-2.5 text-left font-medium cursor-pointer hover:text-foreground text-muted-foreground" @click="sortBy('email')">
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">所属</th>
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell table-header-navy-sortable" @click="sortBy('email')">
                 メール
                 <SortIcon field="email" :current="form.sort_by" :dir="form.sort_dir" />
               </th>
-              <th class="px-3 py-2.5 text-left font-medium text-muted-foreground">電話</th>
-              <th class="px-3 py-2.5 text-left font-medium cursor-pointer hover:text-foreground text-muted-foreground" @click="sortBy('status_id')">
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">電話</th>
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell table-header-navy-sortable" @click="sortBy('status_id')">
                 状況
                 <SortIcon field="status_id" :current="form.sort_by" :dir="form.sort_dir" />
               </th>
-              <th class="px-3 py-2.5 text-left font-medium cursor-pointer hover:text-foreground text-muted-foreground" @click="sortBy('joined_at')">
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell table-header-navy-sortable" @click="sortBy('joined_at')">
                 入会日
                 <SortIcon field="joined_at" :current="form.sort_by" :dir="form.sort_dir" />
               </th>
-              <th class="px-3 py-2.5 text-center font-medium text-muted-foreground">操作</th>
+              <th class="px-3 py-2.5 text-center font-medium table-header-navy-cell">操作</th>
             </tr>
           </thead>
           <tbody class="divide-y">
@@ -111,7 +109,8 @@
                 {{ member.code ?? '-' }}
               </td>
               <td class="px-3 py-2.5">
-                <Link :href="route('admin.members.show', member.id)" class="font-medium hover:underline">
+                <!-- [今回修正] show（詳細）は今回のプロジェクトに存在しないため、編集画面へ直接遷移させる -->
+                <Link :href="route('admin.members.edit', { id: member.id, ...persistQuery() })" class="font-medium hover:underline">
                   {{ member.full_name ?? '-' }}
                 </Link>
                 <div v-if="member.full_name_kana" class="text-xs text-muted-foreground">{{ member.full_name_kana }}</div>
@@ -131,7 +130,6 @@
               </td>
               <td class="px-3 py-2.5">
                 <div class="flex items-center justify-center gap-1">
-                  <!-- グレード変更ボタン -->
                   <Button variant="ghost" size="icon" class="h-7 w-7" as-child>
                     <Link :href="route('admin.members.edit', { id: member.id, ...persistQuery() })">
                       <Pencil class="w-3.5 h-3.5" />
@@ -163,56 +161,46 @@
     <Teleport to="body">
       <div v-if="openDrawer" class="fixed inset-0 z-40">
         <div class="absolute inset-0 bg-black/30" @click="openDrawer = false" />
-        <aside class="absolute top-0 right-0 h-full w-80 bg-background shadow-xl z-50 flex flex-col">
+        <aside class="absolute top-0 left-64 right-0 bg-background shadow-xl z-50 flex flex-col max-h-[80vh]">
           <div class="flex items-center justify-between px-5 py-4 border-b">
             <h2 class="font-bold">検索</h2>
             <Button variant="ghost" size="icon" @click="openDrawer = false">
               <X class="w-4 h-4" />
             </Button>
           </div>
-          <div class="flex-1 overflow-y-auto p-5 space-y-4">
-            <div class="space-y-1.5">
-              <Label>キーワード（氏名・かな・メール・会員番号）</Label>
-              <Input v-model="form.keyword" placeholder="検索ワードを入力" />
-            </div>
-            <div class="space-y-1.5">
-              <Label>会員状況</Label>
-              <Select v-model="form.status_id">
-                <SelectTrigger><SelectValue placeholder="すべて" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">すべて</SelectItem>
-                  <SelectItem v-for="(label, id) in statusLabels" :key="id" :value="Number(id)">{{ label }}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div class="space-y-1.5">
-              <Label>会員種別</Label>
-              <Select v-model="form.member_type">
-                <SelectTrigger><SelectValue placeholder="すべて" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">すべて</SelectItem>
-                  <SelectItem value="regular">正会員</SelectItem>
-                  <SelectItem value="student">学生会員</SelectItem>
-                  <SelectItem value="honorary">名誉会員</SelectItem>
-                  <SelectItem value="supporting">賛助会員</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <!-- 受講状況絞り込み（追加） -->
-            <div class="space-y-1.5">
-              <Label>受講状況（簡易e-ラーニング）</Label>
-              <Select v-model="form.elearning_status">
-                <SelectTrigger><SelectValue placeholder="すべて" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">すべて</SelectItem>
-                  <SelectItem value="completed">受講済み</SelectItem>
-                  <SelectItem value="incomplete">未受講</SelectItem>
-                </SelectContent>
-              </Select>
+          <div class="overflow-y-auto p-5">
+            <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              <div class="space-y-1.5">
+                <Label>キーワード（氏名・かな・メール・会員番号）</Label>
+                <Input v-model="form.keyword" placeholder="検索ワードを入力" />
+              </div>
+              <div class="space-y-1.5">
+                <Label>会員状況</Label>
+                <Select v-model="form.status_id">
+                  <SelectTrigger><SelectValue placeholder="すべて" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">すべて</SelectItem>
+                    <SelectItem v-for="(label, id) in statusLabels" :key="id" :value="Number(id)">{{ label }}</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div class="space-y-1.5">
+                <Label>会員種別</Label>
+                <Select v-model="form.member_type">
+                  <SelectTrigger><SelectValue placeholder="すべて" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">すべて</SelectItem>
+                    <SelectItem value="regular">正会員</SelectItem>
+                    <SelectItem value="student">学生会員</SelectItem>
+                    <SelectItem value="honorary">名誉会員</SelectItem>
+                    <SelectItem value="supporting">賛助会員</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
-          <div class="px-5 py-4 border-t flex gap-2">
-            <Button class="flex-1" @click="submitSearch(); openDrawer = false">
+          <div class="px-5 py-4 border-t flex gap-2 justify-end">
+            <Button size="sm" class="bg-[#0C447C] hover:bg-[#185FA5] text-white" @click="submitSearch(); openDrawer = false">
               <Search class="w-3.5 h-3.5 mr-1" />検索
             </Button>
             <Button variant="outline" @click="resetSearch">リセット</Button>
@@ -263,15 +251,12 @@ import { Checkbox }   from '@/components/ui/checkbox'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 
-// ──────────────────────────────────────────
-// Props
-// ──────────────────────────────────────────
 const props = defineProps({
   members: Object,
   filters: {
     type: Object,
     default: () => ({
-      keyword: '', status_id: '', member_type: '', organization_id: '', elearning_status: '',
+      keyword: '', status_id: '', member_type: '', organization_id: '',
       per_page: 20, sort_by: 'created_at', sort_dir: 'desc',
     }),
   },
@@ -281,27 +266,20 @@ const props = defineProps({
   },
 })
 
-// ──────────────────────────────────────────
-// フォーム
-// ──────────────────────────────────────────
 const form = reactive({
   keyword:         props.filters.keyword       ?? '',
   status_id:       props.filters.status_id     ?? '',
   member_type:     props.filters.member_type   ?? '',
   organization_id: props.filters.organization_id ?? '',
-  elearning_status: props.filters.elearning_status ?? '', // 追加
   per_page:        props.filters.per_page      ?? 20,
   sort_by:         props.filters.sort_by       ?? 'created_at',
   sort_dir:        props.filters.sort_dir      ?? 'desc',
 })
 
 const hasActiveFilters = computed(() =>
-  form.keyword || form.status_id || form.member_type || form.elearning_status
+  form.keyword || form.status_id || form.member_type
 )
 
-// ──────────────────────────────────────────
-// 選択
-// ──────────────────────────────────────────
 const selectedIds = ref([])
 
 const selectAll = computed(() =>
@@ -315,9 +293,6 @@ const toggleSelectAll = (checked) => {
 
 watch(() => props.members.current_page, () => { selectedIds.value = [] })
 
-// ──────────────────────────────────────────
-// 検索・ソート・ページ
-// ──────────────────────────────────────────
 const openDrawer = ref(false)
 
 const persistQuery = () => ({
@@ -325,7 +300,6 @@ const persistQuery = () => ({
   status_id:       form.status_id,
   member_type:     form.member_type,
   organization_id: form.organization_id,
-  elearning_status: form.elearning_status, // 追加
   per_page:        form.per_page,
   sort_by:         form.sort_by,
   sort_dir:        form.sort_dir,
@@ -344,7 +318,6 @@ const resetSearch = () => {
   form.keyword = ''
   form.status_id = ''
   form.member_type = ''
-  form.elearning_status = '' // 追加
   submitSearch()
   openDrawer.value = false
 }
@@ -367,9 +340,6 @@ const sortBy = (field) => {
   submitSearch()
 }
 
-// ──────────────────────────────────────────
-// 削除
-// ──────────────────────────────────────────
 const deleteMember = (member) => {
   if (!confirm(`「${member.full_name}」を削除しますか？`)) return
   router.delete(route('admin.members.destroy', member.id), {
@@ -386,9 +356,6 @@ const bulkDelete = () => {
   })
 }
 
-// ──────────────────────────────────────────
-// ステータス変更
-// ──────────────────────────────────────────
 const showStatusModal = ref(false)
 const statusForm = reactive({ member_id: null, status_id: null })
 
@@ -406,9 +373,6 @@ const submitStatus = async () => {
   router.reload({ only: ['members'] })
 }
 
-// ──────────────────────────────────────────
-// ユーティリティ
-// ──────────────────────────────────────────
 const statusVariant = (statusId) => {
   const map = { 1: 'default', 2: 'secondary', 3: 'destructive' }
   return map[statusId] ?? 'outline'

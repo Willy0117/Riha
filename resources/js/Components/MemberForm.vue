@@ -64,22 +64,10 @@ function statusColor(color: string) {
   return statusColorMap[color] ?? 'border-border bg-background text-muted-foreground'
 }
 
-function normalizeDoctorNumberForSubmit(value: string | null): string | null {
-  if (!value) return value
-  return value.length >= 4 ? value.padStart(6, '0') : value
-}
-
 function handleSubmit() {
    if (!isValid.value) return
 
   if (isValid.value) emit('submit', form)
-}
-
-const normalizeDoctorNumber = (value: string) => {
-  if (!value) return ''
-  value = value.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0))
-  value = value.replace(/[^0-9]/g, '')
-  return value.slice(0, 6)
 }
 </script>
 
@@ -149,8 +137,8 @@ const normalizeDoctorNumber = (value: string) => {
             </p>
             <div class="grid grid-cols-2 gap-4">
               <div class="space-y-1">
-                <Label class="text-xs text-muted-foreground">会員番号 <span class="text-[10px] text-muted-foreground/60 ml-0.5">member_number</span></Label>
-                <Input v-model="form.member.member_number" placeholder="例: M-00001" />
+                <Label class="text-xs text-muted-foreground">会員番号 <span class="text-[10px] text-muted-foreground/60 ml-0.5">code</span></Label>
+                <Input v-model="form.member.code" placeholder="例: M-00001" />
               </div>
               <div class="space-y-1">
                 <Label class="text-xs text-muted-foreground">役職 <span class="text-[10px] text-muted-foreground/60 ml-0.5">position</span></Label>
@@ -434,15 +422,15 @@ const normalizeDoctorNumber = (value: string) => {
               <div class="grid grid-cols-2 gap-3">
                 <div class="space-y-1 col-span-2">
                   <Label class="text-xs text-muted-foreground">担当役職</Label>
-                  <Input v-model="role.role" placeholder="理事" />
+                  <Input v-model="role.role_name" placeholder="理事" />
                 </div>
                 <div class="space-y-1">
                   <Label class="text-xs text-muted-foreground">開始年月</Label>
-                  <Input v-model="role.started_at" placeholder="2010-04" />
+                  <Input v-model="role.start_date" placeholder="2010-04" />
                 </div>
                 <div class="space-y-1">
                   <Label class="text-xs text-muted-foreground">終了年月</Label>
-                  <Input v-model="role.ended_at" placeholder="2014-03" />
+                  <Input v-model="role.end_date" placeholder="2014-03" />
                 </div>
               </div>
             </div>

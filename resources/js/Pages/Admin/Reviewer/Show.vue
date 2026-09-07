@@ -73,6 +73,29 @@
       </div>
 
       <div>
+        <!-- 委員長からの差し戻し理由（re_reviewのときのみ表示） -->
+        <div
+          v-if="cycle.reviewer_judgment === 're_review' && cycle.chief_feedback"
+          class="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-4"
+        >
+          <p class="text-sm font-semibold text-orange-700 mb-1">委員長から差し戻されました</p>
+          <p class="text-sm text-orange-700 whitespace-pre-wrap">{{ cycle.chief_feedback }}</p>
+        </div>
+
+        <!-- [今回変更] 常時表示。不合格の場合は却下理由として必須、合格（差し戻し案件のみ）は委員長への任意メッセージ -->
+        <div class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
+          <label class="text-sm font-semibold text-gray-700 mb-2 block">
+            {{ cycle.reviewer_judgment === 're_review' ? '委員長へのメッセージ' : '判定理由' }}
+            <span class="text-xs font-normal text-gray-400">（不合格の場合は必須・委員長の承認時に却下理由として使われます）</span>
+          </label>
+          <textarea
+            v-model="responseMessage"
+            class="input-field text-sm resize-none w-full"
+            rows="3"
+            placeholder="不合格の場合は理由を入力してください（合格の場合は入力不要です）"
+          />
+        </div>
+
         <h2 class="text-xl font-bold text-gray-800 mb-4">提出書類</h2>
 
         <div
@@ -89,7 +112,8 @@
             <div
               v-for="upload in pendingUploads"
               :key="upload.id"
-              class="flex gap-6 p-6 bg-white rounded-xl border border-gray-200"
+              class="flex gap-6 p-6 bg-white rounded-xl border transition"
+              :class="upload.chief_flagged ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'"
             >
               <div class="w-48 flex-none">
                 <img
@@ -110,6 +134,12 @@
               <div class="flex-1 flex flex-col gap-4">
                 <div class="flex items-start justify-between">
                   <div>
+                    <span
+                      v-if="upload.chief_flagged"
+                      class="inline-block text-[11px] font-semibold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full mb-1"
+                    >
+                      委員長からの指摘対象
+                    </span>
                     <h3 class="text-xl font-bold text-indigo-900">{{ sessionLabel(upload.session) || upload.credit_conference_name }}</h3>
                     <p class="text-sm text-gray-700 mt-1">
                       【{{ upload.credit_conference_name }}】{{ upload.role_name }}
@@ -285,6 +315,8 @@ const uploadList = ref(uploads)
 const rejectReasons = ref({})
 const rejectComments = ref({})
 const previewPdf = ref(null)
+// [今回追加] 差し戻し案件で、合格/不合格提出時に委員長へ送る任意メッセージ
+const responseMessage = ref('')
 
 const requiredPoints = cycle.value.required_points ?? 50
 const requiredConferenceCount = cycle.value.required_conference_count ?? 2
@@ -328,7 +360,7 @@ const statusLabel = (status) => {
 }
 
 const judgmentLabel = (judgment) => {
-  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '再審査' }
+  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '差し戻し' }
   return map[judgment] ?? '未判定'
 }
 
@@ -391,16 +423,25 @@ const handleJudge = (judgment) => {
   if (judgment === 'pass' && !canPass.value) return
   if (judgment === 'fail' && !canFail.value) return
 
+  if (judgment === 'fail' && !responseMessage.value.trim()) {
+    alert('不合格の場合は理由の入力が必須です。')
+    return
+  }
+
   const label = judgment === 'pass' ? '合格' : '不合格'
-  if (!confirm(`この申請を「${label}」と判定しますか？`)) return
+  const confirmMessage = judgment === 'fail'
+    ? 'この申請を「不合格」と判定します。委員長が承認すると、この申請は却下として確定します。よろしいですか？'
+    : `この申請を「${label}」と判定しますか？`
+  if (!confirm(confirmMessage)) return
 
   router.post(
     route('admin.reviewer.judge', { cycle: cycle.value.id }),
-    { judgment },
+    { judgment, message: responseMessage.value },
     {
       preserveScroll: true,
       onSuccess: () => {
         cycle.value.reviewer_judgment = judgment
+        responseMessage.value = ''
       }
     }
   )

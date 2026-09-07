@@ -185,22 +185,36 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('instructorMembers', [AdminInstructorMemberController::class, 'index'])
             ->name('instructorMembers.index');
         // 指導士会員詳細（PDF一覧）
-        Route::get('instructorMembers/{member}', [AdminInstructorMemberController::class, 'show'])
-            ->name('instructorMembers.show');
+        // Route::get('instructorMembers/{member}', [AdminInstructorMemberController::class, 'show'])
+        //     ->name('instructorMembers.show');
+        //
+        Route::get('instructorMembers/{member}/edit', [AdminInstructorMemberController::class, 'edit'])
+            ->name('instructorMembers.edit');
+        Route::put('instructorMembers/{member}', [AdminInstructorMemberController::class, 'update'])
+            ->name('instructorMembers.update');
+                    
         // インストラクター更新サイクルの審査結果送信
         Route::post('instructorUpdateCycles/{cycle}/review', [AdminInstructorUpdateCycleController::class, 'review'])
             ->name('instructorUpdateCycles.review');
         Route::post('instructorMembers/bulkUpdate', [AdminInstructorMemberController::class, 'bulkUpdate'])
             ->name('instructorMembers.bulkUpdate');
-
+        Route::post('instructorMembers/bulkLapse', [AdminInstructorMemberController::class, 'bulkLapse'])
+            ->name('instructorMembers.bulkLapse');
+//        Route::post('instructorMembers/bulkChiefApprovedAction', [AdminInstructorMemberController::class, 'bulkChiefApprovedAction'])
+//            ->name('instructorMembers.bulkChiefApprovedAction');
+//        Route::post('instructorMembers/bulkRenewalPaidAction', [AdminInstructorMemberController::class, 'bulkRenewalPaidAction'])
+//            ->name('instructorMembers.bulkRenewalPaidAction');
+ 
         Route::get('instructorMembers/pdfUploads/{id}/view', [AdminInstructorMemberController::class, 'view'])
             ->name('instructorMembers.view');
         Route::get('instructorMembers/pdfUploads/{id}/thumbnail', [AdminInstructorMemberController::class, 'thumbnail'])
             ->name('instructorMembers.thumbnail');
+
         Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
         Route::post('invoices/issueTransfer', [InvoiceController::class, 'issueTransfer'])->name('invoices.issueTransfer');
         Route::post('invoices/issueStripe', [InvoiceController::class, 'issueStripe'])->name('invoices.issueStripe');
-        Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'viewPdf'])->name('invoices.viewPdf');            
+        Route::get('invoices/{invoice}/pdf', [InvoiceController::class, 'viewPdf'])->name('invoices.viewPdf'); 
+          
         // 審査員
         Route::get('reviewer', [ReviewerController::class, 'index'])
             ->name('reviewer.index');
@@ -243,9 +257,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('subleader.assign');
         Route::post('subleader/instructorUpdateCycles/autoAssign', [SubLeaderAssignmentController::class, 'autoAssign'])
            ->name('subleader.autoAssign');    
-        // ▼ 追加案（要確認）
-        Route::post('subleader/instructorUpdateCycles/{cycle}/autoAssign', [SubLeaderAssignmentController::class, 'autoAssign'])
-            ->name('subleader.autoAssign');
         Route::post('subleader/instructorUpdateCycles/bulkAssign', [SubLeaderAssignmentController::class, 'bulkAssign'])
             ->name('subleader.bulkAssign');
 
@@ -291,7 +302,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
                 ->name('updateProgress');
             Route::post('/{member}/upload-document', [AdminMemberController::class, 'uploadDocument'])
                 ->name('uploadDocument');
-              
+
         });
     });
 });

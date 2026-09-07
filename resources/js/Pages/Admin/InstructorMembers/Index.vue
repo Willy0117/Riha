@@ -2,7 +2,7 @@
   <AppLayout>
     <template #header>
         <div>
-          <h2 class="text-2xl font-bold text-gray-800">事務局ポータル</h2>
+          <h2 class="text-2xl font-bold page-title-navy">事務局ポータル</h2>
           <p class="text-xs text-gray-500 mt-1">申請者の提出書類を確認し、判定を行います。</p>
         </div>
     </template>
@@ -15,36 +15,93 @@
         {{ page.props.flash.success }}
       </div>
 
-      <!-- per_page + add -->
-      <div class="flex flex-wrap md:flex-nowrap md:justify-between mb-4 items-center gap-2">
-
-        <!-- per_page + add -->
-        <div class="flex items-center gap-2">
+      <!-- 絞り込みエリア -->
+      <div class="flex flex-wrap items-center gap-2 mb-3 p-3 bg-gray-50 border border-gray-200 rounded-lg">
+        <div class="flex items-center gap-2 text-sm text-gray-500">
+          <span>表示件数</span>
           <select
             v-model.number="form.per_page"
             @change="submitSearch"
-            class="border rounded px-3 py-2 w-16 h-10"
+            class="border rounded pl-2 pr-7 py-1 text-sm"
           >
-            <option v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}</option>
+            <option v-for="n in [10,20,30,50]" :key="n" :value="n">{{ n }}件</option>
           </select>
-
         </div>
 
-        <div class="flex items-center gap-2">
-          <button
-            @click="bulkUpdate"
-            :disabled="selectedIds.length === 0"
-            class="px-4 h-10 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 flex items-center space-x-1"
-          >
-            <BadgeCheck class="w-4 h-4"/>
-            <span>{{ t('update_selected') }}</span>
-          </button>
-          <span v-if="selectedIds.length > 0" class="text-xs text-gray-500">
-            ※ 承認済みでない申請者は自動的にスキップされます
-          </span>
-        </div>
+        <span class="text-xs text-gray-500 ml-2">絞り込み:</span>
+
+        <input
+          v-model="form.name"
+          @keyup.enter="submitSearch"
+          type="text"
+          class="border rounded pl-3 pr-3 py-2 h-9 text-sm"
+          placeholder="名前・メール・個人番号で検索..."
+        />
+
+        <select v-model="filterYear" @change="submitSearch" class="border rounded pl-3 pr-8 py-2 h-9 text-sm">
+          <option value="">更新予定年（すべて）</option>
+          <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年</option>
+        </select>
+
+        <select v-model="cycleStatus" @change="submitSearch" class="border rounded pl-3 pr-8 py-2 h-9 text-sm">
+          <option value="">申請ステータス（すべて）</option>
+          <option value="before_update">更新前</option>
+          <option value="pending">審査中</option>
+          <option value="approved">承認</option>
+          <option value="reject">却下</option>
+          <option value="no_update">更新しない</option>
+          <option value="updated">更新済</option>
+          <option value="lapsed">資格喪失</option>
+        </select>
+
+        <select v-model="renewalFeeStatus" @change="submitSearch" class="border rounded pl-3 pr-8 py-2 h-9 text-sm">
+          <option value="">更新料（すべて）</option>
+          <option value="unbilled">未請求</option>
+          <option value="unpaid">未納</option>
+          <option value="paid">支払済</option>
+        </select>
+
+        <select v-model="annualFeeStatus" @change="submitSearch" class="border rounded pl-3 pr-8 py-2 h-9 text-sm">
+          <option value="">年会費（すべて）</option>
+          <option value="unpaid">未納</option>
+          <option value="paid">支払済</option>
+        </select>
+
+        <button
+          v-if="hasActiveFilters"
+          @click="resetFilters"
+          class="text-xs text-gray-500 hover:text-gray-700 underline ml-1"
+        >
+          絞り込みをクリア
+        </button>
       </div>
-            <!-- ページヘッダー -->
+
+      <!-- 一括操作エリア -->
+      <div class="flex items-center gap-2 mb-4">
+        <select
+          v-model="bulkAction"
+          class="border rounded pl-3 pr-8 py-2 h-9 text-sm"
+        >
+          <option value="reset">審査前に戻す</option>
+          <option value="lapse">資格喪失にする</option>
+          <option value="update">認定期間を更新する（更新済にする）</option>
+          <option value="stripe">Stripe請求書を作成する</option>
+          <option value="invoice">通常の請求書を作成する</option>
+        </select>
+        <button
+          @click="executeBulkAction"
+          :disabled="selectedIds.length === 0"
+          class="px-3 py-1.5 text-sm rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1"
+        >
+          <span>選択した{{ selectedIds.length }}件に実行</span>
+        </button>
+        <span
+          class="text-xs text-gray-500 whitespace-nowrap"
+          :class="{ invisible: selectedIds.length === 0 }"
+        >
+          ※ 対象外の申請は自動的にスキップされます
+        </span>
+      </div>
 
       <!-- テーブルカード -->
       <div class="table-card">
@@ -52,31 +109,6 @@
           <div class="table-header-left">
             <h2 class="table-title">申請者一覧</h2>
             <p class="table-desc">納入状況の更新と更新対象者の設定</p>
-          </div>
-          <div class="table-controls">
-            <button
-              class="btn btn-danger-outline"
-              :disabled="selectedIds.length === 0"
-              @click="handleDeleteSelected"
-            >
-              選択した申請者を削除 ({{ selectedIds.length }}名)
-            </button>
-            <div class="filter-select-wrapper">
-              <span class="filter-icon">▼</span>
-              <select v-model="filterYear" @change="submitSearch" class="filter-select">
-                <option value="">更新予定年（すべて）</option>
-                <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年</option>
-              </select>
-            </div>
-            <div class="search-wrapper">
-              <span class="search-icon">🔍</span>
-              <input
-                v-model="searchQuery"
-                type="text"
-                class="search-input"
-                placeholder="名前・メール・個人番号で検索..."
-              />
-            </div>
           </div>
         </div>
 
@@ -131,7 +163,7 @@
                 <td>{{ member.update_cycles[0]?.renewal_start_date ? new Date(member.update_cycles[0].renewal_start_date).getFullYear() : '-' }}年</td>
                 <!-- 年会費 -->
                 <td>
-                  <span class="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full w-fit"
+                  <span class="status-badge-common w-fit"
                     :class="getAnnualFeeClass(member)">
                     <CheckCircle2 v-if="getAnnualFeeStatus(member) === '納入済'" class="w-3 h-3" />
                     <XCircle v-else class="w-3 h-3" />
@@ -140,7 +172,7 @@
                 </td>
                 <!-- 更新料 -->
                 <td>
-                  <span class="flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full w-fit"
+                  <span class="status-badge-common w-fit"
                     :class="getRenewalClass(member)">
                     <CheckCircle2 v-if="getRenewalStatus(member) === '納入済'" class="w-3 h-3" />
                     <XCircle v-else class="w-3 h-3" />
@@ -149,30 +181,33 @@
                 </td>
                 <td class="text-center">{{ member.update_cycles[0]?.total_points ?? '-' }} / 50</td>
                 <td>
-                  <span :class="['status-badge', statusClass(member.update_cycles[0]?.status)]">
+                  <span :class="['status-badge-common', statusClass(member.update_cycles[0]?.status)]">
                     {{ statusLabel(member.update_cycles[0]?.status) }}
                   </span>
                 </td>
                 <td>
-                  <span
-                    class="text-xs px-2 py-1 rounded-full font-medium"
-                    :class="{
-                      'bg-gray-100 text-gray-500': !member.update_cycles[0]?.reviewer_judgment || member.update_cycles[0]?.reviewer_judgment === 'unreviewed',
-                      'bg-green-50 text-green-600 border border-green-200': member.update_cycles[0]?.reviewer_judgment === 'pass',
-                      'bg-red-50 text-red-600 border border-red-200': member.update_cycles[0]?.reviewer_judgment === 'fail',
-                      'bg-orange-50 text-orange-600 border border-orange-200': member.update_cycles[0]?.reviewer_judgment === 're_review',
-                    }"
-                  >
+                  <span :class="['status-badge-common', judgmentClass(member.update_cycles[0]?.reviewer_judgment)]">
                     {{ judgmentLabel(member.update_cycles[0]?.reviewer_judgment) }}
                   </span>
                 </td>
                 <td class="border px-3 py-2">
-                  <Link
-                    :href="route('admin.instructorMembers.show', member.id)"
-                    class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs"
-                  >
-                    {{ t('edit') }}
-                  </Link>
+                  <div class="flex items-center gap-2">
+                    <Link
+                      :href="route('admin.instructorMembers.edit', member.id)"
+                      class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                      title="編集"
+                    >
+                      <Pencil class="w-4 h-4" />
+                    </Link>
+                    <button
+                      type="button"
+                      class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                      title="年会費・更新料を確認"
+                      @click="openFeeDialog(member)"
+                    >
+                      <Receipt class="w-4 h-4" />
+                    </button>
+                  </div>
                 </td>
               </tr>
             </tbody>
@@ -227,7 +262,57 @@
           </PrimaryButton>
         </template>
       </DialogModal>
-   
+
+      <!-- 年会費・更新料 確認ダイアログ -->
+      <DialogModal :show="feeDialog.show" @close="feeDialog.show = false" max-width="2xl">
+        <template #title>
+          {{ feeDialog.memberName }} の年会費・更新料
+        </template>
+
+        <template #content>
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b text-gray-500">
+                <th class="py-2 text-left">年度</th>
+                <th class="py-2 text-left">区分</th>
+                <th class="py-2 text-right">請求額</th>
+                <th class="py-2 text-right">入金額</th>
+                <th class="py-2 text-left">支払方法</th>
+                <th class="py-2 text-center">状態</th>
+                <th class="py-2 text-center">請求書</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-if="feeDialog.fees.length === 0">
+                <td colspan="7" class="py-8 text-center text-gray-400">請求データがありません</td>
+              </tr>
+              <tr v-for="fee in feeDialog.fees" :key="fee.id" class="border-b">
+                <td class="py-2">{{ fee.fiscal_year }}年度</td>
+                <td class="py-2">{{ fee.invoice_name || fee.invoice_type }}</td>
+                <td class="py-2 text-right">{{ (fee.total_amount ?? 0).toLocaleString() }}円</td>
+                <td class="py-2 text-right">{{ (fee.payment_amount ?? 0).toLocaleString() }}円</td>
+                <td class="py-2">{{ fee.payment_method ?? '-' }}</td>
+                <td class="py-2 text-center">
+                  <span class="status-badge-common" :class="fee.status === 'paid' ? 'status-badge-blue' : 'status-badge-red'">
+                    {{ fee.status === 'paid' ? '納入済' : '未納' }}
+                  </span>
+                </td>
+                <td class="py-2 text-center">
+                  <a v-if="fee.pdf_path" :href="route('admin.invoices.viewPdf', fee.id)" target="_blank" class="text-blue-600 hover:underline text-xs">
+                    表示
+                  </a>
+                  <span v-else class="text-gray-300 text-xs">-</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </template>
+
+        <template #footer>
+          <SecondaryButton @click="feeDialog.show = false">閉じる</SecondaryButton>
+        </template>
+      </DialogModal>
+
     </div>
   </AppLayout>
 </template>
@@ -242,7 +327,7 @@ import DialogModal from '@/Components/DialogModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { BadgeCheck, CheckCircle2, XCircle } from 'lucide-vue-next'
+import { CheckCircle2, XCircle, Receipt, Pencil } from 'lucide-vue-next'
 
 const { t } = useI18n()
 
@@ -250,16 +335,35 @@ const page = usePage()
 
 // props
 const props = defineProps({
-  members: Object, // 👈 paginator オブジェクトに変更
-  filters: Object, // { search: "" }
+  members: Object,
+  filters: Object,
 })
 
 const form = reactive({
   name: props.filters.name,
   per_page: props.filters.per_page || 20,
-  sort_by: props.filters.sort_by,   // ← 初期値を必ずセット
-  sort_dir: props.filters.sort_dir,    // ← 初期値を必ずセット
+  sort_by: props.filters.sort_by,
+  sort_dir: props.filters.sort_dir,
 })
+
+// [今回変更] 複合フィルタ（申請ステータス／更新料／年会費）
+const cycleStatus = ref(props.filters.cycle_status ?? '')
+const renewalFeeStatus = ref(props.filters.renewal_fee_status ?? '')
+const annualFeeStatus = ref(props.filters.annual_fee_status ?? '')
+
+const hasActiveFilters = computed(() =>
+  !!form.name || !!filterYear.value || !!cycleStatus.value || !!renewalFeeStatus.value || !!annualFeeStatus.value
+)
+
+const resetFilters = () => {
+  form.name = ''
+  filterYear.value = ''
+  cycleStatus.value = ''
+  renewalFeeStatus.value = ''
+  annualFeeStatus.value = ''
+  submitSearch()
+}
+
 // persistQueryに各検索項目を追加
 const persistQuery = () => ({
   name: form.name,
@@ -267,6 +371,9 @@ const persistQuery = () => ({
   sort_by: form.sort_by,
   sort_dir: form.sort_dir,
   renewal_year: filterYear.value,
+  cycle_status: cycleStatus.value,
+  renewal_fee_status: renewalFeeStatus.value,
+  annual_fee_status: annualFeeStatus.value,
   page: props.members.current_page
 })
 
@@ -293,7 +400,7 @@ const sortBy = (field) => {
   else { form.sort_by = field; form.sort_dir = 'desc' }
   submitSearch()
 }
-// ---------- 件数計算（あなたのロジック） ----------
+// ---------- 件数計算 ----------
 const startItem = computed(() => {
   if (props.members.total === 0) return 0
   return form.per_page * (props.members.current_page - 1) + 1
@@ -306,6 +413,19 @@ const endItem = computed(() => {
 
 // 選択削除
 const selectedIds = ref([])
+
+// 一覧取得時に既に member.invoices が渡ってきているので、通信は行わず、そのままダイアログに表示するだけにする
+const feeDialog = reactive({
+  show: false,
+  memberName: '',
+  fees: [],
+})
+
+const openFeeDialog = (member) => {
+  feeDialog.memberName = member.name
+  feeDialog.fees = member.invoices ?? []
+  feeDialog.show = true
+}
 
 const toggleSelectAll = (e) => {
   selectedIds.value = e.target.checked
@@ -331,6 +451,20 @@ const selectAll = computed({
   }
 })
 
+// [今回追加] 一括操作：セレクトで選んだ操作を、選択した件数に対して実行する
+const bulkAction = ref('reset')
+
+const executeBulkAction = () => {
+  const actions = {
+    reset: bulkResetToBeforeUpdate,
+    lapse: bulkLapse,
+    update: bulkUpdate,
+    stripe: bulkCreateStripeInvoice,
+    invoice: bulkCreateInvoice,
+  }
+  actions[bulkAction.value]?.()
+}
+
 // 複数更新（認定期間の更新処理。承認済みのもののみ対象、コントローラ側でも二重チェック）
 const bulkUpdate = () => {
   if (!confirm(t('confirm_update_selected'))) return
@@ -347,6 +481,64 @@ const bulkUpdate = () => {
   )
 }
 
+// 選択した申請を審査前（before_update）に戻す
+const bulkResetToBeforeUpdate = () => {
+  if (!confirm(`選択した${selectedIds.value.length}件を「審査前」に戻します。よろしいですか？`)) return
+  router.post(
+    route('admin.instructorMembers.bulkResetToBeforeUpdate'),
+    { ids: selectedIds.value },
+    {
+      preserveState: true,
+      onSuccess: () => {
+        resetSelectedIds()
+        router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
+      }
+    }
+  )
+}
+
+// 一括資格喪失
+const bulkLapse = () => {
+  if (!confirm(`選択した${selectedIds.value.length}件を指導士資格喪失にします。この操作は取り消せません。よろしいですか？`)) return
+  router.post(
+    route('admin.instructorMembers.bulkLapse'),
+    { ids: selectedIds.value },
+    {
+      preserveState: true,
+      onSuccess: () => {
+        resetSelectedIds()
+        router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
+      }
+    }
+  )
+}
+
+// [今回追加・現在未実装] Stripe請求書を作成する
+const bulkCreateStripeInvoice = () => {
+  if (!confirm(`選択した${selectedIds.value.length}件のStripe請求書を作成します。よろしいですか？`)) return
+  router.post(
+    route('admin.instructorMembers.bulkCreateStripeInvoice'),
+    { ids: selectedIds.value },
+    {
+      preserveState: true,
+      onSuccess: () => resetSelectedIds(),
+    }
+  )
+}
+
+// [今回追加・現在未実装] 通常の請求書を作成する
+const bulkCreateInvoice = () => {
+  if (!confirm(`選択した${selectedIds.value.length}件の請求書を作成します。よろしいですか？`)) return
+  router.post(
+    route('admin.instructorMembers.bulkCreateInvoice'),
+    { ids: selectedIds.value },
+    {
+      preserveState: true,
+      onSuccess: () => resetSelectedIds(),
+    }
+  )
+}
+
 const statusLabel = (status) => {
   const map = {
     'updated':       '更新済',
@@ -355,6 +547,7 @@ const statusLabel = (status) => {
     'pending':       '本申請中',
     'approved':      '承認済み',
     'reject':        '却下',
+    'lapsed':        '資格喪失', // [今回追加]
   }
   return map[status] ?? '-'
 }
@@ -372,13 +565,13 @@ const reviewModal = ref({
 })
 
 function openReviewModal(member) {
-  const cycle = member.update_cycles[0] // 最新の更新サイクル
+  const cycle = member.update_cycles[0]
   if (!cycle) return
 
   reviewModal.value.show = true
   reviewModal.value.cycleId = cycle.id
   reviewModal.value.memberName = member.name
-  reviewModal.value.status = 'updated'  // デフォルト選択
+  reviewModal.value.status = 'updated'
   reviewModal.value.reason = ''
 }
 
@@ -414,8 +607,8 @@ const getAnnualFeeStatus = (member) => {
 
 const getAnnualFeeClass = (member) => {
   return getAnnualFeeStatus(member) === '納入済'
-    ? 'bg-blue-50 text-blue-700'
-    : 'bg-red-50 text-red-700'
+    ? 'status-badge-blue'
+    : 'status-badge-red'
 }
 
 const getRenewalStatus = (member) => {
@@ -426,9 +619,9 @@ const getRenewalStatus = (member) => {
 
 const getRenewalClass = (member) => {
   const status = getRenewalStatus(member)
-  if (status === '納入済') return 'bg-blue-50 text-blue-700'
-  if (status === '未納') return 'bg-red-50 text-red-700'
-  return 'bg-gray-100 text-gray-500'
+  if (status === '納入済') return 'status-badge-blue'
+  if (status === '未納') return 'status-badge-red'
+  return 'status-badge-gray'
 }
 
 // --- ロール切替 ---
@@ -447,486 +640,57 @@ const tabs = [
 const currentTab = ref('applicants')
 
 // --- 検索・フィルター ---
-const searchQuery = ref('')
 const filterYear = ref(props.filters.renewal_year ?? '')
 const yearOptions = [2024, 2025, 2026, 2027]
 
 // --- ステータスクラス ---
 const statusClass = (status) => {
   const map = {
-    'updated':       'bg-green-50 text-green-600 font-semibold',
-    'before_update': 'bg-blue-50 text-blue-600 font-semibold',
-    'no_update':     'bg-gray-100 text-gray-600',
-    'pending':       'bg-yellow-50 text-yellow-600',
-    'approved':      'bg-emerald-50 text-emerald-600 font-semibold',
-    'reject':        'bg-red-50 text-red-600 font-semibold',
+    'updated':       'status-badge-emerald',
+    'before_update': 'status-badge-blue',
+    'no_update':     'status-badge-gray',
+    'pending':       'status-badge-yellow',
+    'approved':      'status-badge-green',
+    'reject':        'status-badge-red',
+    'lapsed':        'status-badge-gray', // [今回変更] 濃い塗りつぶしから淡い共通スタイルに統一
   }
-  return map[status] ?? 'bg-gray-100 text-gray-600'
+  return map[status] ?? 'status-badge-gray'
+}
+
+// [今回追加] 審査員判定バッジ用（共通クラス名を返す）
+const judgmentClass = (judgment) => {
+  const map = {
+    'pass':      'status-badge-green',
+    'fail':      'status-badge-red',
+    're_review': 'status-badge-orange',
+  }
+  return map[judgment] ?? 'status-badge-gray'
 }
 
 // --- アクション ---
 const handleImport = () => alert('会員情報インポート (SMOOSY)')
 const handlePaymentSync = () => alert('入金データ同期 (SMOOSY)')
 const handleExport = () => alert('判定完了者リスト出力 (SMOOSY)')
-const handleDeleteSelected = () => {
-  if (confirm(`選択した ${selectedIds.value.length} 名を削除しますか？`)) {
-    members.value = members.value.filter((m) => !selectedIds.value.includes(m.id))
-    selectedIds.value = []
-  }
-}
 const handleEdit = (member) => alert(`編集: ${member.name}`)
 
 </script>
 <style>
-/* ===== リセット・基本 ===== */
 * { box-sizing: border-box; margin: 0; padding: 0; }
-
-.app-wrapper {
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  background: #f4f5f7;
-  font-family: 'Hiragino Sans', 'Noto Sans JP', sans-serif;
-  color: #1a1a2e;
-}
-
-/* ===== ヘッダー ===== */
-.header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 32px;
-  height: 64px;
-  background: #fff;
-  border-bottom: 1px solid #e5e7eb;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.logo-icon {
-  width: 40px;
-  height: 40px;
-  border-radius: 10px;
-  background: #2563eb;
-  color: #fff;
-  font-weight: 800;
-  font-size: 14px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.logo-title {
-  display: block;
-  font-size: 16px;
-  font-weight: 700;
-  color: #111827;
-  line-height: 1.2;
-}
-
-.logo-sub {
-  display: block;
-  font-size: 10px;
-  color: #6b7280;
-  letter-spacing: 0.08em;
-}
-
-.header-nav {
-  display: flex;
-  gap: 4px;
-  background: #f3f4f6;
-  border-radius: 8px;
-  padding: 4px;
-}
-
-.nav-btn {
-  padding: 6px 18px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.nav-btn.active {
-  background: #fff;
-  color: #111827;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.12);
-}
-
-.header-user {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.user-name {
-  display: block;
-  font-size: 13px;
-  font-weight: 600;
-  text-align: right;
-}
-
-.user-role {
-  display: block;
-  font-size: 10px;
-  color: #9ca3af;
-  text-align: right;
-}
-
-.user-avatar img {
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  object-fit: cover;
-}
-
-/* ===== メイン ===== */
-.main {
-  flex: 1;
-  max-width: 1280px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 40px 32px 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 28px;
-}
-
-/* ===== ページヘッダー ===== */
-.page-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 24px;
-  flex-wrap: wrap;
-}
-
-.page-title {
-  font-size: 28px;
-  font-weight: 800;
-  color: #1e3a6e;
-  font-style: italic;
-  letter-spacing: -0.5px;
-}
-
-.page-desc {
-  margin-top: 6px;
-  font-size: 13px;
-  color: #6b7280;
-  line-height: 1.6;
-}
-
-.page-actions {
-  display: flex;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-/* ===== ボタン ===== */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 9px 18px;
-  border-radius: 8px;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  border: 1.5px solid transparent;
-  transition: all 0.15s;
-  white-space: nowrap;
-}
-
-.btn-icon {
-  font-size: 14px;
-}
-
-.btn-primary {
-  background: #2563eb;
-  color: #fff;
-  border-color: #2563eb;
-}
-
-.btn-primary:hover {
-  background: #1d4ed8;
-}
-
-.btn-outline {
-  background: #fff;
-  color: #2563eb;
-  border-color: #2563eb;
-}
-
-.btn-outline:hover {
-  background: #eff6ff;
-}
-
-.btn-danger-outline {
-  background: #fff;
-  color: #dc2626;
-  border-color: #fca5a5;
-  font-size: 12px;
-  padding: 7px 14px;
-}
-
-.btn-danger-outline:disabled {
-  color: #9ca3af;
-  border-color: #e5e7eb;
-  cursor: not-allowed;
-}
-
-/* ===== タブ ===== */
-.tabs {
-  display: flex;
-  gap: 4px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.tab-btn {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 18px;
-  border: none;
-  background: transparent;
-  font-size: 13px;
-  font-weight: 500;
-  color: #6b7280;
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-  transition: all 0.15s;
-}
-
-.tab-btn.active {
-  color: #2563eb;
-  border-bottom-color: #2563eb;
-  font-weight: 600;
-}
-
-/* ===== テーブルカード ===== */
-.table-card {
-  background: #fff;
-  border-radius: 12px;
-  border: 1px solid #e5e7eb;
-  overflow: hidden;
-}
-
-.table-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 20px 24px;
-  gap: 16px;
-  flex-wrap: wrap;
-  border-bottom: 1px solid #f3f4f6;
-}
-
-.table-title {
-  font-size: 15px;
-  font-weight: 700;
-  color: #111827;
-}
-
-.table-desc {
-  font-size: 12px;
-  color: #6b7280;
-  margin-top: 2px;
-}
-
-.table-controls {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  flex-wrap: wrap;
-}
-
-.filter-select-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.filter-icon {
-  position: absolute;
-  left: 10px;
-  font-size: 10px;
-  color: #6b7280;
-  pointer-events: none;
-}
-
-.filter-select {
-  padding: 7px 12px 7px 26px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #374151;
-  background: #fff;
-  cursor: pointer;
-  appearance: none;
-}
-
-.search-wrapper {
-  position: relative;
-  display: flex;
-  align-items: center;
-}
-
-.search-icon {
-  position: absolute;
-  left: 10px;
-  font-size: 13px;
-  pointer-events: none;
-}
-
-.search-input {
-  padding: 7px 12px 7px 32px;
-  border: 1px solid #e5e7eb;
-  border-radius: 8px;
-  font-size: 13px;
-  color: #374151;
-  width: 240px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.search-input:focus {
-  border-color: #2563eb;
-  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
-}
-
-/* ===== テーブル ===== */
-.table-wrapper {
-  overflow-x: auto;
-}
-
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.data-table th {
-  padding: 12px 16px;
-  text-align: left;
-  font-size: 12px;
-  font-weight: 600;
-  color: #6b7280;
-  background: #f9fafb;
-  border-bottom: 1px solid #e5e7eb;
-  white-space: nowrap;
-}
-
-.data-table td {
-  padding: 14px 16px;
-  border-bottom: 1px solid #f3f4f6;
-  color: #374151;
-  white-space: nowrap;
-}
-
-.data-table tr:last-child td {
-  border-bottom: none;
-}
-
-.data-table tr.selected td {
-  background: #eff6ff;
-}
-
-.data-table tbody tr:hover td {
-  background: #f9fafb;
-}
-
-.col-check {
-  width: 44px;
-  text-align: center;
-}
-
-.empty-row {
-  padding: 60px 16px !important;
-}
-
-.empty-state {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-  color: #9ca3af;
-}
-
-.empty-icon {
-  font-size: 32px;
-  opacity: 0.4;
-}
-
-/* ===== ステータスバッジ ===== */
-.status-badge {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-.status-applied   { background: #dbeafe; color: #1d4ed8; }
-.status-reviewing { background: #fef3c7; color: #d97706; }
-.status-approved  { background: #d1fae5; color: #065f46; }
-.status-pending   { background: #f3f4f6; color: #6b7280; }
-.status-rejected  { background: #fee2e2; color: #dc2626; }
-
-/* ===== 操作ボタン ===== */
-.action-btn {
-  padding: 5px 14px;
-  border: 1px solid #e5e7eb;
-  border-radius: 6px;
-  background: #fff;
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-  color: #374151;
-  transition: all 0.15s;
-}
-
-.action-btn:hover {
-  border-color: #2563eb;
-  color: #2563eb;
-}
-
-/* ===== フッター ===== */
-.footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px 32px;
-  background: #fff;
-  border-top: 1px solid #e5e7eb;
-  font-size: 12px;
-  color: #9ca3af;
-}
-
-.footer-nav {
-  display: flex;
-  gap: 20px;
-}
-
-.footer-nav a {
-  color: #6b7280;
-  text-decoration: none;
-  transition: color 0.15s;
-}
-
-.footer-nav a:hover {
-  color: #2563eb;
-}
+.table-card { background: #fff; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; }
+.table-header { display: flex; align-items: center; justify-content: space-between; padding: 20px 24px; gap: 16px; flex-wrap: wrap; border-bottom: 1px solid #f3f4f6; }
+.table-title { font-size: 15px; font-weight: 700; color: #111827; }
+.table-desc { font-size: 12px; color: #6b7280; margin-top: 2px; }
+.table-controls { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.table-wrapper { overflow-x: auto; }
+.data-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.data-table th { padding: 12px 16px; text-align: left; font-size: 12px; font-weight: 600; color: rgba(255,255,255,0.9); background: #1D4E89; border-bottom: 1px solid #163B68; white-space: nowrap; }
+.data-table td { padding: 14px 16px; border-bottom: 1px solid #f3f4f6; color: #374151; white-space: nowrap; }
+.data-table tr:last-child td { border-bottom: none; }
+.data-table tr.selected td { background: #eff6ff; }
+.data-table tbody tr:hover td { background: #f9fafb; }
+.col-check { width: 44px; text-align: center; }
+.empty-row { padding: 60px 16px !important; }
+.empty-state { display: flex; flex-direction: column; align-items: center; gap: 8px; color: #9ca3af; }
+.empty-icon { font-size: 32px; opacity: 0.4; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; border: 1.5px solid transparent; transition: all 0.15s; white-space: nowrap; }
 </style>

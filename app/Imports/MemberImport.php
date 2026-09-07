@@ -85,6 +85,9 @@ class MemberImport implements ToCollection, WithChunkReading
     private const COL_INSTRUCTOR_FROM = 64;
     private const COL_INSTRUCTOR_TO   = 65;
 
+    // DX列：備考欄。「第N回指導士認定番号：XXXXXX」という形式が複数行含まれることがある
+    private const COL_MEMO             = 127;
+
     private const COL_ROLE_START      = 67;
     private const ROLE_COUNT          = 10;
 
@@ -370,9 +373,9 @@ class MemberImport implements ToCollection, WithChunkReading
             if ($role || $startedAt) {
                 $inserts[] = [
                     'member_id'  => $member->id,
-                    'role'       => $role,
-                    'started_at' => $startedAt,
-                    'ended_at'   => $endedAt,
+                    'role_name'  => $role,
+                    'start_date' => $startedAt,
+                    'end_date'   => $endedAt,
                     'created_at' => now(),
                     'updated_at' => now(),
                 ];
@@ -441,28 +444,70 @@ class MemberImport implements ToCollection, WithChunkReading
         $endDate          = "{$endYear}-12-01";
         $renewalStartDate = "{$endYear}-04-01";
         $renewalEndDate   = $endDate;
+        $startDate        = "{$startYear}-01-01";
 
-        $cycleData = [
-            'exam_round'         => 0,
-            // instructor_no は空文字のままでよい（対象外・確定事項）
-            'instructor_no'      => '',
-            'start_date'         => "{$startYear}-01-01",
+        // [今回修正] 今日の日付と、更新申請受付期間（renewal_start_date〜renewal_end_date）の
+        // 前後関係で status を判定する。
+        //   受付期間前（まだ現行認定が有効） → updated
+        //   受付期間中（今まさに更新すべきタイミング、未申請） → before_update
+        //   受付期間後（更新されないまま失効） → no_update
+        $today = \Carbon\Carbon::today();
+        $renewalStart = \Carbon\Carbon::parse($renewalStartDate);
+        $renewalEnd   = \Carbon\Carbon::parse($renewalEndDate);
+
+        if ($today->lt($renewalStart)) {
+            $initialStatus = 'updated';
+        } elseif ($today->lte($renewalEnd)) {
+            $initialStatus = 'before_update';
+        } else {
+            $initialStatus = 'no_update';
+        }
+
+        $baseCycleData = [
+            'start_date'         => $startDate,
             'end_date'           => $endDate,
             'renewal_start_date' => $renewalStartDate,
             'renewal_end_date'   => $renewalEndDate,
             'total_points'       => 0,
             'conference_count'   => 0,
-            'status'             => 'pending',
+            'status'             => $initialStatus,
         ];
 
-        $existing = InstructorUpdateCycle::where('member_id', $member->id)
-            ->where('start_date', "{$startYear}-01-01")
-            ->where('end_date', $endDate)
-            ->first();
+        // [今回追加] DX列（備考）から「第N回指導士認定番号：XXXXXX」を全件抽出する。
+        // 期間（start_date等）は決定事項Aにより全ての回で同じ値を使う（備考欄には期間情報が無いため）。
+        $memo = $row[self::COL_MEMO] ?? null;
+        $rounds = [];
+        if ($memo) {
+            preg_match_all(
+                '/第\s*(\d+)\s*回指導士認定番号[:：]\s*([0-9A-Za-z\-]+)/u',
+                (string) $memo,
+                $matches,
+                PREG_SET_ORDER
+            );
+            foreach ($matches as $m) {
+                $rounds[] = ['exam_round' => (int) $m[1], 'instructor_no' => $m[2]];
+            }
+        }
 
-        if ($existing) {
-            $existing->update($cycleData);
-        } else {
+        // 備考欄から抽出できなかった場合は、従来通り exam_round=0・instructor_no='' の1件のみ作成する
+        if (empty($rounds)) {
+            $rounds[] = ['exam_round' => 0, 'instructor_no' => ''];
+        }
+
+        foreach ($rounds as $round) {
+            // [今回変更] 既に同じ member_id + exam_round のレコードが存在する場合は完全にスキップする。
+            // 理由：再インポート時に status/total_points/conference_count を無条件で上書きすると、
+            // 既にシステム上で進んでいた審査状況（承認済み等）が pending に巻き戻ってしまうため。
+            $exists = InstructorUpdateCycle::where('member_id', $member->id)
+                ->where('exam_round', $round['exam_round'])
+                ->exists();
+
+            if ($exists) {
+                continue;
+            }
+
+            $cycleData = array_merge($baseCycleData, $round);
+
             InstructorUpdateCycle::create(array_merge($cycleData, [
                 'member_id' => $member->id,
             ]));

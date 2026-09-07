@@ -13,6 +13,22 @@
         {{ t('back') }}
       </button>
 
+      <!-- [今回追加] 編集権限が無い場合の警告バナー -->
+      <div
+        v-if="!can_edit"
+        class="bg-amber-50 border border-amber-300 text-amber-800 text-sm rounded-lg px-4 py-3"
+      >
+        閲覧はできますが、編集・登録はできません。
+      </div>
+
+      <!-- [今回追加] 保存時に権限エラーが返ってきた場合の表示 -->
+      <div
+        v-if="errors.permission"
+        class="bg-red-50 border border-red-300 text-red-700 text-sm rounded-lg px-4 py-3"
+      >
+        {{ errors.permission }}
+      </div>
+
       <!-- 会員情報 -->
       <Card>
         <CardContent class="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
@@ -44,12 +60,12 @@
           <div>
             <p class="text-xs text-gray-500 mb-1">審査員による判定</p>
             <span
-              class="text-sm px-2 py-1 rounded-full font-medium"
+              class="status-badge-common"
               :class="{
-                'bg-gray-100 text-gray-500': cycle.reviewer_judgment === 'unreviewed' || !cycle.reviewer_judgment,
-                'bg-green-50 text-green-600 border border-green-200': cycle.reviewer_judgment === 'pass',
-                'bg-red-50 text-red-600 border border-red-200': cycle.reviewer_judgment === 'fail',
-                'bg-orange-50 text-orange-600 border border-orange-200': cycle.reviewer_judgment === 're_review',
+                'status-badge-gray': cycle.reviewer_judgment === 'unreviewed' || !cycle.reviewer_judgment,
+                'status-badge-green': cycle.reviewer_judgment === 'pass',
+                'status-badge-red': cycle.reviewer_judgment === 'fail',
+                'status-badge-orange': cycle.reviewer_judgment === 're_review',
               }"
             >
               {{ judgmentLabel(cycle.reviewer_judgment) }}
@@ -58,6 +74,34 @@
           <div>
             <p class="text-xs text-gray-500">{{ t('status') }}</p>
             <p class="font-semibold">{{ t(`cycle_status.${cycle.status}`) }}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- [今回追加] 認定期間の編集フォーム（end_date・renewal_end_dateのみ） -->
+      <Card>
+        <CardContent class="p-4">
+          <h2 class="text-sm font-bold text-gray-700 mb-4">認定期間の編集</h2>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">認定終了日（end_date）</label>
+              <input
+                v-model="form.end_date"
+                type="date"
+                class="input-field"
+              />
+            </div>
+            <div>
+              <label class="text-xs text-gray-500 mb-1 block">更新受付終了日（renewal_end_date）</label>
+              <input
+                v-model="form.renewal_end_date"
+                type="date"
+                class="input-field"
+              />
+            </div>
+          </div>
+          <div class="flex justify-end mt-4">
+            <Button :disabled="!hasCycle" @click="submit">保存する</Button>
           </div>
         </CardContent>
       </Card>
@@ -141,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, reactive, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import {
@@ -157,15 +201,20 @@ import {
 } from '@/components/ui/dialog'
 
 const { t } = useI18n()
-const props = usePage()
+const page = usePage()
 
-const member = props.props.member
-const uploads = props.props.uploads
-const filters = props.props.filters
+const member = page.props.member
+const uploads = page.props.uploads
+const filters = page.props.filters
+// [今回追加]
+const can_edit = page.props.can_edit
+const errors = computed(() => page.props.errors ?? {})
 
 const cycle = member.update_cycles?.[0] || {
+  id: null,
   start_date: '-',
   end_date: '-',
+  renewal_end_date: '-',
   total_points: 0,
   conference_count: 0,
   status: 'before_update',
@@ -173,7 +222,30 @@ const cycle = member.update_cycles?.[0] || {
   updated_at: null,
 }
 
-// thumbnail_url・role_name・credit_conference_name・category_name はコントローラ側（show()）で
+const hasCycle = computed(() => !!cycle.id)
+
+// [今回追加] end_date・renewal_end_date 編集用フォーム
+const form = reactive({
+  end_date: cycle.end_date?.split('T')[0] ?? '',
+  renewal_end_date: cycle.renewal_end_date?.split('T')[0] ?? '',
+})
+
+const submit = () => {
+  if (!hasCycle.value) return
+  if (!confirm('認定期間を更新します。よろしいですか？')) return
+
+  router.put(
+    route('admin.instructorMembers.update', member.id),
+    {
+      cycle_id: cycle.id,
+      end_date: form.end_date,
+      renewal_end_date: form.renewal_end_date,
+    },
+    { preserveScroll: true }
+  )
+}
+
+// thumbnail_url・role_name・credit_conference_name・category_name はコントローラ側（edit()）で
 // 計算済みの値をそのまま使う（クライアント側での復元ロジックは削除）
 const uploadList = ref(uploads)
 

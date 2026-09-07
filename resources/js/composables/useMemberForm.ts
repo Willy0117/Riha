@@ -33,8 +33,9 @@ export function makeDegree(): MemberDegree {
   return { degree: null, obtained_at: null }
 }
 
+// [今回修正] role/started_at/ended_at ではなく role_name/start_date/end_date（実テーブルのカラム名に合わせる）
 export function makeRole(): MemberRole {
-  return { role: null, started_at: null, ended_at: null }
+  return { role_name: null, start_date: null, end_date: null }
 }
 
 export function makeCommittee(): MemberCommittee {
@@ -46,7 +47,8 @@ function makeFormFromProps(props: MemberEditProps): MemberFormData {
     member: {
       id:               props.member?.id,
       organization_id:  props.member?.organization_id ?? null,
-      member_number:    props.member?.member_number   ?? null,
+      // [今回修正] member_number ではなく code
+      code:             props.member?.code            ?? null,
       position:         props.member?.position        ?? null,
       last_name:        props.member?.last_name       ?? '',
       first_name:       props.member?.first_name      ?? '',

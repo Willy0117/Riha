@@ -93,9 +93,16 @@ class InvoiceImport implements ToCollection, WithChunkReading
             return;
         }
 
-        // [今回修正] members テーブルに payment_method カラムは存在しないため、
-        // member 側への反映は行わない（invoices 側にはそのまま保存する）
+        // [今回修正] members.payment_method カラムを追加したため、直近の支払い方法として反映する
+        // （年会費・更新料を問わず、処理された最新の請求の値で上書きする）
+        // 「銀行振込」「クレジットカード」の2値に正規化して保存する（invoices側の生データは変更しない）
         $paymentMethod = $row[self::COL_PAYMENT_METHOD] ?? null;
+        if ($paymentMethod) {
+            $normalized = $this->normalizePaymentMethod($paymentMethod);
+            if ($member->payment_method !== $normalized) {
+                $member->update(['payment_method' => $normalized]);
+            }
+        }
 
         $billingStart = $row[self::COL_BILLING_START] ?? null;
         $fiscalYear   = $this->extractYear($billingStart);
@@ -248,6 +255,13 @@ class InvoiceImport implements ToCollection, WithChunkReading
             return $value->format('Y-m-d');
         }
         return (string) $value;
+    }
+
+    // [今回追加] members.payment_method 用に「銀行振込」「クレジットカード」の2値へ正規化する。
+    // 「クレジットカード決済（都度決済）」のような詳細付きの表記も、クレジットカードとして扱う。
+    private function normalizePaymentMethod(string $raw): string
+    {
+        return str_contains($raw, 'クレジット') ? 'クレジットカード' : '銀行振込';
     }
 
     public function chunkSize(): int

@@ -9,6 +9,10 @@ class MemberAddress extends Model
 {
     protected $table = 'member_addresses';
 
+    // member_addresses.type: 1:自宅 2:送付先
+    public const TYPE_HOME     = 1;
+    public const TYPE_SHIPPING = 2;
+
     protected $fillable = [
         'member_id',
         'type',

@@ -63,8 +63,43 @@
         </CardContent>
       </Card>
 
+      <!-- 審査員への差し戻し -->
+      <div class="bg-white rounded-xl border border-orange-200 p-6 space-y-3">
+        <h2 class="text-lg font-bold text-orange-700">審査員への差し戻し</h2>
+        <p class="text-xs text-gray-500">
+          下の書類一覧でチェックした資料が「指摘対象」として審査員に伝わります（差し戻すには1件以上の選択が必須です）。
+        </p>
+        <div v-if="flaggedIds.length > 0" class="flex flex-wrap gap-2">
+          <span
+            v-for="id in flaggedIds"
+            :key="id"
+            class="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded-full font-medium"
+          >
+            資料{{ flaggedIndexLabel(id) }}
+          </span>
+        </div>
+        <div>
+          <label class="block mb-1 text-sm font-medium text-gray-600">差し戻し理由（必須）</label>
+          <textarea
+            v-model="sendBackReason"
+            class="w-full border rounded-lg p-2 text-sm"
+            rows="3"
+            placeholder="審査員に伝える差し戻し理由を入力してください"
+          ></textarea>
+        </div>
+        <div class="flex justify-end">
+          <Button
+            class="bg-orange-600 hover:bg-orange-700 text-white font-bold"
+            :disabled="!sendBackReason || flaggedIds.length === 0"
+            @click="submitSendBack"
+          >
+            この内容で差し戻す
+          </Button>
+        </div>
+      </div>
+
       <div>
-        <h2 class="text-xl font-bold text-gray-800 mb-4">提出書類（閲覧専用）</h2>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">提出書類（閲覧専用・差し戻し時は指摘対象を選択できます）</h2>
 
         <div
           v-if="uploadList.length === 0"
@@ -73,12 +108,23 @@
           提出書類がありません
         </div>
 
-        <div v-else class="space-y-4">
+        <div v-else class="space-y-2">
           <div
-            v-for="upload in uploadList"
+            v-for="(upload, index) in uploadList"
             :key="upload.id"
-            class="flex gap-6 p-6 bg-white rounded-xl border border-gray-200"
+            class="flex gap-4 p-3 bg-white rounded-xl border transition"
+            :class="flaggedIds.includes(upload.id) ? 'border-orange-300 bg-orange-50/40' : 'border-gray-200'"
           >
+            <div class="flex-none flex flex-col items-center gap-2 pt-1">
+              <input
+                type="checkbox"
+                :checked="flaggedIds.includes(upload.id)"
+                @change="toggleFlag(upload.id)"
+                class="w-4 h-4"
+              />
+              <span class="text-xs font-semibold text-gray-400">資料{{ index + 1 }}</span>
+            </div>
+
             <div class="w-64 flex-none">
               <img
                 v-if="upload.thumbnail_url"
@@ -98,7 +144,9 @@
             <div class="flex-1 flex flex-col gap-2">
               <div class="flex items-start justify-between">
                 <div>
-                  <h3 class="text-lg font-bold text-indigo-900">{{ sessionLabel(upload.session) || upload.credit_conference_name }}</h3>
+                  <h3 class="text-lg font-bold text-indigo-900">
+                    資料{{ index + 1 }}：{{ sessionLabel(upload.session) || upload.credit_conference_name }}
+                  </h3>
                   <p class="text-sm text-gray-700 mt-1">
                     【{{ upload.credit_conference_name }}】{{ upload.role_name }}
                   </p>
@@ -172,6 +220,44 @@ const uploadList = ref(uploads)
 
 const previewPdf = ref(null)
 
+// ---- 審査員への差し戻し（指摘対象の選択・理由入力） ----
+const flaggedIds = ref([])
+const sendBackReason = ref('')
+
+const toggleFlag = (id) => {
+  if (flaggedIds.value.includes(id)) {
+    flaggedIds.value = flaggedIds.value.filter(i => i !== id)
+  } else {
+    flaggedIds.value.push(id)
+  }
+}
+
+const flaggedIndexLabel = (id) => {
+  const idx = uploadList.value.findIndex(u => u.id === id)
+  return idx === -1 ? '?' : idx + 1
+}
+
+const submitSendBack = () => {
+  if (!sendBackReason.value) return
+  if (flaggedIds.value.length === 0) {
+    alert('差し戻す資料を1件以上選択してください。')
+    return
+  }
+  if (!confirm(`${member.name}の申請を審査員に差し戻しますか？`)) return
+
+  router.post(
+    route('admin.chief.sendBack', cycle.value.id),
+    { reason: sendBackReason.value, flagged_upload_ids: flaggedIds.value },
+    {
+      preserveScroll: true,
+      onSuccess: () => {
+        sendBackReason.value = ''
+        flaggedIds.value = []
+      },
+    }
+  )
+}
+
 // 委員長画面は閲覧専用のため、集計はあくまで表示用（判定ボタンなどの操作は一切設けない）
 const isConferenceParticipation = (u) =>
   u.credit_category?.name === '学術集会'
@@ -198,7 +284,7 @@ const statusLabel = (status) => {
 }
 
 const judgmentLabel = (judgment) => {
-  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '再審査' }
+  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '差し戻し' }
   return map[judgment] ?? '未判定'
 }
 

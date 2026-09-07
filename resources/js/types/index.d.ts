@@ -80,7 +80,8 @@ export interface MemberAddress {
 export interface Member {
   id?: number
   organization_id: number | null
-  member_number: string | null
+  // [今回修正] member_number ではなく code（実テーブルのカラム名に合わせる）
+  code: string | null
   position: string | null
   last_name: string
   first_name: string
@@ -135,11 +136,12 @@ export interface MemberDegree {
   obtained_at: string | null
 }
 
+// [今回修正] role/started_at/ended_at ではなく role_name/start_date/end_date（実テーブルのカラム名に合わせる）
 export interface MemberRole {
   id?: number
-  role: string | null
-  started_at: string | null
-  ended_at: string | null
+  role_name: string | null
+  start_date: string | null
+  end_date: string | null
 }
 
 export interface MemberCommittee {
@@ -170,6 +172,8 @@ export interface MemberEditProps {
   roles: MemberRole[]
   committees: MemberCommittee[]
   filters: Record<string, string>
+  // [今回追加] members.edit 権限を持っているか（無ければ閲覧のみ・警告バナー表示）
+  can_edit: boolean
 }
 
 // store / update に POST する構造

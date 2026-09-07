@@ -102,3 +102,90 @@
 
     .card-hover { @apply transition-shadow hover:shadow-md; }
 }
+/* ==========================================================
+   管理画面 共通テーブルヘッダースタイル（紺色統一）
+   使い方:
+     <thead class="table-header-navy">
+       <tr>
+         <th class="table-header-navy-cell">...</th>
+         <th class="table-header-navy-cell table-header-navy-sortable" @click="...">...</th>
+       </tr>
+     </thead>
+   ========================================================== */
+.table-header-navy-cell {
+  background-color: #1D4E89;
+  color: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid #163B68;
+}
+
+.table-header-navy-sortable {
+  cursor: pointer;
+  user-select: none;
+}
+
+.table-header-navy-sortable:hover {
+  color: #ffffff;
+}
+
+/* ページタイトル見出し（AppLayout の #header で使用） */
+.page-title-navy {
+  color: #1D4E89;
+}
+/* ==========================================================
+   共通ステータスバッジスタイル（淡い背景色＋文字色＋薄い枠線で統一）
+   使い方:
+     <span class="status-badge-common status-badge-green">合格</span>
+   ========================================================== */
+.status-badge-common {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 500;
+  padding: 0.25rem 0.625rem;
+  border-radius: 9999px;
+  border-width: 1px;
+  border-style: solid;
+}
+
+.status-badge-gray {
+  background-color: #f3f4f6; /* bg-gray-100 */
+  color: #6b7280;            /* text-gray-500 */
+  border-color: #e5e7eb;     /* border-gray-200 */
+}
+
+.status-badge-green {
+  background-color: #f0fdf4; /* bg-green-50 */
+  color: #16a34a;            /* text-green-600 */
+  border-color: #bbf7d0;     /* border-green-200 */
+}
+
+.status-badge-emerald {
+  background-color: #ecfdf5; /* bg-emerald-50 */
+  color: #059669;            /* text-emerald-600 */
+  border-color: #a7f3d0;     /* border-emerald-200 */
+}
+
+.status-badge-blue {
+  background-color: #eff6ff; /* bg-blue-50 */
+  color: #2563eb;            /* text-blue-600 */
+  border-color: #bfdbfe;     /* border-blue-200 */
+}
+
+.status-badge-yellow {
+  background-color: #fefce8; /* bg-yellow-50 */
+  color: #ca8a04;            /* text-yellow-600 */
+  border-color: #fef08a;     /* border-yellow-200 */
+}
+
+.status-badge-orange {
+  background-color: #fff7ed; /* bg-orange-50 */
+  color: #ea580c;            /* text-orange-600 */
+  border-color: #fed7aa;     /* border-orange-200 */
+}
+
+.status-badge-red {
+  background-color: #fef2f2; /* bg-red-50 */
+  color: #dc2626;            /* text-red-600 */
+  border-color: #fecaca;     /* border-red-200 */
+}
