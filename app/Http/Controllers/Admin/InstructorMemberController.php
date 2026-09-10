@@ -8,6 +8,7 @@ use App\Models\InstructorUpdateCycle;
 use App\Models\Member;
 use App\Models\PdfUpload;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class InstructorMemberController extends Controller
@@ -32,10 +33,19 @@ class InstructorMemberController extends Controller
         $renewalYear = $request->renewal_year;
         $page = $request->page ?? 1;
         $per_page = $request->per_page ?? 20;
-        // [今回変更] 複合フィルタ（申請ステータス／更新料／年会費、それぞれ独立してAND絞り込み）
+        // [今回変更] 複合フィルタ（ステータス／更新料／年会費、それぞれ独立してAND絞り込み）
         $cycleStatus = $request->cycle_status;
         $renewalFeeStatus = $request->renewal_fee_status;
         $annualFeeStatus = $request->annual_fee_status;
+        // [今回追加] ソート
+        $sortBy = $request->input('sort_by', 'created_at');
+        $sortDir = $request->input('sort_dir', 'desc') === 'asc' ? 'asc' : 'desc';
+
+        // [今回追加] 各会員の「現在のサイクル」（instructor_update_cycles の最新id）を代表として join する。
+        // 一覧の member.update_cycles[0] と同じ基準（先頭＝最新id）に合わせるため MAX(id) を使う。
+        $latestCycleSub = DB::table('instructor_update_cycles')
+            ->select('member_id', DB::raw('MAX(id) as cycle_id'))
+            ->groupBy('member_id');
 
         $query = Member::whereHas('user')
             // [今回追加] 退会した会員は資格喪失済み（MemberController側で即時処理済み）のため、
@@ -45,10 +55,37 @@ class InstructorMemberController extends Controller
                 'updateCycles',
                 'pdfUploads',
                 'invoices',
-            ]);
+            ])
+            // [今回追加] ソート用の代表サイクルを join
+            ->leftJoinSub($latestCycleSub, 'latest_cycle', 'latest_cycle.member_id', '=', 'members.id')
+            ->leftJoin('instructor_update_cycles as sort_cycle', 'sort_cycle.id', '=', 'latest_cycle.cycle_id')
+            // [今回追加] 現在の単位（承認済みPDFの合計、サイクル期間内）をサブクエリで計算
+            ->leftJoin(DB::raw('(
+                SELECT pu.member_id, SUM(pu.points) as total_points
+                FROM pdf_uploads pu
+                WHERE pu.status = "approved"
+                GROUP BY pu.member_id
+            ) as points_sub'), 'points_sub.member_id', '=', 'members.id')
+            // [今回追加] 年会費・更新料の納付状況（未納が1件でもあればunpaid扱い）をサブクエリで計算
+            ->leftJoin(DB::raw('(
+                SELECT member_id,
+                    MAX(CASE WHEN annual_fee > 0 AND status != "paid" THEN 1 ELSE 0 END) as annual_fee_unpaid,
+                    MAX(CASE WHEN annual_fee > 0 THEN 1 ELSE 0 END) as annual_fee_exists,
+                    MAX(CASE WHEN renewal_fee > 0 AND status != "paid" THEN 1 ELSE 0 END) as renewal_fee_unpaid,
+                    MAX(CASE WHEN renewal_fee > 0 THEN 1 ELSE 0 END) as renewal_fee_exists
+                FROM invoices
+                GROUP BY member_id
+            ) as fee_sub'), 'fee_sub.member_id', '=', 'members.id')
+            ->select('members.*');
 
         if (!empty($search)) {
-            $query->where('name', 'like', "%{$search}%");
+            // [今回修正] 'name' は実カラムではなくアクセサのため、last_name/first_name/code/emailで検索する
+            $query->where(function ($q) use ($search) {
+                $q->where('members.last_name', 'like', "%{$search}%")
+                    ->orWhere('members.first_name', 'like', "%{$search}%")
+                    ->orWhere('members.code', 'like', "%{$search}%")
+                    ->orWhere('members.email', 'like', "%{$search}%");
+            });
         }
 
         if (!empty($renewalYear)) {
@@ -57,7 +94,7 @@ class InstructorMemberController extends Controller
             });
         }
 
-        // [今回追加] 申請ステータスで絞り込み
+        // [今回追加] ステータスで絞り込み
         if (!empty($cycleStatus)) {
             $query->whereHas('updateCycles', fn ($q) => $q->where('status', $cycleStatus));
         }
@@ -84,6 +121,41 @@ class InstructorMemberController extends Controller
             }
         }
 
+        // [今回追加] ソート
+        switch ($sortBy) {
+            case 'code':
+                $query->orderBy('members.code', $sortDir);
+                break;
+            case 'name':
+                $query->orderBy('members.last_name', $sortDir)->orderBy('members.first_name', $sortDir);
+                break;
+            case 'start_year':
+                $query->orderBy('sort_cycle.start_date', $sortDir);
+                break;
+            case 'renewal_year':
+                $query->orderBy('sort_cycle.renewal_start_date', $sortDir);
+                break;
+            case 'annual_fee':
+                // 未納(1)を優先的に見せたい想定で、unpaidフラグ→exists の順でソート
+                $query->orderBy('fee_sub.annual_fee_unpaid', $sortDir)->orderBy('fee_sub.annual_fee_exists', $sortDir);
+                break;
+            case 'renewal_fee':
+                $query->orderBy('fee_sub.renewal_fee_unpaid', $sortDir)->orderBy('fee_sub.renewal_fee_exists', $sortDir);
+                break;
+            case 'total_points':
+                $query->orderBy('points_sub.total_points', $sortDir);
+                break;
+            case 'status':
+                $query->orderBy('sort_cycle.status', $sortDir);
+                break;
+            case 'reviewer_judgment':
+                $query->orderBy('sort_cycle.reviewer_judgment', $sortDir);
+                break;
+            default:
+                $query->orderBy('members.created_at', $sortDir);
+                break;
+        }
+
         $members = $query->paginate($per_page)->through(function ($member) {
             $member->updateCycles->each(function ($cycle) use ($member) {
                 $cycle->conference_count = PdfUpload::where('member_id', $member->id)
@@ -103,6 +175,9 @@ class InstructorMemberController extends Controller
                     ->sum('points');
             });
 
+            // [今回追加] 年会費の納付状況を Member::isAnnualFeePaid() で統一判定する
+            $member->is_annual_fee_paid = $member->isAnnualFeePaid();
+
             return $member;
         });
 
@@ -114,6 +189,8 @@ class InstructorMemberController extends Controller
                 'cycle_status' => $cycleStatus,
                 'renewal_fee_status' => $renewalFeeStatus,
                 'annual_fee_status' => $annualFeeStatus,
+                'sort_by' => $sortBy,
+                'sort_dir' => $sortDir,
                 'page' => $page,
                 'per_page' => $per_page,
             ],
@@ -141,6 +218,8 @@ class InstructorMemberController extends Controller
                     'category_name' => $upload->creditCategory?->name ?? '',
                     'role_name' => $upload->creditRole?->creditRole?->name ?? '',
                     'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
+                    // [今回追加] プレビューダイアログで img / iframe を出し分けるためのフラグ
+                    'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
                 ]);
             });
 
@@ -243,10 +322,19 @@ class InstructorMemberController extends Controller
     {
         $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+            'ids.*' => 'integer|exists:members,id',
         ]);
 
-        $cycles = InstructorUpdateCycle::whereIn('id', $request->ids)
+        // [今回修正] Vue側の selectedIds は member.id（会員ID）のため、
+        // instructor_update_cycles.id ではなく member_id で対象を絞り込む。
+        // 「現在のサイクル」は index() のソート基準と統一し、各会員の最新id（MAX(id)）を代表とする。
+        $cycles = InstructorUpdateCycle::whereIn('member_id', $request->ids)
+            ->whereIn('id', function ($q) use ($request) {
+                $q->selectRaw('MAX(id)')
+                    ->from('instructor_update_cycles')
+                    ->whereIn('member_id', $request->ids)
+                    ->groupBy('member_id');
+            })
             ->where('status', 'approved')
             ->get();
 
@@ -281,21 +369,29 @@ class InstructorMemberController extends Controller
     }
 
     /**
-     * [今回追加] 一覧で選択した複数の申請を、まとめて「指導士資格喪失」にする。
-     * 事務局が「資格喪失候補」フィルタで抽出した上で、内容を確認してから実行する想定。
-     * 通知メールは送信しない。
+     * [今回変更] 一覧で選択した複数の申請を、任意のステータスに一括変更する汎用機能。
+     * 従来の bulkLapse()（資格喪失固定）はこの汎用機能に統合した。
      */
-    public function bulkLapse(Request $request)
+    public function bulkChangeStatus(Request $request)
     {
         $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+            'ids.*' => 'integer|exists:members,id',
+            'status' => 'required|string|in:before_update,pending,approved,reject,no_update,updated,lapsed',
         ]);
 
-        $updatedCount = InstructorUpdateCycle::whereIn('id', $request->ids)
-            ->update(['status' => 'lapsed']);
+        // [今回修正] Vue側の selectedIds は member.id のため、member_id で対象を絞り込む。
+        // 「現在のサイクル」は index() のソート基準と統一し、各会員の最新id（MAX(id)）を代表とする。
+        $updatedCount = InstructorUpdateCycle::whereIn('member_id', $request->ids)
+            ->whereIn('id', function ($q) use ($request) {
+                $q->selectRaw('MAX(id)')
+                    ->from('instructor_update_cycles')
+                    ->whereIn('member_id', $request->ids)
+                    ->groupBy('member_id');
+            })
+            ->update(['status' => $request->status]);
 
-        return redirect()->back()->with('success', "{$updatedCount}件を指導士資格喪失にしました。");
+        return redirect()->back()->with('success', "{$updatedCount}件のステータスを変更しました。");
     }
 
     /**
@@ -307,10 +403,17 @@ class InstructorMemberController extends Controller
     {
         $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+            'ids.*' => 'integer|exists:members,id',
         ]);
 
-        $updatedCount = InstructorUpdateCycle::whereIn('id', $request->ids)
+        // [今回修正] Vue側の selectedIds は member.id のため、member_id で対象を絞り込む。
+        $updatedCount = InstructorUpdateCycle::whereIn('member_id', $request->ids)
+            ->whereIn('id', function ($q) use ($request) {
+                $q->selectRaw('MAX(id)')
+                    ->from('instructor_update_cycles')
+                    ->whereIn('member_id', $request->ids)
+                    ->groupBy('member_id');
+            })
             ->update(['status' => 'before_update']);
 
         return redirect()->back()->with('success', "{$updatedCount}件を審査前に戻しました。");
@@ -324,7 +427,7 @@ class InstructorMemberController extends Controller
     {
         $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+            'ids.*' => 'integer|exists:members,id',
         ]);
 
         // TODO: Stripe請求書の作成処理を実装する
@@ -340,7 +443,7 @@ class InstructorMemberController extends Controller
     {
         $request->validate([
             'ids' => 'required|array|min:1',
-            'ids.*' => 'integer|exists:instructor_update_cycles,id',
+            'ids.*' => 'integer|exists:members,id',
         ]);
 
         // TODO: 請求書（PDF）の作成処理を実装する

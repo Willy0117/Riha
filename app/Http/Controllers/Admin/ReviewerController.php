@@ -123,6 +123,8 @@ class ReviewerController extends Controller
                 'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
                 // 委員長が差し戻し時に指摘した書類かどうか
                 'chief_flagged' => in_array($upload->id, $flaggedIds),
+                // [今回追加] プレビューダイアログで img / iframe を出し分けるためのフラグ
+                'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
             ]);
         });
 
@@ -262,6 +264,8 @@ class ReviewerController extends Controller
             // 合格・差し戻し案件の場合のみ、委員長宛の任意メッセージを保存する
             $cycle->reviewer_response_message = $request->message ?: null;
         }
+        // [今回追加] 審査員の操作では updated_at を更新しない（委員長の最終承認時のみ更新される仕様）
+        $cycle->timestamps = false;
         $cycle->save();
 
         return redirect()->route('admin.reviewer.index')

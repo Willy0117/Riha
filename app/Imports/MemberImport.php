@@ -9,6 +9,7 @@ use App\Models\MemberDegree;
 use App\Models\MemberEducation;
 use App\Models\MemberRole;
 use App\Models\InstructorUpdateCycle;
+use App\Models\InstructorCycle;
 use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Support\Collection;
@@ -433,18 +434,50 @@ class MemberImport implements ToCollection, WithChunkReading
             return;
         }
 
-        $startYear = $row[self::COL_INSTRUCTOR_FROM] ?? null;
-        $endYear   = $row[self::COL_INSTRUCTOR_TO] ?? null;
+        // [今回追加] DX列（備考）から「第N回指導士認定番号：XXXXXX」を全件抽出する。
+        $memo = $row[self::COL_MEMO] ?? null;
+        $rounds = [];
+        if ($memo) {
+            preg_match_all(
+                '/第\s*(\d+)\s*回指導士認定番号[:：]\s*([0-9A-Za-z\-]+)/u',
+                (string) $memo,
+                $matches,
+                PREG_SET_ORDER
+            );
+            foreach ($matches as $m) {
+                $rounds[] = ['exam_round' => (int) $m[1], 'instructor_no' => $m[2]];
+            }
+        }
 
-        if (!$startYear || !$endYear) {
+        // [今回変更] 備考欄から抽出できなかった会員は、期間を判定する根拠（exam_round）が無いため、
+        // 会員番号と理由を記録した上でスキップする（COL_INSTRUCTOR_FROM/TOからの計算は廃止）。
+        if (empty($rounds)) {
+            $this->errors[] = "会員番号 {$member->code}：備考欄に指導士認定番号の記載が無いため、指導士サイクルの作成をスキップしました。";
             return;
         }
 
-        // [今回修正] 12-31ではなく12-01を使う（他の箇所と統一）
-        $endDate          = "{$endYear}-12-01";
+        // [今回修正] 1人の会員が持つ instructor_update_cycles は常に1レコードのみが正しい設計。
+        // 備考欄に複数回（第1回・第2回...）の記載があっても、レコードは複数作らず、
+        // 最新の回（exam_round が最大のもの）の情報だけを使って1レコードにする。
+        usort($rounds, fn ($a, $b) => $b['exam_round'] <=> $a['exam_round']);
+        $latestRound = $rounds[0];
+
+        // [今回追加] instructor_cycles マスターから、exam_round に対応する正しい認定期間を取得する。
+        // マスターに存在しない exam_round は、会員番号と理由を記録してスキップする。
+        $masterCycle = InstructorCycle::where('exam_round', $latestRound['exam_round'])->first();
+
+        if (!$masterCycle) {
+            $this->errors[] = "会員番号 {$member->code}：第{$latestRound['exam_round']}回に対応する認定期間がinstructor_cyclesに存在しないため、指導士サイクルの作成をスキップしました。";
+            return;
+        }
+
+        $startDate = $masterCycle->start_date->format('Y-m-d');
+        $endDate   = $masterCycle->end_date->format('Y-m-d');
+
+        // [今回踏襲] renewal_start_date/renewal_end_date は、end_date と同じ年の 4/1〜12/1 のまま
+        $endYear          = (int) $masterCycle->end_date->format('Y');
         $renewalStartDate = "{$endYear}-04-01";
-        $renewalEndDate   = $endDate;
-        $startDate        = "{$startYear}-01-01";
+        $renewalEndDate   = "{$endYear}-12-01";
 
         // [今回修正] 今日の日付と、更新申請受付期間（renewal_start_date〜renewal_end_date）の
         // 前後関係で status を判定する。
@@ -463,7 +496,9 @@ class MemberImport implements ToCollection, WithChunkReading
             $initialStatus = 'no_update';
         }
 
-        $baseCycleData = [
+        $cycleData = [
+            'exam_round'         => $latestRound['exam_round'],
+            'instructor_no'      => $latestRound['instructor_no'],
             'start_date'         => $startDate,
             'end_date'           => $endDate,
             'renewal_start_date' => $renewalStartDate,
@@ -473,45 +508,19 @@ class MemberImport implements ToCollection, WithChunkReading
             'status'             => $initialStatus,
         ];
 
-        // [今回追加] DX列（備考）から「第N回指導士認定番号：XXXXXX」を全件抽出する。
-        // 期間（start_date等）は決定事項Aにより全ての回で同じ値を使う（備考欄には期間情報が無いため）。
-        $memo = $row[self::COL_MEMO] ?? null;
-        $rounds = [];
-        if ($memo) {
-            preg_match_all(
-                '/第\s*(\d+)\s*回指導士認定番号[:：]\s*([0-9A-Za-z\-]+)/u',
-                (string) $memo,
-                $matches,
-                PREG_SET_ORDER
-            );
-            foreach ($matches as $m) {
-                $rounds[] = ['exam_round' => (int) $m[1], 'instructor_no' => $m[2]];
-            }
+        // [今回変更] 既存レコードの有無は member_id だけで判定する（exam_round は絡めない）。
+        // 既に存在する場合は完全にスキップする。
+        // 理由：再インポート時に status/total_points/conference_count を無条件で上書きすると、
+        // 既にシステム上で進んでいた審査状況（承認済み等）が pending に巻き戻ってしまうため。
+        $exists = InstructorUpdateCycle::where('member_id', $member->id)->exists();
+
+        if ($exists) {
+            return;
         }
 
-        // 備考欄から抽出できなかった場合は、従来通り exam_round=0・instructor_no='' の1件のみ作成する
-        if (empty($rounds)) {
-            $rounds[] = ['exam_round' => 0, 'instructor_no' => ''];
-        }
-
-        foreach ($rounds as $round) {
-            // [今回変更] 既に同じ member_id + exam_round のレコードが存在する場合は完全にスキップする。
-            // 理由：再インポート時に status/total_points/conference_count を無条件で上書きすると、
-            // 既にシステム上で進んでいた審査状況（承認済み等）が pending に巻き戻ってしまうため。
-            $exists = InstructorUpdateCycle::where('member_id', $member->id)
-                ->where('exam_round', $round['exam_round'])
-                ->exists();
-
-            if ($exists) {
-                continue;
-            }
-
-            $cycleData = array_merge($baseCycleData, $round);
-
-            InstructorUpdateCycle::create(array_merge($cycleData, [
-                'member_id' => $member->id,
-            ]));
-        }
+        InstructorUpdateCycle::create(array_merge($cycleData, [
+            'member_id' => $member->id,
+        ]));
     }
 
     // ============================================================

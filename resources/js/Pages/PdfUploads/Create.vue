@@ -4,7 +4,7 @@
     <template #header>{{ $t('pdf_upload') }}</template>
     <div class="max-w-none mx-auto p-8 flex flex-col gap-6 font-sans text-[#1a1a2e]">
 
-      <!-- [今回追加] 委員長が却下した場合、最上部に表示（×で閉じられる） -->
+      <!-- [今回追加] 委員長が不合格とした場合、最上部に表示（×で閉じられる） -->
       <div
         v-if="showRejectNotice && props.cycle?.status === 'reject' && props.cycle?.reason"
         class="relative bg-red-50 border border-red-500 rounded-xl p-4 pr-10"
@@ -16,7 +16,7 @@
         >
           <X class="w-4 h-4" />
         </button>
-        <p class="text-sm font-semibold text-red-700 mb-1">今回の更新申請は却下されました</p>
+        <p class="text-sm font-semibold text-red-700 mb-1">今回の更新申請は不合格となりました</p>
         <p class="text-sm text-red-600 whitespace-pre-wrap">{{ props.cycle.reason }}</p>
       </div>
 
@@ -159,7 +159,7 @@
                   </div>
                   <p class="font-semibold text-gray-900 text-base mb-1 pr-4">(b) {{ props?.requiredUnits }}単位以上取得</p>
                   <p class="text-sm text-gray-500 mb-3">
-                    5年間に{{ props?.requiredUnits }}単位以上取得している（参加証あるいは抄録・論文のコピーを提出してください）。
+                    5年間に{{ props?.requiredUnits }}単位以上取得している（参加証あるいは抄録、論文のPDF、jpeg、pngデータを提出してください）。
                   </p>
                   <div class="flex items-center gap-3">
                     <div class="flex items-baseline gap-0.5 flex-shrink-0">
@@ -220,13 +220,16 @@
                     >
                       更新申請を行う
                     </Button>
+                    <p v-if="isWithinRenewalPeriod && !applyBadgeState && !props.annualFeeStatus" class="text-xs text-red-500 mt-1">
+                      年会費が未納のため申請できません
+                    </p>
                     <span v-else-if="applyBadgeState" :class="badgeClasses(applyBadgeState.tone)">
                       <CheckCircle2 v-if="applyBadgeState.tone === 'met'" class="w-3.5 h-3.5" />
                       <Clock v-else-if="applyBadgeState.tone === 'pending'" class="w-3.5 h-3.5" />
                       <AlertCircle v-else class="w-3.5 h-3.5" />
                       {{ applyBadgeState.label }}
                     </span>
-                    <span v-else :class="badgeClasses('neutral')">
+                    <span v-else-if="!isWithinRenewalPeriod" :class="badgeClasses('neutral')">
                       受付期間外
                     </span>
                   </div>
@@ -660,6 +663,7 @@ const props = defineProps({
   roles: { type: Array, required: true },
   fees: Object,
   annualFeeStatus: Boolean, 
+  renewalFeeStatus: { type: String, default: 'unbilled' }, // [今回追加]
   schedule: Object, // [今回追加] 現在の期区分（応募期間・審査期間）
 })
 
@@ -751,7 +755,7 @@ const phaseCircleClass = (idx) => {
   // 達成済み（通過済み）＝グリーン
   if (idx < currentPhaseIndex.value) return `${base} bg-emerald-500 text-white`
 
-  // 現在地点が却下の場合だけ特別に赤で強調
+  // 現在地点が不合格の場合だけ特別に赤で強調
   if (idx === currentPhaseIndex.value && isRejectedPhase.value) {
     return `${base} bg-red-500 text-white`
   }
@@ -779,7 +783,7 @@ const cycleStatusLabel = computed(() => {
     before_update: '未申請',
     pending: '更新申請済',
     no_update: '辞退',
-    reject: '却下',
+    reject: '不合格',
     approved: '委員長が承認',
     updated: '更新完了',
   }
@@ -807,12 +811,12 @@ const applyBadgeState = computed(() => {
   }
 })
 
-// 5. 更新料送金の状態：未請求（審査承認前）／未納（承認済み・送金待ち）／納付済み（updated）
+// [今回変更] 更新料送金の状態：cycle.status ではなく、実際の Invoice の入金状況（renewalFeeStatus）で判定する
 const paymentBadgeState = computed(() => {
-  switch (props.cycle?.status) {
-    case 'approved': return { label: '未納', tone: 'unpaid' }
-    case 'updated':  return { label: '納付済み', tone: 'paid' }
-    default:         return { label: '未請求', tone: 'unbilled' }
+  switch (props.renewalFeeStatus) {
+    case 'unpaid': return { label: '未納', tone: 'unpaid' }
+    case 'paid':   return { label: '納付済み', tone: 'paid' }
+    default:       return { label: '未請求', tone: 'unbilled' }
   }
 })
 
@@ -868,6 +872,11 @@ const updateStatus = (status) => {
   router.post('/instructor-update-cycles/status', {
     id: props.cycle.id,
     status,
+  }, {
+    // [今回追加] サーバー側で拒否された場合、理由をアラートで表示する
+    onError: (errors) => {
+      alert(errors.status ?? '処理に失敗しました。')
+    },
   })
 }
 
@@ -896,6 +905,7 @@ const isWithinRenewalPeriod = computed(() => {
 const isEligible = computed(() => {
   return (
     isWithinRenewalPeriod.value &&
+    !!props.annualFeeStatus &&
     (props.conference_count ?? 0) > 1 &&
     (totalCredits.value ?? 0) >= (props.requiredUnits ?? 50)
   )
@@ -937,8 +947,13 @@ function upload() {
     onSuccess: () => {
       // store()側は例外時もback()で通常レスポンスを返すため、
       // flash.error が立っていたら保存失敗とみなしダイアログは開いたままにする
-      if (!page.props.flash?.error) {
+      // [今回修正] AI検証で警告（warnings）がある場合も、内容を確認してもらうためダイアログは閉じない
+      if (!page.props.flash?.error && warnings.value.length === 0) {
         isOpen.value = false
+        // 次回モーダルを開いたときに前回の入力が残らないよう、入力項目をリセットする
+        form.reset('file', 'credit_category_id', 'credit_conference_id', 'role_id', 'session', 'issued_date')
+        form.clearErrors()
+        if (fileInput.value) fileInput.value.value = ''
       }
     },
   })

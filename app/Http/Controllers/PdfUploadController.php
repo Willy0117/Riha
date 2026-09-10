@@ -16,6 +16,7 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Validation\Rule;
 use App\Services\FileService;
 use App\Services\PdfService;
+use App\Services\TextractService;
 
 class PdfUploadController extends Controller
 {
@@ -158,7 +159,8 @@ class PdfUploadController extends Controller
             $conference = CreditConference::find($request->credit_conference_id);
             $points = $role ? $role->points : 0;
 
-            $verificationResult = $this->verifyPdfWithGroq(
+            // [今回変更] TextractがTokyoリージョン未対応だったため、一旦Gemini APIに戻して動作確認する
+            $verificationResult = $this->verifyPdfWithGemini(
                 $request->file('file'),
                 [
                     'date'        => $request->issued_date,
@@ -182,18 +184,28 @@ class PdfUploadController extends Controller
                 'ai_verification'     => json_encode($verificationResult),
             ]);
 
+            // [今回変更] 実際に書類から読み取れた値を、そのまま警告メッセージに含める
             $warnings = [];
             if (!($verificationResult['date_match'] ?? true)) {
-                $warnings[] = "日付が一致していません。PDFには「{$verificationResult['pdf_date']}」と記載されています。";
+                $pdfDate = $verificationResult['pdf_date'] ?? null;
+                $warnings[] = $pdfDate
+                    ? "日付が一致していない可能性があります。書類には「{$pdfDate}」と記載されていました。"
+                    : '日付が書類の記載内容と一致していない可能性があります。内容をご確認ください。';
             }
             if (!($verificationResult['conference_match'] ?? true)) {
-                $warnings[] = "学会名が一致していません。PDFには「{$verificationResult['pdf_conference']}」と記載されています。";
+                $pdfConference = $verificationResult['pdf_conference'] ?? null;
+                $warnings[] = $pdfConference
+                    ? "学会名が一致していない可能性があります。書類には「{$pdfConference}」と記載されていました。"
+                    : '学会名が書類の記載内容と一致していない可能性があります。内容をご確認ください。';
             }
             if (!($verificationResult['role_match'] ?? true)) {
-                $warnings[] = "参加種別が一致していません。PDFには「{$verificationResult['pdf_role']}」と記載されています。";
+                $pdfRole = $verificationResult['pdf_role'] ?? null;
+                $warnings[] = $pdfRole
+                    ? "参加種別が一致していない可能性があります。書類には「{$pdfRole}」と記載されていました。"
+                    : '参加種別が書類の記載内容と一致していない可能性があります。内容をご確認ください。';
             }
             if (!($verificationResult['name_match'] ?? true)) {
-                $warnings[] = "氏名が一致していません。PDFには「{$verificationResult['pdf_name']}」と記載されています。";
+                $warnings[] = '氏名が書類の記載内容と一致していない可能性があります。内容をご確認ください。';
             }
 
             return back()->with([
@@ -202,7 +214,10 @@ class PdfUploadController extends Controller
             ]);
 
         } catch (\Exception $e) {
-            \Log::error('Upload failed: ' . $e->getMessage());
+            \Log::error('Upload failed: ' . $e->getMessage(), [
+                'file_name' => $request->file('file')?->getClientOriginalName(),
+                'trace'     => $e->getTraceAsString(),
+            ]);
             return back()->with('error', __('PDF upload failed.'));
         }
     }
@@ -421,9 +436,9 @@ class PdfUploadController extends Controller
             ])
             ->get();
 
-        $annualFeeStatus = $fees
-            ->filter(fn($f) => $f->annual_fee > 0)
-            ->every(fn($f) => $f->status === 'paid');
+        // [今回修正] Member::isAnnualFeePaid() に統一する（以前の統一作業で本箇所が漏れていた）。
+        // 認定期間内だけでなく、最古の年会費請求から今年度まで全て納付済みかを見る。
+        $annualFeeStatus = $user->member->isAnnualFeePaid();
 
         $totalFee = $fees->sum(fn($f) => $f->annual_fee + $f->renewal_fee);
         $totalPaid = $fees->sum('payment_amount');

@@ -123,6 +123,8 @@ class ChiefReviewController extends Controller
                     'credit_conference_name' => $upload->creditConference?->name ?? '',
                     'role_name' => $upload->creditRole?->creditRole?->name ?? '',
                     'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
+                    // [今回追加] プレビューダイアログで img / iframe を出し分けるためのフラグ
+                    'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
                 ]);
             });
 
@@ -201,6 +203,8 @@ class ChiefReviewController extends Controller
         // [今回追加] 新しいラウンドなので、前回の審査員からの返信メッセージ・不合格理由はクリアする
         $cycle->reviewer_response_message = null;
         $cycle->reason = null;
+        // [今回追加] 委員長→審査員の差し戻し操作では updated_at を更新しない
+        $cycle->timestamps = false;
         $cycle->save();
 
         // [今回追加] 指摘対象の書類を「未審査」に戻し、審査員が再度承認/差し戻しの判定を

@@ -242,6 +242,14 @@
               <GraduationCap class="w-4 h-4 mr-1"/>
               <span v-if="!collapsed" class="ml-2">スケジュールリマインダー設定</span>
             </Link>
+            <Link
+              :href="route('admin.instructorCycles.index')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+              :class="isActive('instructorCycles.index') ? 'bg-gray-300 font-semibold' : ''"
+            >
+              <GraduationCap class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">指導士認定期間設定</span>
+            </Link>
             <Link v-if="can('imports.view')|| can('imports.edit')" :href="route('admin.import.index')"
                   class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
                   :class="isActive('admin.import.index') ? 'bg-gray-300 font-semibold' : ''">

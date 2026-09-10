@@ -77,9 +77,10 @@ class Member extends Model
         return $this->belongsTo(Status::class);
     }
 
+    // [今回修正] update_cycles[0] が常に最新のサイクルを指すよう、id降順を明示する
     public function updateCycles()
     {
-        return $this->hasMany(InstructorUpdateCycle::class);
+        return $this->hasMany(InstructorUpdateCycle::class)->orderByDesc('id');
     }
     
     public function latestCycle()
@@ -110,6 +111,40 @@ class Member extends Model
     public function invoices()
     {
         return $this->hasMany(Invoice::class);
+    }
+
+    /**
+     * [今回追加] 年会費が「納入済」かどうかを判定する。
+     * この会員が持つ年会費請求（annual_fee > 0）の中で最も古い fiscal_year から今年度まで、
+     * 1年でも請求書が無い（発行漏れ）、または未納の年度があれば false（未納）を返す。
+     * MyPage・事務局一覧など、年会費の納付状況を表示する全画面はこのメソッドに統一する。
+     */
+    public function isAnnualFeePaid(): bool
+    {
+        $fees = $this->invoices()->where('annual_fee', '>', 0)->get();
+
+        if ($fees->isEmpty()) {
+            return false;
+        }
+
+        // [今回修正] このプロジェクトの年度は「12/1〜翌11/30」。
+        // fiscal_year は billing_end の年（＝InvoiceImport.phpと同じ基準）を使うため、
+        // 「今年度」の判定も同じ基準（12月なら年+1、それ以外はそのまま）に合わせる。
+        $today = now();
+        $currentFiscalYear = $today->month === 12 ? $today->year + 1 : $today->year;
+
+        $oldestYear = $fees->min('fiscal_year');
+
+        $feesByYear = $fees->keyBy('fiscal_year');
+
+        for ($year = $oldestYear; $year <= $currentFiscalYear; $year++) {
+            $fee = $feesByYear->get($year);
+            if (!$fee || $fee->status !== 'paid') {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     public function addresses()

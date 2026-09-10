@@ -63,6 +63,16 @@
         </CardContent>
       </Card>
 
+      <!-- [今回追加] 審査員からのメッセージ（不合格時：申請者への却下理由／合格・差し戻し再提出時：委員長宛メッセージ） -->
+      <div v-if="cycle.reviewer_judgment === 'fail' && cycle.reason" class="bg-red-50 border border-red-200 rounded-xl p-4">
+        <p class="text-sm font-semibold text-red-700 mb-1">審査員による不合格理由（申請者へ表示されます）</p>
+        <p class="text-sm text-red-700 whitespace-pre-wrap">{{ cycle.reason }}</p>
+      </div>
+      <div v-if="cycle.reviewer_response_message" class="bg-blue-50 border border-blue-200 rounded-xl p-4">
+        <p class="text-sm font-semibold text-blue-700 mb-1">審査員から委員長へのメッセージ</p>
+        <p class="text-sm text-blue-700 whitespace-pre-wrap">{{ cycle.reviewer_response_message }}</p>
+      </div>
+
       <!-- 審査員への差し戻し -->
       <div class="bg-white rounded-xl border border-orange-200 p-6 space-y-3">
         <h2 class="text-lg font-bold text-orange-700">審査員への差し戻し</h2>
@@ -125,19 +135,13 @@
               <span class="text-xs font-semibold text-gray-400">資料{{ index + 1 }}</span>
             </div>
 
-            <div class="w-64 flex-none">
-              <img
-                v-if="upload.thumbnail_url"
-                :src="upload.thumbnail_url"
-                class="w-full h-80 object-contain rounded-lg cursor-pointer"
-                @click="openPreview(upload.id)"
-              />
+            <div class="w-32 flex-none">
               <div
-                v-else
-                class="w-full h-80 bg-gray-100 rounded-lg flex items-center justify-center text-gray-400 text-sm cursor-pointer"
-                @click="openPreview(upload.id)"
+                class="w-full h-32 bg-gray-50 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-100 transition"
+                @click="openPreview(upload)"
               >
-                <FileText class="w-8 h-8" />
+                <FileText class="w-10 h-10" />
+                <span class="text-[10px] mt-1">{{ upload.is_image ? '画像' : 'PDF' }}</span>
               </div>
             </div>
 
@@ -181,16 +185,25 @@
       </div>
     </div>
 
-    <Dialog :open="!!previewPdf" @update:open="previewPdf = null">
+    <Dialog :open="!!previewUpload" @update:open="previewUpload = null">
       <DialogContent class="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col">
         <DialogHeader class="px-4 py-3 border-b">
-          <DialogTitle>PDFプレビュー</DialogTitle>
+          <DialogTitle>プレビュー</DialogTitle>
         </DialogHeader>
-        <div class="flex-1 overflow-hidden">
-          <iframe v-if="previewPdf" :src="previewPdf" class="w-full h-full border-0" />
+        <div class="flex-1 overflow-hidden flex items-center justify-center bg-gray-50">
+          <img
+            v-if="previewUpload?.is_image"
+            :src="previewFileUrl"
+            class="max-w-full max-h-full object-contain"
+          />
+          <iframe
+            v-else-if="previewFileUrl"
+            :src="previewFileUrl"
+            class="w-full h-full border-0"
+          />
         </div>
         <DialogFooter class="px-4 py-3 border-t">
-          <Button variant="outline" @click="previewPdf = null">閉じる</Button>
+          <Button variant="outline" @click="previewUpload = null">閉じる</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -218,7 +231,7 @@ const uploads = props.props.uploads
 // 計算済みの値をそのまま使う（クライアント側での復元ロジックは削除）
 const uploadList = ref(uploads)
 
-const previewPdf = ref(null)
+const previewUpload = ref(null)
 
 // ---- 審査員への差し戻し（指摘対象の選択・理由入力） ----
 const flaggedIds = ref([])
@@ -292,9 +305,13 @@ const sessionLabel = (session) => {
   return session ? `第${session}回` : ''
 }
 
-const openPreview = (id) => {
-  previewPdf.value = route('admin.chief.view', { id })
+const openPreview = (upload) => {
+  previewUpload.value = upload
 }
+
+const previewFileUrl = computed(() =>
+  previewUpload.value ? route('admin.chief.view', { id: previewUpload.value.id }) : null
+)
 
 const backToIndex = () => {
   router.get(route('admin.chief.index'))

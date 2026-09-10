@@ -49,7 +49,6 @@
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">氏名</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">申請日</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">書類の審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">未審査件数</th>
               <th
                 class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('approved_points_total')"
@@ -64,7 +63,7 @@
               </th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">担当審査員</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員判定</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員からのメッセージ</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員メッセージ</th>
               <th
                 class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('reviewer_judged_at')"
@@ -76,7 +75,7 @@
           </thead>
           <tbody>
             <tr v-if="cycles.data.length === 0">
-              <td colspan="13" class="!p-12 text-center text-gray-400">
+              <td colspan="12" class="!p-12 text-center text-gray-400">
                 判定待ちの申請はありません
               </td>
             </tr>
@@ -91,22 +90,8 @@
               <td class="px-5 py-3.5 border-b border-gray-100">{{ cycle.member?.code }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 font-medium">{{ cycle.member?.name }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.updated_at?.split('T')[0] }}</td>
-              <td class="px-5 py-3.5 border-b border-gray-100">
-                <span
-                  v-if="cycle.document_review_completed"
-                  class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200"
-                >
-                  審査終了（{{ cycle.document_reviewed_count }}/{{ cycle.document_total_count }}）
-                </span>
-                <span
-                  v-else
-                  class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-200"
-                >
-                  審査中（{{ cycle.document_reviewed_count }}/{{ cycle.document_total_count }}）
-                </span>
-              </td>
-              <td class="px-5 py-3.5 border-b border-gray-100 text-center font-semibold" :class="cycle.document_pending_count > 0 ? 'text-amber-600' : 'text-gray-400'">
-                {{ cycle.document_pending_count }}
+              <td class="px-5 py-3.5 border-b border-gray-100 text-center text-gray-700">
+                {{ cycle.document_reviewed_count }}/{{ cycle.document_total_count }}
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-center font-semibold text-blue-600">
                 {{ cycle.approved_points_total }}
@@ -123,9 +108,16 @@
                 </span>
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-600 max-w-xs">
-                <p v-if="displayMessage(cycle)" class="text-xs whitespace-pre-wrap line-clamp-2">
-                  {{ displayMessage(cycle) }}
-                </p>
+                <div v-if="cycle.reason || cycle.reviewer_response_message" class="space-y-1">
+                  <p v-if="cycle.reason" class="text-[10px] leading-tight">
+                    <span class="text-red-500 font-semibold">[却下]</span>
+                    <span class="line-clamp-1 align-middle">{{ cycle.reason }}</span>
+                  </p>
+                  <p v-if="cycle.reviewer_response_message" class="text-[10px] leading-tight">
+                    <span class="text-blue-500 font-semibold">[委員長へ]</span>
+                    <span class="line-clamp-1 align-middle">{{ cycle.reviewer_response_message }}</span>
+                  </p>
+                </div>
                 <span v-else class="text-xs text-gray-300">-</span>
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.reviewer_judged_at?.split('T')[0] ?? '-' }}</td>
@@ -133,9 +125,10 @@
                 <div class="flex items-center gap-2">
                   <Link
                     :href="route('admin.chief.show', cycle.id)"
-                    class="px-3 py-1.5 border border-gray-200 text-gray-600 rounded hover:bg-gray-50 text-xs font-semibold"
+                    class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                    title="詳細"
                   >
-                    詳細
+                    <Pencil class="w-4 h-4" />
                   </Link>
                   <button
                     class="px-3 py-1.5 rounded text-xs font-semibold border disabled:opacity-40 disabled:cursor-not-allowed"
@@ -162,17 +155,16 @@
     <!-- 個別承認モーダル -->
     <DialogModal :show="modal.show" @close="modal.show = false">
       <template #title>
-        {{ modal.memberName }} を承認しますか？
+        {{ modal.memberName }} を{{ modal.judgment === 'fail' ? '不合格' : '合格' }}としますか？
       </template>
       <template #content>
-        <p v-if="modal.judgment === 'fail'" class="text-sm text-red-600">
-          審査員の不合格判定を承認します。この申請は「却下」として確定します。この操作は取り消せません。
+        <p class="text-sm text-gray-500">
+          審査員の{{ modal.judgment === 'fail' ? '不合格' : '合格' }}判定を承認し、確定させます。この操作は取り消せません。
         </p>
-        <p v-else class="text-sm text-gray-500">この操作は取り消せません。</p>
       </template>
       <template #footer>
         <SecondaryButton @click="modal.show = false">キャンセル</SecondaryButton>
-        <PrimaryButton class="ms-3" @click="submit">承認</PrimaryButton>
+        <PrimaryButton class="ms-3" @click="submit">{{ modal.judgment === 'fail' ? '不合格を承認する' : '合格を承認する' }}</PrimaryButton>
       </template>
     </DialogModal>
 
@@ -182,8 +174,11 @@
         選択した{{ selectedIds.length }}件を承認
       </template>
       <template #content>
+        <p class="text-sm text-gray-700 font-medium mb-2">
+          合格 {{ selectedPassCount }}件 ／ 不合格 {{ selectedFailCount }}件
+        </p>
         <p class="text-sm text-gray-500">
-          審査員の判定（合格→承認／不合格→却下）に応じて、それぞれ確定します。書類の審査が完了していない申請、および審査員の判定がまだ出ていない申請は自動的にスキップされます。
+          審査員の判定（合格／不合格）を承認し、確定させます。この操作は取り消せません。
         </p>
       </template>
       <template #footer>
@@ -197,7 +192,7 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
-import { CheckCircle2 } from 'lucide-vue-next'
+import { CheckCircle2, Pencil } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import DialogModal from '@/Components/DialogModal.vue'
@@ -243,11 +238,6 @@ const judgmentClass = (judgment) => {
   return map[judgment] ?? 'status-badge-gray'
 }
 
-// [今回追加] 不合格の場合は却下理由（reason）、それ以外は差し戻し後の返信メッセージを表示する
-const displayMessage = (cycle) => {
-  return cycle.reviewer_judgment === 'fail' ? cycle.reason : cycle.reviewer_response_message
-}
-
 // ---- ソート ----
 const toggleSort = (column) => {
   const nextDir = (props.sortBy === column && props.sortDir === 'desc') ? 'asc' : 'desc'
@@ -268,6 +258,14 @@ const selectedIds = ref([])
 
 const isAllSelected = computed(() =>
   props.cycles.data.length > 0 && selectedIds.value.length === props.cycles.data.length
+)
+
+// [今回追加] 選択中の対象に、合格・不合格それぞれ何件含まれているか（一括承認モーダルの表示用）
+const selectedPassCount = computed(() =>
+  props.cycles.data.filter(c => selectedIds.value.includes(c.id) && c.reviewer_judgment === 'pass').length
+)
+const selectedFailCount = computed(() =>
+  props.cycles.data.filter(c => selectedIds.value.includes(c.id) && c.reviewer_judgment === 'fail').length
 )
 
 const toggleSelectAll = (e) => {

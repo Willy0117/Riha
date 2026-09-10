@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\ReviewerController as ReviewerController;
 use App\Http\Controllers\Admin\SubLeaderAssignmentController as SubLeaderAssignmentController;
 use App\Http\Controllers\Admin\ScheduleController as ScheduleController;
 use App\Http\Controllers\Admin\InvoiceController;
+use App\Http\Controllers\Admin\InstructorCycleController as InstructorCycleController;
 
 // use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\PdfUploadController;
@@ -198,13 +199,15 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('instructorUpdateCycles.review');
         Route::post('instructorMembers/bulkUpdate', [AdminInstructorMemberController::class, 'bulkUpdate'])
             ->name('instructorMembers.bulkUpdate');
-        Route::post('instructorMembers/bulkLapse', [AdminInstructorMemberController::class, 'bulkLapse'])
-            ->name('instructorMembers.bulkLapse');
-//        Route::post('instructorMembers/bulkChiefApprovedAction', [AdminInstructorMemberController::class, 'bulkChiefApprovedAction'])
-//            ->name('instructorMembers.bulkChiefApprovedAction');
-//        Route::post('instructorMembers/bulkRenewalPaidAction', [AdminInstructorMemberController::class, 'bulkRenewalPaidAction'])
-//            ->name('instructorMembers.bulkRenewalPaidAction');
- 
+        Route::post('instructorMembers/bulkResetToBeforeUpdate', [AdminInstructorMemberController::class, 'bulkResetToBeforeUpdate'])
+            ->name('instructorMembers.bulkResetToBeforeUpdate');
+        Route::post('instructorMembers/bulkCreateStripeInvoice', [AdminInstructorMemberController::class, 'bulkCreateStripeInvoice'])
+            ->name('instructorMembers.bulkCreateStripeInvoice');
+        Route::post('instructorMembers/bulkCreateInvoice', [AdminInstructorMemberController::class, 'bulkCreateInvoice'])
+            ->name('instructorMembers.bulkCreateInvoice');
+        Route::post('instructorMembers/bulkChangeStatus', [AdminInstructorMemberController::class, 'bulkChangeStatus'])
+            ->name('instructorMembers.bulkChangeStatus');
+            
         Route::get('instructorMembers/pdfUploads/{id}/view', [AdminInstructorMemberController::class, 'view'])
             ->name('instructorMembers.view');
         Route::get('instructorMembers/pdfUploads/{id}/thumbnail', [AdminInstructorMemberController::class, 'thumbnail'])
@@ -264,6 +267,13 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('schedules', [ScheduleController::class, 'store'])->name('schedules.store');
         Route::put('schedules/{schedule}', [ScheduleController::class, 'update'])->name('schedules.update');
         Route::delete('schedules/{schedule}', [ScheduleController::class, 'destroy'])->name('schedules.destroy');
+
+        Route::get('instructorCycles', [InstructorCycleController::class, 'index'])
+            ->name('instructorCycles.index');
+        Route::post('instructorCycles', [InstructorCycleController::class, 'store'])
+            ->name('instructorCycles.store');
+        Route::put('instructorCycles/{instructorCycle}', [InstructorCycleController::class, 'update'])
+            ->name('instructorCycles.update');
 
         // PDF承認 / Reject
         Route::post('pdf/{upload}/approve', [PdfUploadController::class, 'approve'])

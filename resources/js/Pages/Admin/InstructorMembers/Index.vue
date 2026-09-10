@@ -44,7 +44,7 @@
         </select>
 
         <select v-model="cycleStatus" @change="submitSearch" class="border rounded pl-3 pr-8 py-2 h-9 text-sm">
-          <option value="">申請ステータス（すべて）</option>
+          <option value="">ステータス（すべて）</option>
           <option value="before_update">更新前</option>
           <option value="pending">審査中</option>
           <option value="approved">承認</option>
@@ -77,24 +77,51 @@
       </div>
 
       <!-- 一括操作エリア -->
-      <div class="flex items-center gap-2 mb-4">
-        <select
-          v-model="bulkAction"
-          class="border rounded pl-3 pr-8 py-2 h-9 text-sm"
-        >
-          <option value="reset">審査前に戻す</option>
-          <option value="lapse">資格喪失にする</option>
-          <option value="update">認定期間を更新する（更新済にする）</option>
-          <option value="stripe">Stripe請求書を作成する</option>
-          <option value="invoice">通常の請求書を作成する</option>
-        </select>
-        <button
-          @click="executeBulkAction"
-          :disabled="selectedIds.length === 0"
-          class="px-3 py-1.5 text-sm rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1"
-        >
-          <span>選択した{{ selectedIds.length }}件に実行</span>
-        </button>
+      <div class="flex flex-wrap items-center gap-4 mb-4">
+        <!-- グループ1：既存4操作 -->
+        <div class="flex items-center gap-2">
+          <select
+            v-model="bulkAction"
+            class="border rounded pl-3 pr-8 py-2 h-9 text-sm"
+          >
+            <option value="reset">今年度の更新対象にする</option>
+            <option value="update">認定期間を更新する（更新済にする）</option>
+            <option value="stripe">Stripe請求書を作成する</option>
+            <option value="invoice">通常の請求書を作成する</option>
+          </select>
+          <button
+            @click="executeBulkAction"
+            :disabled="selectedIds.length === 0"
+            class="px-3 py-1.5 text-sm rounded-md border bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100 disabled:opacity-50 flex items-center gap-1"
+          >
+            <span>選択した{{ selectedIds.length }}件に実行</span>
+          </button>
+        </div>
+
+        <!-- グループ2：ステータス変更（独立） -->
+        <div class="flex items-center gap-2 pl-4 border-l border-gray-200">
+          <span class="text-xs text-gray-500">ステータス変更:</span>
+          <select
+            v-model="statusChangeTarget"
+            class="border rounded pl-3 pr-8 py-2 h-9 text-sm"
+          >
+            <option value="before_update">更新前</option>
+            <option value="pending">審査中</option>
+            <option value="approved">承認</option>
+            <option value="reject">却下</option>
+            <option value="no_update">更新しない</option>
+            <option value="updated">更新済</option>
+            <option value="lapsed">資格喪失</option>
+          </select>
+          <button
+            @click="bulkChangeStatus"
+            :disabled="selectedIds.length === 0"
+            class="px-3 py-1.5 text-sm rounded-md border bg-orange-50 text-orange-700 border-orange-200 hover:bg-orange-100 disabled:opacity-50 flex items-center gap-1"
+          >
+            <span>選択した{{ selectedIds.length }}件に実行</span>
+          </button>
+        </div>
+
         <span
           class="text-xs text-gray-500 whitespace-nowrap"
           :class="{ invisible: selectedIds.length === 0 }"
@@ -124,15 +151,33 @@
                     @change="toggleSelectAll"
                   />
                 </th>
-                <th>会員番号</th>
-                <th>{{ t('name') }}</th>
-                <th>取得年</th>
-                <th>更新予定年</th>
-                <th>年会費</th>
-                <th>更新料</th>
-                <th>現在の単位</th>
-                <th>本申請ステータス</th>
-                <th>審査員判定</th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('code')">
+                  会員番号 <span class="text-white/60">{{ sortArrow('code') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('name')">
+                  {{ t('name') }} <span class="text-white/60">{{ sortArrow('name') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('start_year')">
+                  取得年 <span class="text-white/60">{{ sortArrow('start_year') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('renewal_year')">
+                  更新予定年 <span class="text-white/60">{{ sortArrow('renewal_year') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('annual_fee')">
+                  年会費 <span class="text-white/60">{{ sortArrow('annual_fee') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('renewal_fee')">
+                  更新料 <span class="text-white/60">{{ sortArrow('renewal_fee') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('total_points')">
+                  現在の単位 <span class="text-white/60">{{ sortArrow('total_points') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('status')">
+                  ステータス <span class="text-white/60">{{ sortArrow('status') }}</span>
+                </th>
+                <th class="cursor-pointer select-none hover:text-white" @click="sortBy('reviewer_judgment')">
+                  審査員判定 <span class="text-white/60">{{ sortArrow('reviewer_judgment') }}</span>
+                </th>
                 <th>操作</th>
               </tr>
             </thead>
@@ -164,10 +209,10 @@
                 <!-- 年会費 -->
                 <td>
                   <span class="status-badge-common w-fit"
-                    :class="getAnnualFeeClass(member)">
-                    <CheckCircle2 v-if="getAnnualFeeStatus(member) === '納入済'" class="w-3 h-3" />
+                    :class="member.is_annual_fee_paid ? 'status-badge-blue' : 'status-badge-red'">
+                    <CheckCircle2 v-if="member.is_annual_fee_paid" class="w-3 h-3" />
                     <XCircle v-else class="w-3 h-3" />
-                    {{ getAnnualFeeStatus(member) }}
+                    {{ member.is_annual_fee_paid ? '納入済' : '未納' }}
                   </span>
                 </td>
                 <!-- 更新料 -->
@@ -342,11 +387,11 @@ const props = defineProps({
 const form = reactive({
   name: props.filters.name,
   per_page: props.filters.per_page || 20,
-  sort_by: props.filters.sort_by,
-  sort_dir: props.filters.sort_dir,
+  sort_by: props.filters.sort_by || 'created_at',
+  sort_dir: props.filters.sort_dir || 'desc',
 })
 
-// [今回変更] 複合フィルタ（申請ステータス／更新料／年会費）
+// [今回変更] 複合フィルタ（ステータス／更新料／年会費）
 const cycleStatus = ref(props.filters.cycle_status ?? '')
 const renewalFeeStatus = ref(props.filters.renewal_fee_status ?? '')
 const annualFeeStatus = ref(props.filters.annual_fee_status ?? '')
@@ -399,6 +444,12 @@ const sortBy = (field) => {
   if (form.sort_by === field) form.sort_dir = form.sort_dir==='asc'?'desc':'asc'
   else { form.sort_by = field; form.sort_dir = 'desc' }
   submitSearch()
+}
+
+// [今回追加] ヘッダーに表示するソート矢印
+const sortArrow = (field) => {
+  if (form.sort_by !== field) return ''
+  return form.sort_dir === 'asc' ? '▲' : '▼'
 }
 // ---------- 件数計算 ----------
 const startItem = computed(() => {
@@ -457,12 +508,39 @@ const bulkAction = ref('reset')
 const executeBulkAction = () => {
   const actions = {
     reset: bulkResetToBeforeUpdate,
-    lapse: bulkLapse,
     update: bulkUpdate,
     stripe: bulkCreateStripeInvoice,
     invoice: bulkCreateInvoice,
   }
   actions[bulkAction.value]?.()
+}
+
+// [今回追加] ステータス変更（独立した機能。資格喪失もここに統合）
+const statusChangeTarget = ref('before_update')
+const statusLabelMap = {
+  before_update: '更新前',
+  pending: '審査中',
+  approved: '承認',
+  reject: '却下',
+  no_update: '更新しない',
+  updated: '更新済',
+  lapsed: '資格喪失',
+}
+
+const bulkChangeStatus = () => {
+  const label = statusLabelMap[statusChangeTarget.value]
+  if (!confirm(`選択した${selectedIds.value.length}件のステータスを「${label}」に変更します。よろしいですか？`)) return
+  router.post(
+    route('admin.instructorMembers.bulkChangeStatus'),
+    { ids: selectedIds.value, status: statusChangeTarget.value },
+    {
+      preserveState: true,
+      onSuccess: () => {
+        resetSelectedIds()
+        router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
+      }
+    }
+  )
 }
 
 // 複数更新（認定期間の更新処理。承認済みのもののみ対象、コントローラ側でも二重チェック）
@@ -486,22 +564,6 @@ const bulkResetToBeforeUpdate = () => {
   if (!confirm(`選択した${selectedIds.value.length}件を「審査前」に戻します。よろしいですか？`)) return
   router.post(
     route('admin.instructorMembers.bulkResetToBeforeUpdate'),
-    { ids: selectedIds.value },
-    {
-      preserveState: true,
-      onSuccess: () => {
-        resetSelectedIds()
-        router.get(route('admin.instructorMembers.index'), { ...persistQuery(), page: props.members.current_page }, { preserveState: true })
-      }
-    }
-  )
-}
-
-// 一括資格喪失
-const bulkLapse = () => {
-  if (!confirm(`選択した${selectedIds.value.length}件を指導士資格喪失にします。この操作は取り消せません。よろしいですか？`)) return
-  router.post(
-    route('admin.instructorMembers.bulkLapse'),
     { ids: selectedIds.value },
     {
       preserveState: true,
@@ -599,17 +661,8 @@ function submitReview() {
     }
   )
 }
-const getAnnualFeeStatus = (member) => {
-  const fees = member.invoices?.filter(f => f.annual_fee > 0)
-  if (!fees || fees.length === 0) return '未納'
-  return fees.every(f => f.status === 'paid') ? '納入済' : '未納'
-}
-
-const getAnnualFeeClass = (member) => {
-  return getAnnualFeeStatus(member) === '納入済'
-    ? 'status-badge-blue'
-    : 'status-badge-red'
-}
+// [今回変更] 年会費の判定は Member::isAnnualFeePaid()（バックエンド）に統一したため、
+// フロント側の判定ロジック（getAnnualFeeStatus/getAnnualFeeClass）は削除した
 
 const getRenewalStatus = (member) => {
   const fee = member.invoices?.find(f => f.renewal_fee > 0)

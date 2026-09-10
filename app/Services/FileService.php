@@ -18,6 +18,8 @@ class FileService
 
     /**
      * ファイル保存 + サムネイル
+     * [今回変更] サムネイル作成が不要になったため、createThumbnailFromLocalFile() の呼び出しを止めている。
+     * メソッド自体は削除せず残しているので、必要になれば下記のコメントアウトを戻すだけで復活できる。
      */
     public function storeUploadedFile(UploadedFile $file, string $dir): array
     {
@@ -25,15 +27,16 @@ class FileService
 
         $path = $file->storeAs($dir, $filename, $this->disk);
 
-        // サムネイルは、アップロード直後のローカル一時ファイル（$file->getRealPath()）から生成する。
-        // S3ディスクには「ローカルパス」という概念が無いため、保存後のパスから再取得しようとすると失敗する。
-        $thumbnail = $this->createThumbnailFromLocalFile($file->getRealPath(), $path, $dir);
+        // [今回変更] サムネイル生成を止める（呼び出しをコメントアウト）
+        // $thumbnail = $this->createThumbnailFromLocalFile($file->getRealPath(), $path, $dir);
+        $thumbnail = null;
 
         return [$path, $thumbnail];
     }
 
     /**
      * base64画像保存
+     * [今回変更] サムネイル作成が不要になったため、createThumbnailFromLocalFile() の呼び出しを止めている。
      */
     public function storeBase64Image(string $base64, string $dir): array
     {
@@ -49,19 +52,20 @@ class FileService
 
         Storage::disk($this->disk)->put($path, $data);
 
-        // サムネイル生成のため、いったんローカルの一時ファイルへ書き出す
-        $tmpFile = tempnam(sys_get_temp_dir(), 'b64img');
-        file_put_contents($tmpFile, $data);
-
-        $thumbnail = $this->createThumbnailFromLocalFile($tmpFile, $path, $dir);
-
-        @unlink($tmpFile);
+        // [今回変更] サムネイル生成を止める（呼び出しをコメントアウト）
+        // $tmpFile = tempnam(sys_get_temp_dir(), 'b64img');
+        // file_put_contents($tmpFile, $data);
+        // $thumbnail = $this->createThumbnailFromLocalFile($tmpFile, $path, $dir);
+        // @unlink($tmpFile);
+        $thumbnail = null;
 
         return [$path, $thumbnail];
     }
 
     /**
      * サムネイル生成
+     * [今回変更] 現在は呼び出されていない（storeUploadedFile/storeBase64Imageからコメントアウト済み）。
+     * メソッド自体は将来の再利用のために残している。
      *
      * $localSourcePath : 変換元ファイルの「ローカル」パス（アップロード直後の一時ファイル、
      *                    またはbase64をいったん書き出した一時ファイル）

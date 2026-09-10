@@ -341,7 +341,13 @@ const assign = (cycle) => {
   router.post(
     route('admin.subleader.assign', cycle.id),
     { reviewer_admin_id: reviewerId },
-    { preserveScroll: true }
+    {
+      preserveScroll: true,
+      // [今回追加] 利益相反等でアサインできなかった場合、理由をアラートで表示する
+      onError: (errors) => {
+        alert(errors.reviewer_admin_id ?? 'アサインに失敗しました。')
+      },
+    }
   )
 }
 

@@ -105,14 +105,18 @@ class InvoiceImport implements ToCollection, WithChunkReading
         }
 
         $billingStart = $row[self::COL_BILLING_START] ?? null;
-        $fiscalYear   = $this->extractYear($billingStart);
+        $billingEnd   = $this->toDate($row[self::COL_BILLING_END] ?? null, 'last');
+        // [今回修正] このプロジェクトの年度は「12/1〜翌11/30」。
+        // fiscal_year は billing_end の年をそのまま使う
+        // （例：billing_start=2025-12-01, billing_end=2026-11-30 → fiscal_year=2026）。
+        $fiscalYear = $billingEnd ? (int) \Carbon\Carbon::parse($billingEnd)->format('Y') : null;
 
         $invoiceData = [
             'member_id'               => $member->id,
             'invoice_number'          => $invoiceNumber,
             'fiscal_year'             => $fiscalYear,
             'billing_start'           => $this->toDate($billingStart, 'first'),
-            'billing_end'             => $this->toDate($row[self::COL_BILLING_END] ?? null, 'last'),
+            'billing_end'             => $billingEnd,
             'invoice_date'            => $this->toDate($row[self::COL_INVOICE_DATE] ?? null),
             'due_date'                => $this->toDate($row[self::COL_DUE_DATE] ?? null),
             'invoice_type'            => $row[self::COL_INVOICE_TYPE] ?? null,
@@ -151,35 +155,6 @@ class InvoiceImport implements ToCollection, WithChunkReading
     // ============================================================
     // ヘルパー
     // ============================================================
-
-    // [今回追加] fiscal_year の抽出を、toDate() と同じく複数形式に対応させる
-    private function extractYear($value): ?int
-    {
-        if (empty($value)) {
-            return null;
-        }
-
-        // "2012/12" 形式
-        if (preg_match('/^(\d{4})\/(\d{1,2})$/', (string) $value, $m)) {
-            return (int) $m[1];
-        }
-
-        // Excelシリアル値
-        if (is_numeric($value)) {
-            try {
-                return (int) \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($value)->format('Y');
-            } catch (\Throwable) {
-                return null;
-            }
-        }
-
-        // その他の文字列（Carbonでパースできる形式）
-        try {
-            return (int) \Carbon\Carbon::parse($value)->format('Y');
-        } catch (\Throwable) {
-            return null;
-        }
-    }
 
     private function toDate($value, string $edge = 'none'): ?string
     {

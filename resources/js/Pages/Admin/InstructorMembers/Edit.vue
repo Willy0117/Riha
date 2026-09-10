@@ -43,7 +43,7 @@
           </div>
           <div>
             <p class="text-xs text-gray-500">{{ t('instructors.update_period') }}</p>
-            <p class="font-semibold">{{ cycle.start_date?.split('T')[0] }} - {{ cycle.end_date?.split('T')[0] }}</p>
+            <p class="font-semibold">{{ formatDate(cycle.start_date) }} - {{ formatDate(cycle.end_date) }}</p>
           </div>
           <div>
             <p class="text-xs text-gray-500">審査数 / 総審査</p>
@@ -73,7 +73,7 @@
           </div>
           <div>
             <p class="text-xs text-gray-500">{{ t('status') }}</p>
-            <p class="font-semibold">{{ t(`cycle_status.${cycle.status}`) }}</p>
+            <p class="font-semibold">{{ cycleStatusLabel(cycle.status) }}</p>
           </div>
         </CardContent>
       </Card>
@@ -81,7 +81,7 @@
       <!-- [今回追加] 認定期間の編集フォーム（end_date・renewal_end_dateのみ） -->
       <Card>
         <CardContent class="p-4">
-          <h2 class="text-sm font-bold text-gray-700 mb-4">認定期間の編集</h2>
+          <h2 class="text-sm font-bold text-gray-700 mb-4">指導士認定期間設定</h2>
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label class="text-xs text-gray-500 mb-1 block">認定終了日（end_date）</label>
@@ -106,6 +106,24 @@
         </CardContent>
       </Card>
 
+      <!-- [今回変更] 3つのメッセージ（更新者向け・委員長向け・審査員向け）を横並びカードで表示 -->
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-xs font-semibold text-red-700 mb-1">更新者向けメッセージ（不合格理由）</p>
+          <p v-if="cycle.reason" class="text-sm text-red-700 whitespace-pre-wrap">{{ cycle.reason }}</p>
+        </div>
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p class="text-xs font-semibold text-blue-700 mb-1">委員長向けメッセージ（審査員から）</p>
+          <p v-if="cycle.reviewer_response_message" class="text-sm text-blue-700 whitespace-pre-wrap">{{ cycle.reviewer_response_message }}</p>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <p class="text-xs font-semibold text-orange-700 mb-1">審査員向けメッセージ（委員長からの差し戻し理由）</p>
+          <p v-if="cycle.chief_feedback" class="text-sm text-orange-700 whitespace-pre-wrap">{{ cycle.chief_feedback }}</p>
+        </div>
+      </div>
+
       <!-- アップロード一覧 -->
       <div>
         <h2 class="text-xl font-bold text-gray-800 mb-4">{{ t('uploaded_files') }}</h2>
@@ -127,7 +145,7 @@
               'bg-green-50/60 border-green-200 hover:border-green-300': upload.status === 'approved',
               'bg-red-50/60 border-red-200 hover:border-red-300': upload.status === 'rejected',
             }"
-            @click="openPreview(upload.id)"
+            @click="openPreview(upload)"
           >
             <div class="flex items-center justify-center h-16 bg-white/70 rounded-md mb-2">
               <FileText class="w-7 h-7 text-gray-400" />
@@ -137,7 +155,7 @@
             <p class="text-xs text-gray-500 truncate mt-0.5">{{ upload.role_name }}</p>
 
             <div class="flex items-center justify-between mt-2">
-              <span class="text-[11px] text-gray-400">{{ upload.issued_date?.split('T')[0] }}</span>
+              <span class="text-[11px] text-gray-400">{{ formatDate(upload.issued_date) }}</span>
               <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
                 +{{ upload.points }}
               </span>
@@ -151,7 +169,7 @@
                 'text-red-600 border border-red-200': upload.status === 'rejected',
               }"
             >
-              {{ statusLabel(upload.status) }}
+              {{ uploadStatusLabel(upload.status) }}
             </span>
             <p v-if="upload.status === 'rejected'" class="text-[11px] text-red-500 mt-1 line-clamp-2">
               {{ upload.rejection_message }}
@@ -162,21 +180,26 @@
 
     </div>
 
-    <!-- PDFプレビューDialog -->
-    <Dialog :open="!!previewPdf" @update:open="previewPdf = null">
+    <!-- PDF/画像プレビューDialog -->
+    <Dialog :open="!!previewUpload" @update:open="previewUpload = null">
       <DialogContent class="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col">
         <DialogHeader class="px-4 py-3 border-b">
           <DialogTitle>{{ t('PDFpreview') }}</DialogTitle>
         </DialogHeader>
-        <div class="flex-1 overflow-hidden">
+        <div class="flex-1 overflow-hidden flex items-center justify-center bg-gray-50">
+          <img
+            v-if="previewUpload?.is_image"
+            :src="previewFileUrl"
+            class="max-w-full max-h-full object-contain"
+          />
           <iframe
-            v-if="previewPdf"
-            :src="previewPdf"
+            v-else-if="previewFileUrl"
+            :src="previewFileUrl"
             class="w-full h-full border-0"
           />
         </div>
         <DialogFooter class="px-4 py-3 border-t">
-          <Button variant="outline" @click="previewPdf = null">{{ t('closed') }}</Button>
+          <Button variant="outline" @click="previewUpload = null">{{ t('closed') }}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -188,6 +211,7 @@
 import { ref, reactive, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
+import dayjs from 'dayjs'
 import {
   ArrowLeft, FileText
 } from 'lucide-vue-next'
@@ -224,10 +248,30 @@ const cycle = member.update_cycles?.[0] || {
 
 const hasCycle = computed(() => !!cycle.id)
 
+// [今回追加] ステータス（cycle.status）の日本語ラベル（Index.vueと同じマップ）
+const cycleStatusLabel = (status) => {
+  const map = {
+    'updated':       '更新済',
+    'before_update': '未更新',
+    'no_update':     '更新しない',
+    'pending':       '本申請中',
+    'approved':      '承認済み',
+    'reject':        '却下',
+    'lapsed':        '資格喪失',
+  }
+  return map[status] ?? '-'
+}
+
+// [今回追加] YYYY-MM-DD形式でフォーマットする（時刻部分は表示しない）
+const formatDate = (value) => {
+  if (!value) return '-'
+  return dayjs(value).format('YYYY-MM-DD')
+}
+
 // [今回追加] end_date・renewal_end_date 編集用フォーム
 const form = reactive({
-  end_date: cycle.end_date?.split('T')[0] ?? '',
-  renewal_end_date: cycle.renewal_end_date?.split('T')[0] ?? '',
+  end_date: cycle.end_date ? dayjs(cycle.end_date).format('YYYY-MM-DD') : '',
+  renewal_end_date: cycle.renewal_end_date ? dayjs(cycle.renewal_end_date).format('YYYY-MM-DD') : '',
 })
 
 const submit = () => {
@@ -249,19 +293,16 @@ const submit = () => {
 // 計算済みの値をそのまま使う（クライアント側での復元ロジックは削除）
 const uploadList = ref(uploads)
 
-const previewPdf = ref(null)
+const previewUpload = ref(null)
 
 const totalCount = computed(() => uploadList.value.length)
 const reviewedCount = computed(() =>
   uploadList.value.filter(u => u.status === 'approved' || u.status === 'rejected').length
 )
 
-const appliedAtLabel = computed(() => {
-  if (!cycle.updated_at) return '-'
-  return cycle.updated_at.split('T')[0]
-})
+const appliedAtLabel = computed(() => formatDate(cycle.updated_at))
 
-const statusLabel = (status) => {
+const uploadStatusLabel = (status) => {
   const map = {
     pending:  '未審査',
     approved: '承認済み',
@@ -279,9 +320,13 @@ const sessionLabel = (session) => {
   return session ? `第${session}回` : ''
 }
 
-const openPreview = (id) => {
-  previewPdf.value = route('admin.instructorMembers.view', { id })
+const openPreview = (upload) => {
+  previewUpload.value = upload
 }
+
+const previewFileUrl = computed(() =>
+  previewUpload.value ? route('admin.instructorMembers.view', { id: previewUpload.value.id }) : null
+)
 
 const backToIndex = () => {
   router.get(route('admin.instructorMembers.index'), {
