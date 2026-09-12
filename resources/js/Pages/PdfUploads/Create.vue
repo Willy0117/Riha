@@ -62,7 +62,7 @@
               </p>
               <p class="text-xs text-blue-700">
                 <span class="font-semibold">審査期間：</span>
-                {{ dayjs(props.schedule.chief_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.chief_end).format('YYYY-MM-DD') }}
+                {{ dayjs(props.schedule.subleader_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.subleader_end).format('YYYY-MM-DD') }}
               </p>
             </div>
           </div>

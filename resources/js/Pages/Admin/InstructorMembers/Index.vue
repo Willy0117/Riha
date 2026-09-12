@@ -604,12 +604,12 @@ const bulkCreateInvoice = () => {
 const statusLabel = (status) => {
   const map = {
     'updated':       '更新済',
-    'before_update': '未更新',
+    'before_update': '更新前',
     'no_update':     '更新しない',
-    'pending':       '本申請中',
-    'approved':      '承認済み',
+    'pending':       '審査中',
+    'approved':      '承認',
     'reject':        '却下',
-    'lapsed':        '資格喪失', // [今回追加]
+    'lapsed':        '資格喪失',
   }
   return map[status] ?? '-'
 }

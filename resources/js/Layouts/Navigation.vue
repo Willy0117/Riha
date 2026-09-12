@@ -46,7 +46,7 @@ const toggleChildMenu = (key) => {
 const { t, locale } = useI18n()
 
 const menus = [
-  {
+/*  {
     key: 'exams',
     label: '指導士資格認定試験',
     icon: UsersIcon,
@@ -80,7 +80,7 @@ const menus = [
         ],
       },
     ],
-  },
+  },*/
 
   {
     key: 'instructors',
@@ -92,10 +92,12 @@ const menus = [
         label: '更新申請',
         route: 'pdf-uploads.create',
       },
+/*      
       {
         label: '単位取得申請',
         route: 'pdf-uploads.index',
       },
+*/
     ],
   },
 ]

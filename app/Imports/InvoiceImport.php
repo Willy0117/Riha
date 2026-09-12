@@ -58,10 +58,13 @@ class InvoiceImport implements ToCollection, WithChunkReading
             ->get()
             ->keyBy('code');
 
+        // [今回修正] invoice_number は複数会員間で重複しうる（実際に発生していた）。
+        // invoice_number 単体をキーにすると、別会員の行が同じキーで上書きしてしまうバグがあったため、
+        // member_id + invoice_number の複合キーで既存レコードを引く。
         $invoiceNumbers = $dataRows->pluck(self::COL_INVOICE_NUMBER)->filter();
         $existingMap = Invoice::whereIn('invoice_number', $invoiceNumbers)
             ->get()
-            ->keyBy('invoice_number');
+            ->keyBy(fn($invoice) => $invoice->member_id . '_' . $invoice->invoice_number);
 
         foreach ($dataRows as $row) {
             try {
@@ -74,8 +77,25 @@ class InvoiceImport implements ToCollection, WithChunkReading
                     'invoice_number' => $row[self::COL_INVOICE_NUMBER] ?? null,
                     'message'        => $e->getMessage(),
                 ];
+                // エラー内容を必ずログファイルにも出力する（原因調査のため）
+                \Log::error('InvoiceImport row failed', [
+                    'member_number'  => $row[self::COL_MEMBER_NUMBER] ?? null,
+                    'invoice_number' => $row[self::COL_INVOICE_NUMBER] ?? null,
+                    'message'        => $e->getMessage(),
+                    'file'           => $e->getFile(),
+                    'line'           => $e->getLine(),
+                    'trace'          => $e->getTraceAsString(),
+                ]);
             }
         }
+
+        // 処理結果のサマリーを必ずログに残す
+        \Log::info('InvoiceImport finished', [
+            'insertCount' => $this->insertCount,
+            'updateCount' => $this->updateCount,
+            'skipCount'   => $this->skipCount,
+            'errorCount'  => count($this->errors),
+        ]);
     }
 
     private function processRow($row, Collection $memberMap, Collection $existingMap): void
@@ -90,6 +110,11 @@ class InvoiceImport implements ToCollection, WithChunkReading
                 'invoice_number' => $invoiceNumber,
                 'message'        => '会員番号が存在しません',
             ];
+            // [今回追加]
+            \Log::warning('InvoiceImport: member not found', [
+                'member_number'  => $memberNumber,
+                'invoice_number' => $invoiceNumber,
+            ]);
             return;
         }
 
@@ -139,14 +164,42 @@ class InvoiceImport implements ToCollection, WithChunkReading
             'memo_admin'              => $row[self::COL_MEMO_ADMIN] ?? null,
         ];
 
-        $existing = $existingMap->get($invoiceNumber);
+        // [今回修正] member_id + invoice_number の複合キーで検索する
+        $existing = $existingMap->get($member->id . '_' . $invoiceNumber);
+
+        // [今回追加] invoice_number は DB上グローバルにUNIQUE（会員ごとではない）。
+        // 既存レコードが見つかったが、紐づく会員が今回の行の会員と異なる場合、
+        // 上書きすると他の会員のデータを奪ってしまう（実際に起きていた事故）ため、
+        // 更新せずエラーとして記録し、処理をスキップする。
+        if ($existing && $existing->member_id !== $member->id) {
+            $this->errors[] = [
+                'member_number'  => $memberNumber,
+                'invoice_number' => $invoiceNumber,
+                'message'        => "請求番号が別の会員（member_id={$existing->member_id}）に既に使用されています。データを確認してください。",
+            ];
+            \Log::error('InvoiceImport: invoice_number belongs to a different member', [
+                'invoice_number'   => $invoiceNumber,
+                'excel_member_id'  => $member->id,
+                'existing_member_id' => $existing->member_id,
+            ]);
+            return;
+        }
 
         if (!$existing) {
-            Invoice::create($invoiceData);
+            $created = Invoice::create($invoiceData);
             $this->insertCount++;
+            // [今回追加] 実際にDBへ保存できたか（IDが採番されたか）を必ずログに残す
+            \Log::info('InvoiceImport: created', [
+                'invoice_number' => $invoiceNumber,
+                'created_id'     => $created->id,
+            ]);
         } elseif ($this->hasChanges($existing, $invoiceData)) {
             $existing->update($invoiceData);
             $this->updateCount++;
+            \Log::info('InvoiceImport: updated', [
+                'invoice_number' => $invoiceNumber,
+                'existing_id'    => $existing->id,
+            ]);
         } else {
             $this->skipCount++;
         }
@@ -215,6 +268,13 @@ class InvoiceImport implements ToCollection, WithChunkReading
             $normalizedNew   = $this->normalizeForCompare($value);
 
             if ($normalizedModel !== $normalizedNew) {
+                // [今回追加] どのカラムで不一致と判定されたか、必ずログに残す（原因調査のため）
+                \Log::info('InvoiceImport: hasChanges detected diff', [
+                    'invoice_number' => $model->invoice_number,
+                    'column'         => $key,
+                    'db_value'       => $normalizedModel,
+                    'excel_value'    => $normalizedNew,
+                ]);
                 return true;
             }
         }

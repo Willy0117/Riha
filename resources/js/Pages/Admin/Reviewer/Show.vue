@@ -83,21 +83,9 @@
           <p class="text-sm text-orange-700 whitespace-pre-wrap">{{ cycle.chief_feedback }}</p>
         </div>
 
-        <!-- [今回修正] 却下理由（申請者へのメッセージ）と委員長へのメッセージを完全に分離した、独立2つの入力欄 -->
-        <div class="bg-white border border-gray-200 rounded-xl p-4 mb-4">
-          <label class="text-sm font-semibold text-gray-700 mb-2 block">
-            申請者へのメッセージ（却下理由）
-            <span class="text-xs font-normal text-gray-400">（不合格の場合は必須・申請者本人に却下理由として表示されます）</span>
-          </label>
-          <textarea
-            v-model="rejectionReason"
-            class="input-field text-sm resize-none w-full"
-            rows="3"
-            placeholder="不合格の場合は、申請者に伝わる却下理由を入力してください（合格の場合は入力不要です）"
-          />
-        </div>
+        <!-- [今回変更] 審査員から更新者へのメッセージ（却下理由入力欄）は不要になったため削除 -->
 
-        <!-- [今回追加] 委員長へのメッセージ（差し戻し案件のときだけ表示・完全に別の入力欄） -->
+        <!-- 委員長へのメッセージ（差し戻し案件のときだけ表示・完全に別の入力欄） -->
         <div v-if="cycle.reviewer_judgment === 're_review'" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
           <label class="text-sm font-semibold text-blue-700 mb-2 block">
             委員長へのメッセージ
@@ -170,7 +158,7 @@
 
                 <div class="bg-gray-50 rounded-xl p-4 space-y-3">
                   <div class="space-y-1">
-                    <label class="text-xs font-medium text-gray-600">差し戻し理由の選択</label>
+                    <label class="text-xs font-medium text-gray-600">却下の理由</label>
                     <select v-model="rejectReasons[upload.id]" class="input-field text-sm">
                       <option value="" disabled>理由を選択してください</option>
                       <option value="unclear">書類が不鮮明</option>
@@ -204,7 +192,7 @@
                     @click="handleReject(upload)"
                   >
                     <XCircle class="w-4 h-4 mr-2" />
-                    差し戻す
+                    却下
                   </Button>
                 </div>
               </div>
@@ -265,7 +253,7 @@
                 <div v-else class="bg-red-50 rounded-xl p-4 space-y-1">
                   <div class="flex items-center gap-2 text-red-600 font-semibold">
                     <XCircle class="w-5 h-5" />
-                    差し戻し
+                    却下
                   </div>
                   <p class="text-sm text-red-500">{{ upload.rejection_message }}</p>
                 </div>
@@ -279,18 +267,22 @@
     <!-- [今回変更] previewUpload（現在表示中の書類）を保持し、◁▷で前後に移動できるようにする。
          右側に情報パネル（学会名・区分・種別・承認/差し戻し操作）を追加した左右分割レイアウト。 -->
     <Dialog :open="!!previewUpload" @update:open="previewUpload = null">
-      <DialogContent class="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col">
+      <DialogContent class="w-[70vw] max-w-[70vw] h-[95vh] max-h-[95vh] p-0 flex flex-col">
         <DialogHeader class="px-4 py-3 border-b flex-row items-center justify-between">
           <DialogTitle>
             {{ previewUpload ? (sessionLabel(previewUpload.session) || previewUpload.credit_conference_name) : 'プレビュー' }}
           </DialogTitle>
+          <!-- [今回追加] 今どの書類を見ているか分かるよう、ページ番号を表示する -->
+          <span v-if="previewUpload" class="text-sm text-gray-400 mr-8">
+            {{ previewIndex + 1 }} / {{ uploadList.length }}
+          </span>
         </DialogHeader>
 
         <div class="flex-1 flex overflow-hidden">
           <!-- 左：プレビュー -->
           <div class="flex-1 relative flex items-center justify-center bg-gray-50 overflow-hidden">
             <button
-              v-if="uploadList.length > 1"
+              v-if="previewIndex > 0"
               class="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white"
               @click="showAdjacentPreview(-1)"
             >
@@ -304,12 +296,12 @@
             />
             <iframe
               v-else-if="previewFileUrl"
-              :src="previewFileUrl"
+              :src="`${previewFileUrl}#toolbar=0&navpanes=0`"
               class="w-full h-full border-0"
             />
 
             <button
-              v-if="uploadList.length > 1"
+              v-if="previewIndex < uploadList.length - 1"
               class="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-10 h-10 rounded-full bg-white/90 border border-gray-200 shadow flex items-center justify-center hover:bg-white"
               @click="showAdjacentPreview(1)"
             >
@@ -318,7 +310,7 @@
           </div>
 
           <!-- [今回追加] 右：情報＋操作パネル -->
-          <div v-if="previewUpload" class="w-80 flex-none border-l border-gray-200 overflow-y-auto p-4 space-y-4">
+          <div v-if="previewUpload" class="w-96 flex-none border-l border-gray-200 overflow-y-auto p-4 space-y-4">
             <div>
               <span
                 v-if="previewUpload.chief_flagged"
@@ -357,7 +349,7 @@
             <div v-if="previewUpload.status === 'pending'" class="space-y-3">
               <div class="bg-gray-50 rounded-xl p-3 space-y-3">
                 <div class="space-y-1">
-                  <label class="text-xs font-medium text-gray-600">差し戻し理由の選択</label>
+                  <label class="text-xs font-medium text-gray-600">却下の理由</label>
                   <select v-model="rejectReasons[previewUpload.id]" class="input-field text-sm">
                     <option value="" disabled>理由を選択してください</option>
                     <option value="unclear">書類が不鮮明</option>
@@ -391,7 +383,7 @@
                   @click="handleReject(previewUpload)"
                 >
                   <XCircle class="w-4 h-4 mr-2" />
-                  差し戻す
+                  却下
                 </Button>
               </div>
             </div>
@@ -405,7 +397,7 @@
               <div v-else class="bg-red-50 rounded-xl p-3 space-y-1">
                 <div class="flex items-center gap-2 text-red-600 font-semibold text-sm">
                   <XCircle class="w-5 h-5" />
-                  差し戻し
+                  却下
                 </div>
                 <p class="text-sm text-red-500">{{ previewUpload.rejection_message }}</p>
               </div>
@@ -448,8 +440,7 @@ const rejectReasons = ref({})
 const rejectComments = ref({})
 // [今回変更] previewPdf（URL文字列のみ）ではなく、現在プレビュー中のupload全体を保持する
 const previewUpload = ref(null)
-// [今回修正] 却下理由（申請者宛）と委員長宛メッセージを完全に分離した、独立2つの変数
-const rejectionReason = ref('')
+// [今回変更] 審査員→更新者へのメッセージ（却下理由）は不要になったため削除。委員長宛メッセージのみ残す
 const chiefMessage = ref('')
 
 const requiredPoints = cycle.value.required_points ?? 50
@@ -494,7 +485,7 @@ const pendingUploads = computed(() => uploadList.value.filter(u => u.status === 
 const reviewedUploads = computed(() => uploadList.value.filter(u => u.status !== 'pending'))
 
 const statusLabel = (status) => {
-  const map = { pending: '未審査', approved: '承認済み', rejected: '差し戻し' }
+  const map = { pending: '未審査', approved: '承認済み', rejected: '却下' }
   return map[status] ?? '-'
 }
 
@@ -523,12 +514,21 @@ const previewFileUrl = computed(() =>
 )
 
 // [今回追加] ◁▷ボタンで、uploadList内の前後の書類に移動する
+// [今回追加] 現在プレビュー中の書類が、uploadList内の何番目か（ページ番号表示・端判定に使う）
+const previewIndex = computed(() => {
+  if (!previewUpload.value) return -1
+  return uploadList.value.findIndex(u => u.id === previewUpload.value.id)
+})
+
+// [今回修正] 端まで行ったらループせず止まる（分かりにくいため）
 const showAdjacentPreview = (direction) => {
   if (!previewUpload.value) return
-  const currentIndex = uploadList.value.findIndex(u => u.id === previewUpload.value.id)
+  const currentIndex = previewIndex.value
   if (currentIndex === -1) return
 
-  const nextIndex = (currentIndex + direction + uploadList.value.length) % uploadList.value.length
+  const nextIndex = currentIndex + direction
+  if (nextIndex < 0 || nextIndex >= uploadList.value.length) return
+
   previewUpload.value = uploadList.value[nextIndex]
 }
 
@@ -561,10 +561,10 @@ const handleReject = (upload) => {
   const comment = rejectComments.value[upload.id] ?? ''
 
   if (!reasonKey) {
-    alert('差し戻し理由を選択してください')
+    alert('却下の理由を選択してください')
     return
   }
-  if (!confirm('この書類を差し戻しますか？')) return
+  if (!confirm('この書類を却下しますか？')) return
 
   // [今回修正] 英語キーのまま保存されないよう日本語ラベルに変換し、
   // コメントがあってもプルダウンの理由が消えないよう両方を連結して保存する
@@ -591,20 +591,15 @@ const handleJudge = (judgment) => {
   if (judgment === 'pass' && !canPass.value) return
   if (judgment === 'fail' && !canFail.value) return
 
-  if (judgment === 'fail' && !rejectionReason.value.trim()) {
-    alert('不合格の場合は理由の入力が必須です。')
-    return
-  }
-
   const label = judgment === 'pass' ? '合格' : '不合格'
   const confirmMessage = judgment === 'fail'
     ? 'この申請を「不合格」とします。よろしいですか？'
     : `この申請を「${label}」と判定しますか？`
   if (!confirm(confirmMessage)) return
 
-  // [今回修正] 不合格時は申請者への却下理由、合格時は委員長へのメッセージを、
-  // それぞれ独立した入力欄からサーバーへ送る
-  const message = judgment === 'fail' ? rejectionReason.value : chiefMessage.value
+  // [今回変更] 審査員から更新者へのメッセージ（却下理由）入力欄は廃止したため、
+  // 不合格時は空文字を送る。委員長へのメッセージのみ、合格（差し戻し再提出）時に送信する。
+  const message = judgment === 'fail' ? '' : chiefMessage.value
 
   router.post(
     route('admin.reviewer.judge', { cycle: cycle.value.id }),
@@ -613,7 +608,6 @@ const handleJudge = (judgment) => {
       preserveScroll: true,
       onSuccess: () => {
         cycle.value.reviewer_judgment = judgment
-        rejectionReason.value = ''
         chiefMessage.value = ''
       }
     }

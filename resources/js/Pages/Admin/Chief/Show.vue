@@ -58,7 +58,7 @@
           </div>
           <div>
             <p class="text-xs text-gray-500">ステータス</p>
-            <p class="font-semibold">{{ cycle.status }}</p>
+            <p class="font-semibold">{{ cycleStatusLabel(cycle.status) }}</p>
           </div>
         </CardContent>
       </Card>
@@ -292,7 +292,21 @@ const appliedAtLabel = computed(() => {
 })
 
 const statusLabel = (status) => {
-  const map = { pending: '未審査', approved: '承認済み', rejected: '差し戻し' }
+  const map = { pending: '未審査', approved: '承認済み', rejected: '却下' }
+  return map[status] ?? '-'
+}
+
+// [今回追加] instructor_update_cycles.status 用（事務局画面と表記を統一）
+const cycleStatusLabel = (status) => {
+  const map = {
+    'updated':       '更新済',
+    'before_update': '更新前',
+    'no_update':     '更新しない',
+    'pending':       '審査中',
+    'approved':      '承認',
+    'reject':        '却下',
+    'lapsed':        '資格喪失',
+  }
   return map[status] ?? '-'
 }
 

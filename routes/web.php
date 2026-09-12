@@ -25,6 +25,8 @@ use App\Http\Controllers\Admin\ScheduleController as ScheduleController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\InstructorCycleController as InstructorCycleController;
 
+use App\Http\Controllers\Admin\SmsTestController;
+
 // use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\PdfUploadController;
 use App\Http\Controllers\RehabApplicationController;
@@ -71,8 +73,10 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/logout', [\App\Http\Controllers\Admin\AuthController::class, 'logout'])
             ->name('logout');
 
-        Route::get('/dashboard', fn () => inertia('Admin/Dashboard'))
-            ->name('dashboard');
+//        Route::get('/dashboard', fn () => inertia('Admin/Dashboard'))
+//            ->name('dashboard');
+        Route::get('/dashboard', [\App\Http\Controllers\Admin\DashboardController::class, 'index'])
+            ->name('dashboard');               
         // Tenant
         Route::resource('tenants', \App\Http\Controllers\Admin\TenantController::class);
         Route::post('tenants/bulk-delete', [\App\Http\Controllers\Admin\TenantController::class, 'bulkDelete'])->name('tenants.bulkDelete');
@@ -92,6 +96,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::resource('members', \App\Http\Controllers\Admin\MemberController::class);
         // organization
         Route::resource('organizations', \App\Http\Controllers\Admin\OrganizationController::class);
+
+        Route::get('smsTest', [SmsTestController::class, 'index'])
+            ->name('smsTest.index');
+        Route::post('smsTest/send', [SmsTestController::class, 'send'])
+            ->name('smsTest.send');
 
         // exams　指導士試験申込
         Route::put(

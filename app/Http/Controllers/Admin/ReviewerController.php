@@ -204,14 +204,10 @@ class ReviewerController extends Controller
 
         $request->validate([
             'judgment' => 'required|in:pass,fail',
-            // [今回変更] 不合格の場合は必須（従来、委員長が却下時に入力していた理由をここで入力する）
-            // 合格の場合は、差し戻し（re_review）再提出時の委員長宛任意メッセージとして使う
+            // [今回変更] 審査員から更新者へのメッセージ（却下理由）入力欄は廃止したため、
+            // 常に任意（不合格時も空文字で送られてくる想定）
             'message' => 'nullable|string|max:1000',
         ]);
-
-        if ($request->judgment === 'fail' && empty($request->message)) {
-            return back()->withErrors(['message' => '不合格の場合は理由の入力が必須です。']);
-        }
 
         // サーバー側でも基準を再計算し、クライアント側の表示と実データがズレていないか確認する
         $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole.creditRole'])

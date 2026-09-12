@@ -159,16 +159,17 @@ class PdfUploadController extends Controller
             $conference = CreditConference::find($request->credit_conference_id);
             $points = $role ? $role->points : 0;
 
-            // [今回変更] TextractがTokyoリージョン未対応だったため、一旦Gemini APIに戻して動作確認する
-            $verificationResult = $this->verifyPdfWithGemini(
-                $request->file('file'),
-                [
-                    'date'        => $request->issued_date,
-                    'conference'  => $conference?->name,
-                    'role'        => $role?->creditRole?->name,
-                    'member_name' => $user->name,
-                ]
-            );
+            // [今回変更] AI判定は一旦コメントアウトで無効化する（動作再開する場合はコメントを戻す）
+            // $verificationResult = $this->verifyPdfWithGemini(
+            //     $request->file('file'),
+            //     [
+            //         'date'        => $request->issued_date,
+            //         'conference'  => $conference?->name,
+            //         'role'        => $role?->creditRole?->name,
+            //         'member_name' => $user->name,
+            //     ]
+            // );
+            $verificationResult = [];
 
             PdfUpload::create([
                 'member_id'           => $user->member_id,
@@ -387,22 +388,34 @@ class PdfUploadController extends Controller
                 });
         }
 
-        // 単位集計・学会参加カウントは、認定期間内（issued_date基準）の書類のみを対象にする
-        $uploadsWithinPeriod = $uploads->where('is_within_period', true);
-
-        $approvedTotal = $uploadsWithinPeriod
-            ->where('status', 'approved')
-            ->sum('points');
-
-        $pendingTotal = $uploadsWithinPeriod
-            ->where('status', 'pending')
-            ->sum('points');
-
-        $total = $uploadsWithinPeriod->sum('points');
-
         // 更新申請の審査中（cycle.status === 'pending'）は、cycle.updated_at（申請した瞬間）を基準に判定する。
         $isCycleUnderReview = $cycle?->status === 'pending';
         $appliedAt = $cycle?->updated_at;
+
+        // 単位集計・学会参加カウントは、認定期間内（issued_date基準）の書類のみを対象にする
+        $uploadsWithinPeriod = $uploads->where('is_within_period', true);
+
+        // [今回修正] 「申請日時より後に審査員が判定した書類（承認・却下いずれも）」かどうかの判定。
+        // 申請中は、これに該当する書類を承認/却下の結果に関わらず「蓄積中」として扱う
+        // （申請が確定する＝委員長裁定が下るまでは、却下されても単位が減らないようにする）。
+        $isChangedAfterApplied = function ($u) use ($isCycleUnderReview, $appliedAt) {
+            if (!$isCycleUnderReview) {
+                return false;
+            }
+            $updatedAt = $u['updated_at'] ?? null;
+            return $appliedAt && $updatedAt
+                && \Carbon\Carbon::parse($updatedAt)->gt($appliedAt);
+        };
+
+        // 承認済み：申請日時より前から既に承認されていた書類のみ
+        $approvedTotal = $uploadsWithinPeriod
+            ->filter(fn ($u) => $u['status'] === 'approved' && !$isChangedAfterApplied($u))
+            ->sum('points');
+
+        // 蓄積中：申請日時より前から未審査だった書類 ＋ 申請日時より後に判定された書類（承認・却下いずれも）
+        $pendingTotal = $uploadsWithinPeriod
+            ->filter(fn ($u) => $u['status'] === 'pending' || $isChangedAfterApplied($u))
+            ->sum('points');
 
         $uploads = $uploads->map(function ($u) use ($isCycleUnderReview, $appliedAt) {
             if (!$u['is_within_period']) {
@@ -445,21 +458,27 @@ class PdfUploadController extends Controller
 
         $isFeeOk = $totalFee <= $totalPaid;
 
-        $conferenceUploadsQuery = PdfUpload::where('member_id', $user->member_id)
-            ->whereBetween('issued_date', [$cycle->start_date, $cycle->end_date])
-            ->whereHas('creditCategory', fn ($q) =>
-                $q->where('name', '学術集会')
-            )
-            ->whereHas('creditConference', fn ($q) =>
-                $q->where('name', '日本腎臓リハビリテーション学会')
-            )
-            ->whereHas('creditRole', fn ($q) =>
-                $q->whereHas('creditRole', fn ($q2) => $q2->where('name', '参加'))
-            );
+        // 却下された書類も含めた全件カウントになっていたバグと、
+        // 申請日時より後に判定された書類（却下含む）を蓄積中に含めるロジックを、
+        // 単位集計と同じ Collection ベースの判定に統一する。
+        $isConferenceUpload = fn ($u) =>
+            $u['credit_category_name'] === '学術集会'
+            && $u['credit_conference_name'] === '日本腎臓リハビリテーション学会'
+            && $u['role_name'] === '参加';
 
-        $conference_count = (clone $conferenceUploadsQuery)->count();
-        $approvedConferenceCount = (clone $conferenceUploadsQuery)->where('status', 'approved')->count();
-        $pendingConferenceCount = (clone $conferenceUploadsQuery)->where('status', 'pending')->count();
+        $conferenceUploads = $uploadsWithinPeriod->filter($isConferenceUpload);
+
+        // 承認済み：申請日時より前から既に承認されていた書類のみ
+        $approvedConferenceCount = $conferenceUploads
+            ->filter(fn ($u) => $u['status'] === 'approved' && !$isChangedAfterApplied($u))
+            ->count();
+
+        // 蓄積中：申請日時より前から未審査だった書類 ＋ 申請日時より後に判定された書類（承認・却下いずれも）
+        $pendingConferenceCount = $conferenceUploads
+            ->filter(fn ($u) => $u['status'] === 'pending' || $isChangedAfterApplied($u))
+            ->count();
+
+        $conference_count = $approvedConferenceCount + $pendingConferenceCount;
 
         // 全カテゴリー
         $creditCategories = CreditCategory::all();
@@ -498,7 +517,6 @@ class PdfUploadController extends Controller
             'roles' => $roles,
             'approvedTotal' => $approvedTotal,
             'pendingTotal' => $pendingTotal,
-            'total' => $total,
             'totalFee' => $totalFee,
             'totalPaid' => $totalPaid,
             'isFeeOk' => $isFeeOk,
@@ -530,6 +548,8 @@ class PdfUploadController extends Controller
 
     /**
      * サムネイルの閲覧。S3署名URLへリダイレクトする（非公開バケット前提）。
+     * [今回変更] 新規アップロード分はサムネイルを生成しなくなったため、
+     * このメソッドは過去にアップロードされた既存データの後方互換用として残している。
      */
     public function thumbnail(PdfUpload $pdf)
     {
