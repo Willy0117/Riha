@@ -8,13 +8,13 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 
 const props = defineProps({
-    email: String,
+    username: String,
     token: String,
 });
 
 const form = useForm({
     token: props.token,
-    email: props.email,
+    username: props.username,
     password: '',
     password_confirmation: '',
 });
@@ -27,7 +27,7 @@ const submit = () => {
 </script>
 
 <template>
-    <Head title="Reset Password" />
+    <Head title="パスワード再設定" />
 
     <AuthenticationCard>
         <template #logo>
@@ -36,21 +36,21 @@ const submit = () => {
 
         <form @submit.prevent="submit">
             <div>
-                <InputLabel for="email" value="Email" />
+                <InputLabel for="username" value="会員番号" />
                 <TextInput
-                    id="email"
-                    v-model="form.email"
-                    type="email"
+                    id="username"
+                    v-model="form.username"
+                    type="text"
                     class="mt-1 block w-full"
                     required
                     autofocus
                     autocomplete="username"
                 />
-                <InputError class="mt-2" :message="form.errors.email" />
+                <InputError class="mt-2" :message="form.errors.username" />
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password" value="Password" />
+                <InputLabel for="password" value="新しいパスワード" />
                 <TextInput
                     id="password"
                     v-model="form.password"
@@ -63,7 +63,7 @@ const submit = () => {
             </div>
 
             <div class="mt-4">
-                <InputLabel for="password_confirmation" value="Confirm Password" />
+                <InputLabel for="password_confirmation" value="新しいパスワード（確認）" />
                 <TextInput
                     id="password_confirmation"
                     v-model="form.password_confirmation"
@@ -77,7 +77,7 @@ const submit = () => {
 
             <div class="flex items-center justify-end mt-4">
                 <PrimaryButton :class="{ 'opacity-25': form.processing }" :disabled="form.processing">
-                    Reset Password
+                    パスワードを再設定する
                 </PrimaryButton>
             </div>
         </form>

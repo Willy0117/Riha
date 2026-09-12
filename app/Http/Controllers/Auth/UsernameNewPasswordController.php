@@ -19,7 +19,8 @@ class UsernameNewPasswordController extends Controller
     public function create(Request $request)
     {
         return Inertia::render('Auth/ResetPassword', [
-            'email' => $request->email,
+            // [今回修正] 会員（userガード）はusername（会員番号）ベースで統一する
+            'username' => $request->username,
             'token' => $request->route('token'),
         ]);
     }
@@ -31,12 +32,12 @@ class UsernameNewPasswordController extends Controller
     {
         $request->validate([
             'token' => 'required',
-            'email' => 'required|email',
+            'username' => 'required|string',
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
         $status = Password::broker(config('fortify.passwords'))->reset(
-            $request->only('email', 'password', 'password_confirmation', 'token'),
+            $request->only('username', 'password', 'password_confirmation', 'token'),
             function ($user) use ($request) {
                 $user->forceFill([
                     'password' => Hash::make($request->password),
@@ -52,7 +53,7 @@ class UsernameNewPasswordController extends Controller
         }
 
         return back()->withErrors([
-            'email' => __($status),
+            'username' => __($status),
         ]);
     }
 }
