@@ -74,6 +74,15 @@
         >
           絞り込みをクリア
         </button>
+
+        <!-- [今回追加] 更新料請求対象者（承認済み）のCSVエクスポート -->
+        <a
+          :href="route('admin.instructorMembers.exportApprovedCsv')"
+          class="ml-auto px-3 py-1.5 text-sm rounded-md border bg-white text-gray-600 border-gray-300 hover:bg-gray-50 flex items-center gap-1"
+        >
+          <Download class="w-3.5 h-3.5" />
+          <span>更新料請求対象者CSV</span>
+        </a>
       </div>
 
       <!-- 一括操作エリア -->
@@ -372,7 +381,7 @@ import DialogModal from '@/Components/DialogModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { CheckCircle2, XCircle, Receipt, Pencil } from 'lucide-vue-next'
+import { CheckCircle2, XCircle, Receipt, Pencil, Download } from 'lucide-vue-next'
 
 const { t } = useI18n()
 

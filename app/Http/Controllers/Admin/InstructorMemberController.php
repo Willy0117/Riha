@@ -26,6 +26,42 @@ class InstructorMemberController extends Controller
         return $this->disk()->temporaryUrl($thumbnailPath, now()->addMinutes(30));
     }
 
+    /**
+     * [今回追加] 更新料請求対象者（委員長が承認済み＝status='approved'）を、
+     * 会員番号・氏名の2列のみでCSV出力する。
+     */
+    public function exportApprovedCsv(Request $request)
+    {
+        $members = Member::whereHas('user')
+            ->where('status_id', '!=', Member::STATUS_WITHDRAWN)
+            ->whereHas('updateCycles', fn ($q) => $q->where('status', 'approved'))
+            ->orderBy('code')
+            ->get(['code', 'last_name', 'first_name']);
+
+        $filename = 'approved_members_' . now()->format('Ymd_His') . '.csv';
+
+        $callback = function () use ($members) {
+            $handle = fopen('php://output', 'w');
+            // Excelで文字化けしないよう、UTF-8 BOMを付与する
+            fwrite($handle, "\xEF\xBB\xBF");
+            fputcsv($handle, ['会員番号', '氏名']);
+
+            foreach ($members as $member) {
+                fputcsv($handle, [
+                    $member->code,
+                    trim(($member->last_name ?? '') . ' ' . ($member->first_name ?? '')),
+                ]);
+            }
+
+            fclose($handle);
+        };
+
+        return response()->stream($callback, 200, [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ]);
+    }
+
     // Index: 会員一覧（事務局）
     public function index(Request $request)
     {

@@ -221,6 +221,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('instructorMembers.view');
         Route::get('instructorMembers/pdfUploads/{id}/thumbnail', [AdminInstructorMemberController::class, 'thumbnail'])
             ->name('instructorMembers.thumbnail');
+        Route::get('instructorMembers/exportApprovedCsv', [AdminInstructorMemberController::class, 'exportApprovedCsv'])
+            ->name('instructorMembers.exportApprovedCsv');
 
         Route::get('invoices', [InvoiceController::class, 'index'])->name('invoices.index');
         Route::post('invoices/issueTransfer', [InvoiceController::class, 'issueTransfer'])->name('invoices.issueTransfer');
