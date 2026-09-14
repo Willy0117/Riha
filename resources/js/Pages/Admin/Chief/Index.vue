@@ -108,16 +108,9 @@
                 </span>
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-600 max-w-xs">
-                <div v-if="cycle.reason || cycle.reviewer_response_message" class="space-y-1">
-                  <p v-if="cycle.reason" class="text-[10px] leading-tight">
-                    <span class="text-red-500 font-semibold">[却下]</span>
-                    <span class="line-clamp-1 align-middle">{{ cycle.reason }}</span>
-                  </p>
-                  <p v-if="cycle.reviewer_response_message" class="text-[10px] leading-tight">
-                    <span class="text-blue-500 font-semibold">[委員長へ]</span>
-                    <span class="line-clamp-1 align-middle">{{ cycle.reviewer_response_message }}</span>
-                  </p>
-                </div>
+                <span v-if="cycle.reviewer_response_message" class="text-xs line-clamp-2">
+                  {{ cycle.reviewer_response_message }}
+                </span>
                 <span v-else class="text-xs text-gray-300">-</span>
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.reviewer_judged_at?.split('T')[0] ?? '-' }}</td>

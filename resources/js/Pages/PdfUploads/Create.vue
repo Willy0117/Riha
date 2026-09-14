@@ -62,7 +62,7 @@
               </p>
               <p class="text-xs text-blue-700">
                 <span class="font-semibold">審査期間：</span>
-                {{ dayjs(props.schedule.subleader_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.subleader_end).format('YYYY-MM-DD') }}
+                {{ dayjs(props.schedule.subleader_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.chief_end).format('YYYY-MM-DD') }}
               </p>
             </div>
           </div>
@@ -777,7 +777,7 @@ const isCreditsRequirementMet = computed(() =>
 )
 
 // 4. 更新申請の状態（before_update以外はボタンではなくバッジ表示にする）
-// [今回追加] 更新申請受付期間カード右横に表示するステータスバッジ
+// 更新申請受付期間カード右横に表示するステータスバッジ
 const cycleStatusLabel = computed(() => {
   const map = {
     before_update: '未申請',

@@ -57,17 +57,20 @@ class DashboardController extends Controller
         // 他の年度で発生していれば、それ自体が異常事態のため、常に全件監視する）
         // ログイン中の管理者が該当する view 権限を持っている場合のみ算出し、
         // 権限が無い項目は null を返す（Vue側でその項目のカードを非表示にする）。
+        // [今回修正] Navigation.vue側の権限判定（tenantPermissions()）と統一する。
+        // 標準の can() だと、tenant_id を考慮しないため判定が食い違うことがあったため。
         $adminUser = $request->user('admin');
+        $permissionNames = $adminUser->tenantPermissions()->pluck('name');
 
         // アサイン担当者：未アサイン（pending かつ 担当者未割当）
-        $unassignedCount = $adminUser->can('subleaders.view')
+        $unassignedCount = $permissionNames->contains('subleaders.view')
             ? InstructorUpdateCycle::where('status', 'pending')
                 ->whereNull('reviewer_admin_id')
                 ->count()
             : null;
 
         // 審査員：未審査（担当者は割り当て済みだが、まだ判定していない）
-        $unreviewedCount = $adminUser->can('reviewers.view')
+        $unreviewedCount = $permissionNames->contains('reviewers.view')
             ? InstructorUpdateCycle::where('status', 'pending')
                 ->whereNotNull('reviewer_admin_id')
                 ->where('reviewer_judgment', 'unreviewed')
@@ -75,7 +78,7 @@ class DashboardController extends Controller
             : null;
 
         // 審査委員長：未承認（審査員の判定は出ているが、まだ委員長の最終承認が済んでいない）
-        $unapprovedCount = $adminUser->can('chiefs.view')
+        $unapprovedCount = $permissionNames->contains('chiefs.view')
             ? InstructorUpdateCycle::where('status', 'pending')
                 ->whereIn('reviewer_judgment', ['pass', 'fail'])
                 ->count()
