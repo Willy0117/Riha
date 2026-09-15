@@ -3,11 +3,23 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApplicationSchedule;
 use App\Models\InstructorUpdateCycle;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
 {
+    /**
+     * [今回追加] SubLeaderAssignmentController と同じロジック。
+     * 「今日時点で、既に申込締切（application_end）を迎えている期の中で、一番遅い application_end」を求める。
+     */
+    private function latestClosedApplicationEnd(): ?string
+    {
+        return ApplicationSchedule::where('application_end', '<=', now()->toDateString())
+            ->orderByDesc('application_end')
+            ->value('application_end');
+    }
+
     public function index(Request $request)
     {
         // [今回追加] 「今年度」は renewal_start_date の年をそのまま使う（シンプルな判定、後日精緻化予定）
@@ -63,24 +75,35 @@ class DashboardController extends Controller
         $permissionNames = $adminUser->tenantPermissions()->pluck('name');
 
         // アサイン担当者：未アサイン（pending かつ 担当者未割当）
+        // [今回修正] SubLeader_Index.vue一覧と条件を完全一致させる
+        // （申込締切(application_end)を迎えている期に申請されたものだけを対象にするバッファ条件が抜けていた）
+        $closedEnd = $this->latestClosedApplicationEnd();
+        $unassignedQuery = InstructorUpdateCycle::where('status', 'pending')
+            ->whereNull('reviewer_admin_id');
+        if ($closedEnd) {
+            $unassignedQuery->whereDate('updated_at', '<=', $closedEnd);
+        } else {
+            $unassignedQuery->whereDate('updated_at', '<=', now()->toDateString());
+        }
         $unassignedCount = $permissionNames->contains('subleaders.view')
-            ? InstructorUpdateCycle::where('status', 'pending')
-                ->whereNull('reviewer_admin_id')
-                ->count()
+            ? $unassignedQuery->count()
             : null;
 
-        // 審査員：未審査（担当者は割り当て済みだが、まだ判定していない）
+        // 審査員：未審査（ログイン中の審査員自身が担当する分のみ。Reviewer_Index.vue一覧と条件を完全一致させる）
         $unreviewedCount = $permissionNames->contains('reviewers.view')
-            ? InstructorUpdateCycle::where('status', 'pending')
-                ->whereNotNull('reviewer_admin_id')
-                ->where('reviewer_judgment', 'unreviewed')
+            ? InstructorUpdateCycle::where('reviewer_admin_id', $adminUser->id)
+                ->where('status', 'pending')
+                ->whereIn('reviewer_judgment', ['unreviewed', 're_review'])
                 ->count()
             : null;
 
         // 審査委員長：未承認（審査員の判定は出ているが、まだ委員長の最終承認が済んでいない）
+        // [今回修正] Chief_Index.vue一覧と条件を完全一致させる
+        // （reviewer_judged_atが今日以前のものだけを対象にするバッファ条件が抜けていた）
         $unapprovedCount = $permissionNames->contains('chiefs.view')
             ? InstructorUpdateCycle::where('status', 'pending')
                 ->whereIn('reviewer_judgment', ['pass', 'fail'])
+                ->whereDate('reviewer_judged_at', '<=', now()->toDateString())
                 ->count()
             : null;
 

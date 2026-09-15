@@ -85,11 +85,11 @@
 
         <!-- [今回変更] 審査員から更新者へのメッセージ（却下理由入力欄）は不要になったため削除 -->
 
-        <!-- 委員長へのメッセージ（差し戻し案件のときだけ表示・完全に別の入力欄） -->
-        <div v-if="cycle.reviewer_judgment === 're_review'" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+        <!-- [今回修正] 委員長へのメッセージ（初回審査・差し戻し後いずれも常に表示） -->
+        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
           <label class="text-sm font-semibold text-blue-700 mb-2 block">
             委員長へのメッセージ
-            <span class="text-xs font-normal text-blue-400">（任意・合格として再提出する際に委員長へ伝えたい内容があれば入力してください）</span>
+            <span class="text-xs font-normal text-blue-400">（任意・合格時に委員長へ伝えたい内容があれば入力してください）</span>
           </label>
           <textarea
             v-model="chiefMessage"

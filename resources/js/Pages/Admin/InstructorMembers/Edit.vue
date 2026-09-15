@@ -106,12 +106,14 @@
         </CardContent>
       </Card>
 
-      <!-- [今回変更] 3つのメッセージ（更新者向け・委員長向け・審査員向け）を横並びカードで表示 -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- [今回変更] 更新者向けメッセージは不要になったためコメントアウト。委員長向け・審査員向けの2枚に変更 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!--
         <div class="bg-red-50 border border-red-200 rounded-lg p-3">
           <p class="text-xs font-semibold text-red-700 mb-1">更新者向けメッセージ（不合格理由）</p>
           <p v-if="cycle.reason" class="text-sm text-red-700 whitespace-pre-wrap">{{ cycle.reason }}</p>
         </div>
+        -->
 
         <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
           <p class="text-xs font-semibold text-blue-700 mb-1">委員長向けメッセージ（審査員から）</p>
