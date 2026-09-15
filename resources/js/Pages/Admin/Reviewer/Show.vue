@@ -597,9 +597,8 @@ const handleJudge = (judgment) => {
     : `この申請を「${label}」と判定しますか？`
   if (!confirm(confirmMessage)) return
 
-  // [今回変更] 審査員から更新者へのメッセージ（却下理由）入力欄は廃止したため、
-  // 不合格時は空文字を送る。委員長へのメッセージのみ、合格（差し戻し再提出）時に送信する。
-  const message = judgment === 'fail' ? '' : chiefMessage.value
+  // [今回修正] 判定結果に関わらず、常に委員長へのメッセージを送信する
+  const message = chiefMessage.value
 
   router.post(
     route('admin.reviewer.judge', { cycle: cycle.value.id }),

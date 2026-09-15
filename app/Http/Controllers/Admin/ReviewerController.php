@@ -245,19 +245,10 @@ class ReviewerController extends Controller
         }
 
         // [今回修正] statusの変更は審査員には行わせない（委員長の承認操作で確定する）。
-        // 不合格の場合、理由だけを先に cycle.reason に保存しておき、委員長が承認した時点で
-        // status: pending → reject が確定する。合格の場合は status: pending のまま変わらない。
+        // 判定結果（合格・不合格）に関わらず、委員長宛メッセージは常に reviewer_response_message に保存する。
         $cycle->reviewer_judgment = $request->judgment;
         $cycle->reviewer_judged_at = now();
-
-        if ($request->judgment === 'fail') {
-            // 却下理由として保存（委員長が承認した時点で status: reject が確定し、
-            // 更新者側 create.vue の却下メッセージ表示にそのまま使われる）
-            $cycle->reason = $request->message;
-        } else {
-            // [今回修正] 初回審査・差し戻し後の再提出、いずれの場合も委員長宛の任意メッセージを保存する
-            $cycle->reviewer_response_message = $request->message ?: null;
-        }
+        $cycle->reviewer_response_message = $request->message ?: null;
         // [今回追加] 審査員の操作では updated_at を更新しない（委員長の最終承認時のみ更新される仕様）
         $cycle->timestamps = false;
         $cycle->save();
