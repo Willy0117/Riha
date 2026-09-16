@@ -89,7 +89,7 @@
         <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
           <label class="text-sm font-semibold text-blue-700 mb-2 block">
             委員長へのメッセージ
-            <span class="text-xs font-normal text-blue-400">（任意・合格時に委員長へ伝えたい内容があれば入力してください）</span>
+            <span class="text-xs font-normal text-blue-400">（任意・委員長へ伝えたい内容があれば入力してください）</span>
           </label>
           <textarea
             v-model="chiefMessage"
