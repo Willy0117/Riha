@@ -50,6 +50,8 @@ function makeFormFromProps(props: MemberEditProps): MemberFormData {
       // [今回修正] member_number ではなく code
       code:             props.member?.code            ?? null,
       position:         props.member?.position        ?? null,
+      occupation:       props.member?.occupation      ?? null,
+      occupation_other: props.member?.occupation_other ?? null,
       last_name:        props.member?.last_name       ?? '',
       first_name:       props.member?.first_name      ?? '',
       last_name_kana:   props.member?.last_name_kana  ?? null,

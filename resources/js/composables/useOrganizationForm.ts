@@ -2,9 +2,6 @@ import { reactive, computed } from 'vue'
 import type {
   OrganizationFormData,
   OrganizationAddress,
-  MemberAddress,
-  MemberAddressType,
-  Member,
   OrganizationEditProps,
 } from '@/types'
 
@@ -32,35 +29,8 @@ export const PAYMENT_METHOD_OPTIONS = [
   { value: 2 as const, label: 'クレジットカード' },
 ] as const
 
-
-export const MEMBER_STATUS_OPTIONS = [
-  { value: 1 as const, label: '通常' },
-  { value: 2 as const, label: '休会' },
-  { value: 3 as const, label: '退会' },
-]
-
-export const MIN_MEMBERS = 1
-
 export function makeOrgAddress(): OrganizationAddress {
   return { name: null, postal_code: null, address1: null, address2: null, address3: null, tel: null, fax: null, email: null }
-}
-
-export function makeMemberAddress(type: MemberAddressType): MemberAddress {
-  return { type, postal_code: null, address1: null, address2: null, address3: null, tel: null, fax: null }
-}
-
-export function makeMember(): Member {
-  return {
-    member_number: null, position: null,
-    last_name: '', first_name: '',
-    last_name_kana: null, first_name_kana: null,
-    gender: null, birthdate: null,
-    tel: null, mobile: null, fax: null,
-    email: null, personal_email: null,
-    status_id: 1, member_type: null,
-    joined_at: null, withdrawn_at: null,
-    addresses: [makeMemberAddress(1), makeMemberAddress(2)],
-  }
 }
 
 function toDateString(val: string | null): string | null {
@@ -82,54 +52,23 @@ function makeFormFromProps(props: OrganizationEditProps): OrganizationFormData {
     location_address: props.location_address ?? makeOrgAddress(),
     shipping_address: props.shipping_address ?? makeOrgAddress(),
     billing_address:  props.billing_address  ?? makeOrgAddress(),
-    members: props.members?.length
-      ? props.members.map(m => ({
-          ...m,
-          joined_at:    toDateString(m.joined_at),
-          withdrawn_at: toDateString(m.withdrawn_at),
-          addresses: m.addresses?.length
-            ? m.addresses
-            : [makeMemberAddress(1), makeMemberAddress(2)],
-        }))
-      : [makeMember(), makeMember(), makeMember()],
   }
 }
 
 export function useOrganizationForm(props: OrganizationEditProps) {
-    console.log('useOrganizationForm called')
-  console.log('props type:', typeof props)
-  console.log('props keys:', Object.keys(props ?? {}))
   const form = reactive<OrganizationFormData>(makeFormFromProps(props))
-console.log('form.organization:', form.organization)
 
   const isValid = computed(() =>
     form.organization.name.trim() !== '' &&
     (form.organization.rep_last_name ?? '').trim() !== '' &&
     (form.organization.rep_first_name ?? '').trim() !== '' &&
-    !!form.location_address.email?.trim() &&
-    form.members.length >= MIN_MEMBERS &&
-    form.members.every(m => m.last_name.trim() !== '' && m.first_name.trim() !== '')
+    !!form.location_address.email?.trim()
   )
-
-  function addMember() {
-    form.members.push(makeMember())
-  }
-
-  function removeMember(index: number) {
-    if (index >= MIN_MEMBERS) form.members.splice(index, 1)
-  }
 
   // 所在地 → 郵送先 or 請求先 へコピー
   function copyOrgAddress(to: 'shipping_address' | 'billing_address') {
     Object.assign(form[to], { ...form.location_address })
   }
 
-  function copyMemberAddress(memberIndex: number, from: MemberAddressType, to: MemberAddressType) {
-    const m = form.members[memberIndex]
-    const src = m.addresses.find(a => a.type === from)
-    const dst = m.addresses.find(a => a.type === to)
-    if (src && dst) Object.assign(dst, { ...src, type: to })
-  }
-
-  return { form, isValid, addMember, removeMember, copyOrgAddress, copyMemberAddress }
+  return { form, isValid, copyOrgAddress }
 }

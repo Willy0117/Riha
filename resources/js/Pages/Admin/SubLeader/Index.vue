@@ -164,6 +164,13 @@
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.approved_points_total }} 単位</td>
               <td class="px-5 py-3.5 border-b border-gray-100">
                 <div class="flex items-center gap-2">
+                  <Link
+                    :href="route('admin.subleader.show', cycle.member_id)"
+                    class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                    title="詳細"
+                  >
+                    <Pencil class="w-4 h-4" />
+                  </Link>
                   <select
                     v-model="selectedReviewer[cycle.id]"
                     class="border rounded pl-2 pr-7 py-1.5 text-xs"
@@ -198,8 +205,8 @@
 
 <script setup>
 import { computed, reactive, ref } from 'vue'
-import { router } from '@inertiajs/vue3'
-import { Shuffle, X } from 'lucide-vue-next'
+import { router, Link } from '@inertiajs/vue3'
+import { Shuffle, X, Pencil } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import { Button } from '@/components/ui/button'

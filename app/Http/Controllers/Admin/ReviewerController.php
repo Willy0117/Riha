@@ -64,6 +64,57 @@ class ReviewerController extends Controller
         ]);
     }
 
+    /**
+     * [今回追加] 自分（ログイン中の審査員）が既に判定済みの申請の一覧（審査済画面）。
+     * index() とは逆に、reviewer_judgment が unreviewed 以外（pass/fail/re_review）を対象にする。
+     * 再判定はさせない閲覧用の一覧のため、showの操作ボタンはVue側で非表示にする。
+     */
+    public function reviewed(Request $request)
+    {
+        $adminId = Auth::guard('admin')->id();
+
+        $sortableColumns = ['updated_at', 'reviewer_assigned_at', 'reviewer_judged_at'];
+        $sortBy = in_array($request->sort_by, $sortableColumns) ? $request->sort_by : 'reviewer_judged_at';
+        $sortDir = $request->sort_dir === 'desc' ? 'desc' : 'asc';
+
+        $cycles = InstructorUpdateCycle::with(['member'])
+            ->where('reviewer_admin_id', $adminId)
+            ->where('status', 'pending')
+            ->where('reviewer_judgment', '!=', 'unreviewed')
+            ->orderBy($sortBy, $sortDir)
+            ->paginate($request->per_page ?? 20);
+
+        $isConferenceParticipation = function ($u) {
+            return $u->creditCategory?->name === '学術集会'
+                && $u->creditConference?->name === '日本腎臓リハビリテーション学会'
+                && $u->creditRole?->creditRole?->name === '参加';
+        };
+
+        $cycles->getCollection()->transform(function ($cycle) use ($isConferenceParticipation) {
+            $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole.creditRole'])
+                ->where('member_id', $cycle->member_id)
+                ->whereDate('issued_date', '>=', $cycle->start_date)
+                ->whereDate('issued_date', '<=', $cycle->end_date)
+                ->get();
+
+            $totalCount = $uploads->count();
+            $reviewedCount = $uploads->whereIn('status', ['approved', 'rejected'])->count();
+            $approvedUploads = $uploads->where('status', 'approved');
+
+            $cycle->document_review_status = "{$reviewedCount} / {$totalCount}";
+            $cycle->approved_points_total = $approvedUploads->sum('points');
+            $cycle->approved_conference_count = $approvedUploads->filter($isConferenceParticipation)->count();
+
+            return $cycle;
+        });
+
+        return inertia('Admin/Reviewer/Reviewed', [
+            'cycles' => $cycles,
+            'sortBy' => $sortBy,
+            'sortDir' => $sortDir,
+        ]);
+    }
+
     // アサインされた1申請の書類一覧（承認/差し戻し）
     public function show(Request $request, InstructorUpdateCycle $cycle)
     {
@@ -123,8 +174,10 @@ class ReviewerController extends Controller
                 'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
                 // 委員長が差し戻し時に指摘した書類かどうか
                 'chief_flagged' => in_array($upload->id, $flaggedIds),
-                // [今回追加] プレビューダイアログで img / iframe を出し分けるためのフラグ
+                // プレビューダイアログで img / iframe を出し分けるためのフラグ
                 'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
+                // [今回追加] 学術講習会インポートで作成された書類（添付資料なし）かどうか
+                'is_imported' => empty($upload->file_path),
             ]);
         });
 

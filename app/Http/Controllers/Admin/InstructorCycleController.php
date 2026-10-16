@@ -15,7 +15,6 @@ class InstructorCycleController extends Controller
 
         return inertia('Admin/InstructorCycles/Index', [
             'cycles' => $cycles,
-            // [今回追加] Members側と同じ「閲覧はできるが保存できない」ガード用フラグ
             'can_edit' => $request->user('admin')->can('instructorMembers.edit'),
         ]);
     }
@@ -31,6 +30,10 @@ class InstructorCycleController extends Controller
 
         $validated = $request->validate([
             'exam_round' => 'required|integer|min:1|unique:instructor_cycles,exam_round',
+            // [今回追加] 募集受付期間。認定期間だけ先に登録し、募集期間は後から追記する運用にも
+            // 対応できるよう nullable にする。
+            'application_start' => 'nullable|date',
+            'application_end' => 'nullable|date|after_or_equal:application_start',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
         ]);
@@ -52,6 +55,8 @@ class InstructorCycleController extends Controller
 
         $validated = $request->validate([
             'exam_round' => 'required|integer|min:1|unique:instructor_cycles,exam_round,' . $instructorCycle->id,
+            'application_start' => 'nullable|date',
+            'application_end' => 'nullable|date|after_or_equal:application_start',
             'start_date' => 'required|date',
             'end_date' => 'required|date|after:start_date',
         ]);

@@ -19,6 +19,10 @@
             <p class="text-xs text-gray-400 mt-0.5">会員番号：{{ member.code }}</p>
           </div>
           <div>
+            <p class="text-xs text-gray-500">職種</p>
+            <p class="font-semibold">{{ member.occupation || '-' }}<span v-if="member.occupation_other">（{{ member.occupation_other }}）</span></p>
+          </div>
+          <div>
             <p class="text-xs text-gray-500">申込日時</p>
             <p class="font-semibold">{{ appliedAtLabel }}</p>
           </div>
@@ -126,17 +130,29 @@
             :class="flaggedIds.includes(upload.id) ? 'border-orange-300 bg-orange-50/40' : 'border-gray-200'"
           >
             <div class="flex-none flex flex-col items-center gap-2 pt-1">
+              <!-- [今回追加] 学術講習会インポートの書類は、差し戻し対象として選択できない -->
               <input
                 type="checkbox"
                 :checked="flaggedIds.includes(upload.id)"
+                :disabled="upload.is_imported"
+                :title="upload.is_imported ? 'インポートされた記録は差し戻し対象にできません' : ''"
                 @change="toggleFlag(upload.id)"
-                class="w-4 h-4"
+                class="w-4 h-4 disabled:opacity-30 disabled:cursor-not-allowed"
               />
               <span class="text-xs font-semibold text-gray-400">資料{{ index + 1 }}</span>
             </div>
 
             <div class="w-32 flex-none">
               <div
+                v-if="upload.is_imported"
+                class="w-full h-32 bg-gray-100 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400"
+                title="インポートされた記録のため、添付資料はありません"
+              >
+                <FileX class="w-10 h-10" />
+                <span class="text-[10px] mt-1">資料なし</span>
+              </div>
+              <div
+                v-else
                 class="w-full h-32 bg-gray-50 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-100 transition"
                 @click="openPreview(upload)"
               >
@@ -213,7 +229,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
-import { ArrowLeft, FileText, Calendar } from 'lucide-vue-next'
+import { ArrowLeft, FileText, FileX, Calendar } from 'lucide-vue-next'
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import { Button } from '@/components/ui/button'
@@ -238,6 +254,10 @@ const flaggedIds = ref([])
 const sendBackReason = ref('')
 
 const toggleFlag = (id) => {
+  // [今回追加] 学術講習会インポートの書類は差し戻し対象にできない
+  const upload = uploadList.value.find(u => u.id === id)
+  if (upload?.is_imported) return
+
   if (flaggedIds.value.includes(id)) {
     flaggedIds.value = flaggedIds.value.filter(i => i !== id)
   } else {

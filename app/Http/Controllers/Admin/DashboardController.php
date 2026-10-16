@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ApplicationSchedule;
 use App\Models\InstructorUpdateCycle;
 use Illuminate\Http\Request;
 
@@ -93,6 +94,15 @@ class DashboardController extends Controller
         // 年度選択用（直近5年分）
         $yearOptions = range($currentYear - 2, $currentYear + 2);
 
+        // 申請受付スケジュール（全期）
+        $allSchedules = ApplicationSchedule::orderBy('application_start')->get([
+            'id', 'period_name',
+            'application_start', 'application_end',
+            'subleader_start', 'subleader_end',
+            'reviewer_start', 'reviewer_end',
+            'chief_start', 'chief_end',
+        ]);
+
         return inertia('Admin/Dashboard', [
             'currentYear' => $currentYear,
             'yearOptions' => $yearOptions,
@@ -105,6 +115,7 @@ class DashboardController extends Controller
             'unassignedCount' => $unassignedCount,
             'unreviewedCount' => $unreviewedCount,
             'unapprovedCount' => $unapprovedCount,
+            'allSchedules' => $allSchedules,
         ]);
     }
 }

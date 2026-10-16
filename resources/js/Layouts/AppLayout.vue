@@ -8,6 +8,14 @@
     <div class="flex-1 flex flex-col">
       <!-- ヘッダー -->
       <header class="bg-white shadow flex items-center justify-between px-4 h-16">
+        <!-- ロゴ -->
+        <div class="flex items-center gap-3 flex-none">
+          <img :src="logoUrl" alt="JSRR" class="h-12 w-12 object-contain" />
+          <div class="leading-tight">
+            <span class="block text-sm font-bold text-gray-800">指導士資格更新システム</span>
+            <span class="block text-gray-400 tracking-widest" style="font-size:9px">RENEWAL MANAGEMENT SYSTEM</span>
+          </div>
+        </div>
         <div v-if="$slots.header" class="text-lg font-semibold">
           <slot name="header" />
         </div>
@@ -85,6 +93,7 @@
 import Navigation from './Navigation.vue'
 import Toast from '@/Components/Toast.vue'
 import LoadingOverlay from '@/Components/LoadingOverlay.vue'
+import logoUrl from '@/assets/jsrr-logo.png'
 
 import { router, usePage } from '@inertiajs/vue3'
 import { ref, watch } from 'vue'

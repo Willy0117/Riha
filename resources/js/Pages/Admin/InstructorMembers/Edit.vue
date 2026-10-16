@@ -141,18 +141,31 @@
           <div
             v-for="upload in uploadList"
             :key="upload.id"
-            class="p-3 rounded-lg border cursor-pointer hover:shadow-sm transition"
-            :class="{
-              'bg-yellow-50/60 border-yellow-200 hover:border-yellow-300': upload.status === 'pending',
-              'bg-green-50/60 border-green-200 hover:border-green-300': upload.status === 'approved',
-              'bg-red-50/60 border-red-200 hover:border-red-300': upload.status === 'rejected',
-            }"
-            @click="openPreview(upload)"
+            class="p-3 rounded-lg border transition"
+            :class="[
+              upload.is_imported ? 'cursor-default' : 'cursor-pointer hover:shadow-sm',
+              {
+                'bg-yellow-50/60 border-yellow-200 hover:border-yellow-300': upload.status === 'pending',
+                'bg-green-50/60 border-green-200 hover:border-green-300': upload.status === 'approved',
+                'bg-red-50/60 border-red-200 hover:border-red-300': upload.status === 'rejected',
+              }
+            ]"
+            @click="!upload.is_imported && openPreview(upload)"
           >
-            <div class="flex items-center justify-center h-16 bg-white/70 rounded-md mb-2">
+            <!-- [今回追加] 学術講習会インポートの書類は添付資料が無いため、専用アイコンにする -->
+            <div v-if="upload.is_imported" class="flex items-center justify-center h-16 bg-white/70 rounded-md mb-2" title="インポートされた記録のため、添付資料はありません">
+              <FileX class="w-7 h-7 text-gray-400" />
+            </div>
+            <div v-else class="flex items-center justify-center h-16 bg-white/70 rounded-md mb-2">
               <FileText class="w-7 h-7 text-gray-400" />
             </div>
 
+            <span
+              v-if="upload.is_imported"
+              class="inline-block text-[10px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full mb-1"
+            >
+              インポート
+            </span>
             <p class="text-sm font-bold text-indigo-900 truncate">{{ sessionLabel(upload.session) || upload.credit_conference_name }}</p>
             <p class="text-xs text-gray-500 truncate mt-0.5">{{ upload.role_name }}</p>
 
@@ -215,7 +228,7 @@ import { router, usePage } from '@inertiajs/vue3'
 import { useI18n } from 'vue-i18n'
 import dayjs from 'dayjs'
 import {
-  ArrowLeft, FileText
+  ArrowLeft, FileText, FileX
 } from 'lucide-vue-next'
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
@@ -323,6 +336,8 @@ const sessionLabel = (session) => {
 }
 
 const openPreview = (upload) => {
+  // [今回追加] 学術講習会インポートの書類は添付資料が無いため開かない
+  if (upload.is_imported) return
   previewUpload.value = upload
 }
 

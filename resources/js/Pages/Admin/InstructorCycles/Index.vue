@@ -33,10 +33,18 @@
       <!-- 新規追加 -->
       <div class="bg-white border border-gray-200 rounded-xl p-4">
         <h2 class="text-sm font-bold text-gray-700 mb-3">新規追加</h2>
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-6 gap-4">
           <div>
             <label class="text-xs text-gray-500 mb-1 block">第N回（exam_round）</label>
             <input v-model.number="createForm.exam_round" type="number" min="1" class="input-field" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">募集受付開始日</label>
+            <input v-model="createForm.application_start" type="date" class="input-field" />
+          </div>
+          <div>
+            <label class="text-xs text-gray-500 mb-1 block">募集受付終了日</label>
+            <input v-model="createForm.application_end" type="date" class="input-field" />
           </div>
           <div>
             <label class="text-xs text-gray-500 mb-1 block">認定開始日</label>
@@ -58,6 +66,8 @@
           <thead>
             <tr>
               <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">第N回</th>
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">募集受付開始日</th>
+              <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">募集受付終了日</th>
               <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">認定開始日</th>
               <th class="px-3 py-2.5 text-left font-medium table-header-navy-cell">認定終了日</th>
               <th class="px-3 py-2.5 text-center font-medium table-header-navy-cell">操作</th>
@@ -65,7 +75,7 @@
           </thead>
           <tbody class="divide-y">
             <tr v-if="cycles.length === 0">
-              <td colspan="4" class="px-3 py-12 text-center text-muted-foreground">
+              <td colspan="6" class="px-3 py-12 text-center text-muted-foreground">
                 データがありません
               </td>
             </tr>
@@ -75,6 +85,18 @@
                   <input v-model.number="editForm.exam_round" type="number" min="1" class="input-field w-24" />
                 </template>
                 <template v-else>第{{ cycle.exam_round }}回</template>
+              </td>
+              <td class="px-3 py-2.5">
+                <template v-if="editingId === cycle.id">
+                  <input v-model="editForm.application_start" type="date" class="input-field" />
+                </template>
+                <template v-else>{{ formatDate(cycle.application_start) }}</template>
+              </td>
+              <td class="px-3 py-2.5">
+                <template v-if="editingId === cycle.id">
+                  <input v-model="editForm.application_end" type="date" class="input-field" />
+                </template>
+                <template v-else>{{ formatDate(cycle.application_end) }}</template>
               </td>
               <td class="px-3 py-2.5">
                 <template v-if="editingId === cycle.id">
@@ -151,19 +173,23 @@ const formatDate = (value) => {
 // ---- 新規追加 ----
 const createForm = reactive({
   exam_round: null,
+  application_start: '',
+  application_end: '',
   start_date: '',
   end_date: '',
 })
 
 const submitCreate = () => {
   if (!createForm.exam_round || !createForm.start_date || !createForm.end_date) {
-    alert('全ての項目を入力してください')
+    alert('第N回・認定開始日・認定終了日は必須です（募集受付期間は未定のままでも登録できます）')
     return
   }
   router.post(route('admin.instructorCycles.store'), createForm, {
     preserveScroll: true,
     onSuccess: () => {
       createForm.exam_round = null
+      createForm.application_start = ''
+      createForm.application_end = ''
       createForm.start_date = ''
       createForm.end_date = ''
     },
@@ -174,6 +200,8 @@ const submitCreate = () => {
 const editingId = ref(null)
 const editForm = reactive({
   exam_round: null,
+  application_start: '',
+  application_end: '',
   start_date: '',
   end_date: '',
 })
@@ -181,6 +209,8 @@ const editForm = reactive({
 const startEdit = (cycle) => {
   editingId.value = cycle.id
   editForm.exam_round = cycle.exam_round
+  editForm.application_start = formatDate(cycle.application_start) === '-' ? '' : formatDate(cycle.application_start)
+  editForm.application_end = formatDate(cycle.application_end) === '-' ? '' : formatDate(cycle.application_end)
   editForm.start_date = formatDate(cycle.start_date) === '-' ? '' : formatDate(cycle.start_date)
   editForm.end_date = formatDate(cycle.end_date) === '-' ? '' : formatDate(cycle.end_date)
 }

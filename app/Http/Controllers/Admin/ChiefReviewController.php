@@ -123,8 +123,10 @@ class ChiefReviewController extends Controller
                     'credit_conference_name' => $upload->creditConference?->name ?? '',
                     'role_name' => $upload->creditRole?->creditRole?->name ?? '',
                     'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
-                    // [今回追加] プレビューダイアログで img / iframe を出し分けるためのフラグ
+                    // プレビューダイアログで img / iframe を出し分けるためのフラグ
                     'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
+                    // [今回追加] 学術講習会インポートで作成された書類（添付資料なし）かどうか
+                    'is_imported' => empty($upload->file_path),
                 ]);
             });
 

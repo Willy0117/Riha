@@ -46,42 +46,18 @@ const toggleChildMenu = (key) => {
 const { t, locale } = useI18n()
 
 const menus = [
-/*  {
+{
     key: 'exams',
     label: '指導士資格認定試験',
     icon: UsersIcon,
 
     children: [
       {
-        key: 'exam_manage',
-        label: '自験例報告',
-
-        children: [
-          {
-            label: t('exams.reports_list'),
-            route: 'reports.index',
-          },
-          {
-            label: t('exams.reports'),
-            route: 'reports.create',
-          },
-        ],
-      },
-
-      {
-        key: 'exam_apply',
-        label: t('exams.application'),
-
-        children: [
-          {
-            label: t('applications.create'),
-            route: 'exams.create',
-          },
-        ],
+        label: '受験申込',
+        route: 'exams.index',
       },
     ],
-  },*/
-
+  },
   {
     key: 'instructors',
     label: '指導士認定更新',

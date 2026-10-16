@@ -10,7 +10,7 @@
       <header class="bg-white shadow flex items-center justify-between px-4 h-16">
         <!-- ロゴ（左端に追加） -->
         <div class="flex items-center gap-3 flex-none">
-          <div class="logo-icon">JS</div>
+          <img :src="logoUrl" alt="JSRR" class="h-12 w-12 object-contain" />
           <div class="leading-tight">
             <span class="block text-sm font-bold text-gray-800">指導士資格更新システム</span>
             <span class="block text-gray-400 tracking-widest" style="font-size:9px">RENEWAL MANAGEMENT SYSTEM</span>
@@ -91,6 +91,7 @@
 
 <script setup>
 import Navigation from '@/Layouts/Admin/Navigation.vue'
+import logoUrl from '@/assets/jsrr-logo.png'
 import Toast from '@/Components/Toast.vue'
 import LoadingOverlay from '@/Components/LoadingOverlay.vue'
 

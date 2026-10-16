@@ -83,6 +83,8 @@ export interface Member {
   // [今回修正] member_number ではなく code（実テーブルのカラム名に合わせる）
   code: string | null
   position: string | null
+  occupation: string | null
+  occupation_other: string | null
   last_name: string
   first_name: string
   last_name_kana: string | null

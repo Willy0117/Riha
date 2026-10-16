@@ -91,6 +91,8 @@ class PdfUploadController extends Controller
                     'thumbnail_url' => $this->thumbnailUrl($u->thumbnail_path),
 
                     'rejection_message' => $u->rejection_message,
+                    // [今回追加] 学術講習会インポートで事務局が登録した記録かどうか
+                    'is_imported' => empty($u->file_path),
                 ]);
         }
 
@@ -148,6 +150,30 @@ class PdfUploadController extends Controller
         ]);
 
         $user = Auth::user();
+
+        // 役割が「参加」は、同一イベントにつき1回のみアップロード可能（却下済みは除く）。
+        // 同一イベント＝区分・学会名・役割が一致、かつ開催回(session)も一致（開催回の入力が無い区分は空同士で一致）
+        $checkRole = CreditRolePoint::with('creditRole')->find($request->role_id);
+        if ($checkRole?->creditRole?->name === '参加') {
+            $sessionValue = (string) $request->input('session', '');
+            $alreadyUploaded = PdfUpload::where('member_id', $user->member_id)
+                ->where('credit_category_id', $request->credit_category_id)
+                ->where('credit_conference_id', $request->credit_conference_id)
+                ->where('credit_role_id', $request->role_id)
+                ->where('status', '!=', 'rejected')
+                ->where(function ($q) use ($sessionValue) {
+                    if ($sessionValue === '') {
+                        $q->whereNull('session')->orWhere('session', '');
+                    } else {
+                        $q->where('session', $sessionValue);
+                    }
+                })
+                ->exists();
+
+            if ($alreadyUploaded) {
+                return back()->with('error', 'すでにアップロードされています。同一のイベントに対する『参加』の重複登録はできません。');
+            }
+        }
 
         try {
             [$file_path, $thumbnail_path] = $fileService->storeUploadedFile(
@@ -384,6 +410,8 @@ class PdfUploadController extends Controller
                         'thumbnail_url' => $this->thumbnailUrl($u->thumbnail_path),
 
                         'rejection_message' => $u->rejection_message,
+                        // [今回追加] 学術講習会インポートで事務局が登録した記録かどうか
+                        'is_imported' => empty($u->file_path),
                     ];
                 });
         }
@@ -505,8 +533,21 @@ class PdfUploadController extends Controller
             'requires_session' => $r->requires_session,
         ]);
 
-        // [今回追加] 現在の期区分（ApplicationSchedule）を取得し、応募期間・審査期間（委員長）を画面に渡す
+        // 現在の期区分（ApplicationSchedule）を取得し、応募期間・審査期間（委員長）を画面に渡す
         $schedule = $this->currentSchedule($cycle);
+
+        // [今回追加] 申請受付スケジュール一覧（全期間、ダイアログ表示用）
+        $allSchedules = ApplicationSchedule::orderBy('application_start')->get([
+            'period_name', 'application_start', 'application_end', 'subleader_start', 'chief_end',
+        ]);
+
+        // [今回追加] ページを開いた瞬間にダイアログを自動表示するかどうか。
+        // 条件：今年度が更新受付期間に該当する会員（cycle存在）、かつ未申請（status === before_update）
+        $currentFiscalYear = now()->month === 12 ? now()->year + 1 : now()->year;
+        $cycleYear = $cycle?->renewal_start_date ? (int) \Carbon\Carbon::parse($cycle->renewal_start_date)->format('Y') : null;
+        $shouldShowScheduleDialog = $cycle
+            && $cycleYear === $currentFiscalYear
+            && $cycle->status === 'before_update';
 
         return inertia('PdfUploads/Create', [
             'member' => $user->member,
@@ -527,6 +568,8 @@ class PdfUploadController extends Controller
             'fees' => $fees,
             'annualFeeStatus' => $annualFeeStatus,
             'schedule' => $schedule,
+            'allSchedules' => $allSchedules,
+            'shouldShowScheduleDialog' => $shouldShowScheduleDialog,
         ]);
     }
 
@@ -568,6 +611,10 @@ class PdfUploadController extends Controller
     {
         // 自分の書類以外は削除できないようにする
         abort_unless($pdfUpload->member_id === Auth::user()->member_id, 403);
+
+        // [今回追加] 学術講習会インポートで事務局が登録した記録（file_pathが無い）は、
+        // 会員本人が削除できないようにする
+        abort_if(empty($pdfUpload->file_path), 403, 'この記録は削除できません。事務局にお問い合わせください。');
 
         // ストレージ上のファイルも一緒に削除
         if ($pdfUpload->file_path) {

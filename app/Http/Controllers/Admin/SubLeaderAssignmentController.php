@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Admin;
 use App\Models\InstructorUpdateCycle;
+use App\Models\Member;
 use App\Models\PdfUpload;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
@@ -99,6 +100,50 @@ class SubLeaderAssignmentController extends Controller
             'unassignedCount' => $unassignedCount,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
+        ]);
+    }
+
+    // 申請者の詳細画面（閲覧専用。事務局の申請者一覧の鉛筆マークで開く画面と同じ内容で、編集はできない）
+    public function show(Request $request, Member $member)
+    {
+        $member->load(['updateCycles']);
+
+        $cycle = $member->updateCycles->first();
+
+        $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole.creditRole'])
+            ->where('member_id', $member->id)
+            ->latest()
+            ->get()
+            ->map(function (PdfUpload $upload) {
+                return array_merge($upload->toArray(), [
+                    'credit_conference_name' => $upload->creditConference?->name ?? '',
+                    'category_name' => $upload->creditCategory?->name ?? '',
+                    'role_name' => $upload->creditRole?->creditRole?->name ?? '',
+                    'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
+                    'is_imported' => empty($upload->file_path),
+                ]);
+            });
+
+        if ($cycle) {
+            $cycle->conference_count = PdfUpload::where('member_id', $member->id)
+                ->where('status', 'approved')
+                ->whereHas('creditCategory', fn ($q) => $q->where('name', '学術集会'))
+                ->whereHas('creditConference', fn ($q) => $q->where('name', '日本腎臓リハビリテーション学会'))
+                ->whereDate('issued_date', '>=', $cycle->start_date)
+                ->whereDate('issued_date', '<=', $cycle->end_date)
+                ->whereHas('creditRole.creditRole', fn ($q) => $q->where('name', '参加'))
+                ->count();
+
+            $cycle->total_points = PdfUpload::where('member_id', $member->id)
+                ->where('status', 'approved')
+                ->whereDate('issued_date', '>=', $cycle->start_date)
+                ->whereDate('issued_date', '<=', $cycle->end_date)
+                ->sum('points');
+        }
+
+        return inertia('Admin/SubLeader/Show', [
+            'member' => $member,
+            'uploads' => $uploads,
         ]);
     }
 

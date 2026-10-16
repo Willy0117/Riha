@@ -60,6 +60,8 @@ class MemberImport implements ToCollection, WithChunkReading
     private const COL_ORG_NAME        = 26;
     private const COL_ORG_DEPT        = 27;
     private const COL_ORG_SECTION     = 28;
+    private const COL_OCCUPATION      = 29; // AD列：職種
+    private const COL_OCCUPATION_OTHER = 30; // AE列：職種「その他」
     private const COL_POSITION        = 31;
     private const COL_ORG_TEL         = 36;
     private const COL_ORG_FAX         = 38;
@@ -235,6 +237,8 @@ class MemberImport implements ToCollection, WithChunkReading
         return [
             'organization_id'  => $organizationId,
             'position'         => $row[self::COL_POSITION] ?? null,
+            'occupation'       => $row[self::COL_OCCUPATION] ?? null,
+            'occupation_other' => $row[self::COL_OCCUPATION_OTHER] ?? null,
             'last_name'        => $row[self::COL_LAST_NAME] ?? null,
             'first_name'       => $row[self::COL_FIRST_NAME] ?? null,
             'last_name_kana'   => $row[self::COL_LAST_NAME_KANA] ?? null,

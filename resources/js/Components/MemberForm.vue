@@ -145,6 +145,14 @@ function handleSubmit() {
                 <Input v-model="form.member.position" placeholder="例: 理事長" />
               </div>
               <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">職種 <span class="text-[10px] text-muted-foreground/60 ml-0.5">occupation</span></Label>
+                <Input v-model="form.member.occupation" placeholder="例: 3：理学療法士" />
+              </div>
+              <div class="space-y-1">
+                <Label class="text-xs text-muted-foreground">職種「その他」 <span class="text-[10px] text-muted-foreground/60 ml-0.5">occupation_other</span></Label>
+                <Input v-model="form.member.occupation_other" />
+              </div>
+              <div class="space-y-1">
                 <Label class="text-xs text-muted-foreground">入会日 <span class="text-[10px] text-muted-foreground/60 ml-0.5">joined_at</span></Label>
                 <Input type="date" v-model="form.member.joined_at" />
               </div>

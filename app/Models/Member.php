@@ -33,6 +33,8 @@ class Member extends Model
         'gender',
         'birthdate',
         'position',
+        'occupation',
+        'occupation_other',
         'tel',
         'mobile',
         'fax',
@@ -46,9 +48,10 @@ class Member extends Model
     ];
 
     protected $casts = [
-        'birthdate'    => 'date',
-        'joined_at'    => 'date',
-        'withdrawn_at' => 'date',
+        // [今回修正] JSON化時のタイムゾーンずれ（1日ズレ）を防ぐため、Y-m-d形式を明示する
+        'birthdate'    => 'date:Y-m-d',
+        'joined_at'    => 'date:Y-m-d',
+        'withdrawn_at' => 'date:Y-m-d',
     ];
 
     // [今回追加]

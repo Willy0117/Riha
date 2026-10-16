@@ -254,8 +254,10 @@ class InstructorMemberController extends Controller
                     'category_name' => $upload->creditCategory?->name ?? '',
                     'role_name' => $upload->creditRole?->creditRole?->name ?? '',
                     'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
-                    // [今回追加] プレビューダイアログで img / iframe を出し分けるためのフラグ
+                    // プレビューダイアログで img / iframe を出し分けるためのフラグ
                     'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
+                    // [今回追加] 学術講習会インポートで作成された書類（添付資料なし）かどうか
+                    'is_imported' => empty($upload->file_path),
                 ]);
             });
 
@@ -416,7 +418,24 @@ class InstructorMemberController extends Controller
             'status' => 'required|string|in:before_update,pending,approved,reject,no_update,updated,lapsed',
         ]);
 
-        // [今回修正] Vue側の selectedIds は member.id のため、member_id で対象を絞り込む。
+        // [今回修正] 変更先が before_update または pending の場合、審査前の状態に戻すという
+        // 意味になるため、bulkResetToBeforeUpdate() と同様に審査関連データもクリアする。
+        // それ以外のステータスへの変更では、審査関連データはそのまま残す。
+        $updateData = ['status' => $request->status];
+
+        if ($request->status === 'before_update') {
+            $updateData += [
+                'reviewer_admin_id' => null,
+                'reviewer_judgment' => 'unreviewed',
+                'reviewer_judged_at' => null,
+                'reason' => null,
+                'chief_feedback' => null,
+                'reviewer_response_message' => null,
+                'chief_status' => null,
+            ];
+        }
+
+        // Vue側の selectedIds は member.id のため、member_id で対象を絞り込む。
         // 「現在のサイクル」は index() のソート基準と統一し、各会員の最新id（MAX(id)）を代表とする。
         $updatedCount = InstructorUpdateCycle::whereIn('member_id', $request->ids)
             ->whereIn('id', function ($q) use ($request) {
@@ -425,7 +444,7 @@ class InstructorMemberController extends Controller
                     ->whereIn('member_id', $request->ids)
                     ->groupBy('member_id');
             })
-            ->update(['status' => $request->status]);
+            ->update($updateData);
 
         return redirect()->back()->with('success', "{$updatedCount}件のステータスを変更しました。");
     }
@@ -443,6 +462,7 @@ class InstructorMemberController extends Controller
         ]);
 
         // [今回修正] Vue側の selectedIds は member.id のため、member_id で対象を絞り込む。
+        // 審査前に戻す操作のため、審査員・委員長関連のデータも必ずクリアする。
         $updatedCount = InstructorUpdateCycle::whereIn('member_id', $request->ids)
             ->whereIn('id', function ($q) use ($request) {
                 $q->selectRaw('MAX(id)')
@@ -450,7 +470,16 @@ class InstructorMemberController extends Controller
                     ->whereIn('member_id', $request->ids)
                     ->groupBy('member_id');
             })
-            ->update(['status' => 'before_update']);
+            ->update([
+                'status' => 'before_update',
+                'reviewer_admin_id' => null,
+                'reviewer_judgment' => 'unreviewed',
+                'reviewer_judged_at' => null,
+                'reason' => null,
+                'chief_feedback' => null,
+                'reviewer_response_message' => null,
+                'chief_status' => null,
+            ]);
 
         return redirect()->back()->with('success', "{$updatedCount}件を審査前に戻しました。");
     }

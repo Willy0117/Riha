@@ -46,6 +46,36 @@
         </div>
       </div>
 
+      <!-- 申請受付スケジュール（全期） -->
+      <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
+        <h3 class="text-sm font-bold text-gray-700 px-5 py-3 border-b border-gray-200">申請受付スケジュール</h3>
+        <div class="overflow-x-auto">
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="bg-gray-50 text-gray-600">
+                <th class="px-4 py-2 text-left font-medium">期</th>
+                <th class="px-4 py-2 text-left font-medium">応募期間</th>
+                <th class="px-4 py-2 text-left font-medium">サブ（アサイン担当者）</th>
+                <th class="px-4 py-2 text-left font-medium">審査員</th>
+                <th class="px-4 py-2 text-left font-medium">委員長</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100">
+              <tr v-if="!allSchedules.length">
+                <td colspan="5" class="px-4 py-6 text-center text-gray-400">スケジュールが登録されていません</td>
+              </tr>
+              <tr v-for="s in allSchedules" :key="s.id">
+                <td class="px-4 py-2 font-semibold whitespace-nowrap">{{ s.period_name }}</td>
+                <td class="px-4 py-2 whitespace-nowrap">{{ formatRange(s.application_start, s.application_end) }}</td>
+                <td class="px-4 py-2 whitespace-nowrap">{{ formatRange(s.subleader_start, s.subleader_end) }}</td>
+                <td class="px-4 py-2 whitespace-nowrap">{{ formatRange(s.reviewer_start, s.reviewer_end) }}</td>
+                <td class="px-4 py-2 whitespace-nowrap">{{ formatRange(s.chief_start, s.chief_end) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- 年度選択 -->
       <div class="flex items-center gap-2">
         <span class="text-sm text-gray-500">対象年度</span>
@@ -125,6 +155,7 @@
 <script setup>
 import { ref, computed } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
+import dayjs from 'dayjs'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 
 const props = defineProps({
@@ -139,7 +170,11 @@ const props = defineProps({
   unassignedCount: Number,
   unreviewedCount: Number,
   unapprovedCount: Number,
+  allSchedules: { type: Array, default: () => [] },
 })
+
+const formatDate = (v) => (v ? dayjs(v).format('YYYY-MM-DD') : '-')
+const formatRange = (s, e) => `${formatDate(s)} 〜 ${formatDate(e)}`
 
 const selectedYear = ref(props.currentYear)
 

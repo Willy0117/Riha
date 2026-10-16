@@ -93,5 +93,11 @@ class Admin extends Authenticatable
     {
         return $this->hasMany(InstructorUpdateCycle::class, 'reviewer_admin_id');
     }
+
+
+    public function reviewingApplications()
+    {
+        return $this->hasMany(Application::class, 'reviewer_admin_id');
+    }
 }
 

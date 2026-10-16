@@ -11,7 +11,8 @@
           <ArrowLeft class="w-4 h-4" />
           一覧に戻る
         </button>
-        <div class="flex gap-3">
+        <!-- [今回追加] 審査済み（unreviewed以外）の案件は、審査済画面からの閲覧用途のため操作ボタンを表示しない -->
+        <div v-if="!isAlreadyJudged" class="flex gap-3">
           <Button
             class="bg-green-600 hover:bg-green-700 text-white font-bold disabled:opacity-40 disabled:cursor-not-allowed"
             :disabled="!canPass"
@@ -31,16 +32,23 @@
             不合格
           </Button>
         </div>
+        <span v-else class="status-badge-common" :class="judgmentClass(cycle.reviewer_judgment)">
+          {{ judgmentLabel(cycle.reviewer_judgment) }}（確認のみ）
+        </span>
       </div>
 
       <div class="sticky top-0 z-20">
         <Card class="shadow-md bg-white">
           <CardContent class="p-3 space-y-2">
-            <div class="grid grid-cols-2 md:grid-cols-7 gap-3 text-sm">
+            <div class="grid grid-cols-2 md:grid-cols-8 gap-3 text-sm">
               <div>
                 <p class="text-xs text-gray-500">氏名</p>
                 <p class="font-semibold leading-tight">{{ member.name }}</p>
                 <p class="text-xs text-gray-400">会員番号：{{ member.code }}</p>
+              </div>
+              <div>
+                <p class="text-xs text-gray-500">職種</p>
+                <p class="font-semibold leading-tight">{{ member.occupation || '-' }}<span v-if="member.occupation_other">（{{ member.occupation_other }}）</span></p>
               </div>
               <div>
                 <p class="text-xs text-gray-500">申込日時</p>
@@ -85,8 +93,8 @@
 
         <!-- [今回変更] 審査員から更新者へのメッセージ（却下理由入力欄）は不要になったため削除 -->
 
-        <!-- [今回修正] 委員長へのメッセージ（初回審査・差し戻し後いずれも常に表示） -->
-        <div class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+        <!-- 委員長へのメッセージ：未審査のときだけ入力欄を表示。審査済みなら保存済みの内容を読み取り専用で表示 -->
+        <div v-if="!isAlreadyJudged" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
           <label class="text-sm font-semibold text-blue-700 mb-2 block">
             委員長へのメッセージ
             <span class="text-xs font-normal text-blue-400">（任意・委員長へ伝えたい内容があれば入力してください）</span>
@@ -97,6 +105,11 @@
             rows="3"
             placeholder="委員長への申し送り事項があれば入力してください"
           />
+        </div>
+        <!-- [今回追加] 審査済みの場合、送信済みのメッセージがあれば読み取り専用で表示する -->
+        <div v-else-if="cycle.reviewer_response_message" class="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-4">
+          <p class="text-sm font-semibold text-blue-700 mb-1">委員長へ送信したメッセージ</p>
+          <p class="text-sm text-blue-700 whitespace-pre-wrap">{{ cycle.reviewer_response_message }}</p>
         </div>
 
         <h2 class="text-xl font-bold text-gray-800 mb-4">提出書類</h2>
@@ -119,7 +132,17 @@
               :class="upload.chief_flagged ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'"
             >
               <div class="w-32 flex-none">
+                <!-- [今回追加] 学術講習会インポートの書類は添付資料が無いため、プレビュー不可・専用アイコンにする -->
                 <div
+                  v-if="upload.is_imported"
+                  class="w-full h-32 bg-gray-100 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400"
+                  title="インポートされた記録のため、添付資料はありません"
+                >
+                  <FileX class="w-10 h-10" />
+                  <span class="text-[10px] mt-1">資料なし</span>
+                </div>
+                <div
+                  v-else
                   class="w-full h-32 bg-gray-50 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-100 transition"
                   @click="openPreview(upload)"
                 >
@@ -131,6 +154,12 @@
               <div class="flex-1 flex flex-col gap-4">
                 <div class="flex items-start justify-between">
                   <div>
+                    <span
+                      v-if="upload.is_imported"
+                      class="inline-block text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full mb-1"
+                    >
+                      インポート
+                    </span>
                     <span
                       v-if="upload.chief_flagged"
                       class="inline-block text-[11px] font-semibold text-orange-700 bg-orange-100 px-2 py-0.5 rounded-full mb-1"
@@ -184,7 +213,7 @@
                     @click="handleApprove(upload.id)"
                   >
                     <CheckCircle2 class="w-4 h-4 mr-2" />
-                    この書類を承認する
+                    この書類を確認した
                   </Button>
                   <Button
                     variant="outline"
@@ -209,6 +238,15 @@
             >
               <div class="w-32 flex-none">
                 <div
+                  v-if="upload.is_imported"
+                  class="w-full h-32 bg-gray-100 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400"
+                  title="インポートされた記録のため、添付資料はありません"
+                >
+                  <FileX class="w-10 h-10" />
+                  <span class="text-[10px] mt-1">資料なし</span>
+                </div>
+                <div
+                  v-else
                   class="w-full h-32 bg-gray-50 border border-gray-200 rounded-lg flex flex-col items-center justify-center text-gray-400 cursor-pointer hover:bg-gray-100 transition"
                   @click="openPreview(upload)"
                 >
@@ -220,6 +258,12 @@
               <div class="flex-1 flex flex-col gap-4">
                 <div class="flex items-start justify-between">
                   <div>
+                    <span
+                      v-if="upload.is_imported"
+                      class="inline-block text-[11px] font-semibold text-gray-600 bg-gray-100 px-2 py-0.5 rounded-full mb-1"
+                    >
+                      インポート
+                    </span>
                     <h3 class="text-xl font-bold text-indigo-900">{{ sessionLabel(upload.session) || upload.credit_conference_name }}</h3>
                     <p class="text-sm text-gray-700 mt-1">
                       【{{ upload.credit_conference_name }}】{{ upload.role_name }}
@@ -247,7 +291,7 @@
 
                 <div v-if="upload.status === 'approved'" class="bg-green-50 rounded-xl p-4 flex items-center gap-2 text-green-700">
                   <CheckCircle2 class="w-5 h-5" />
-                  <span class="font-semibold">この書類は承認済みです。</span>
+                  <span class="font-semibold">この書類は確認済です。</span>
                 </div>
 
                 <div v-else class="bg-red-50 rounded-xl p-4 space-y-1">
@@ -345,8 +389,8 @@
               </span>
             </div>
 
-            <!-- 未審査：承認/差し戻し操作 -->
-            <div v-if="previewUpload.status === 'pending'" class="space-y-3">
+            <!-- 未審査：承認/差し戻し操作（cycle全体が審査済みの場合は、書類個別の操作も不可にする） -->
+            <div v-if="previewUpload.status === 'pending' && !isAlreadyJudged" class="space-y-3">
               <div class="bg-gray-50 rounded-xl p-3 space-y-3">
                 <div class="space-y-1">
                   <label class="text-xs font-medium text-gray-600">却下の理由</label>
@@ -375,7 +419,7 @@
                   @click="handleApprove(previewUpload.id)"
                 >
                   <CheckCircle2 class="w-4 h-4 mr-2" />
-                  この書類を承認する
+                  この書類を確認した
                 </Button>
                 <Button
                   variant="outline"
@@ -389,10 +433,10 @@
             </div>
 
             <!-- 審査済み：結果表示 -->
-            <div v-else>
+            <div v-else-if="previewUpload.status === 'approved' || previewUpload.status === 'rejected'">
               <div v-if="previewUpload.status === 'approved'" class="bg-green-50 rounded-xl p-3 flex items-center gap-2 text-green-700">
                 <CheckCircle2 class="w-5 h-5" />
-                <span class="font-semibold text-sm">この書類は承認済みです。</span>
+                <span class="font-semibold text-sm">この書類は確認済です。</span>
               </div>
               <div v-else class="bg-red-50 rounded-xl p-3 space-y-1">
                 <div class="flex items-center gap-2 text-red-600 font-semibold text-sm">
@@ -401,6 +445,10 @@
                 </div>
                 <p class="text-sm text-red-500">{{ previewUpload.rejection_message }}</p>
               </div>
+            </div>
+            <!-- [今回追加] cycle全体が審査済みのため、未審査の書類個別には操作できない旨を表示 -->
+            <div v-else class="bg-gray-50 rounded-xl p-3 text-sm text-gray-500">
+              この申請は既に判定済みのため、操作できません。
             </div>
           </div>
         </div>
@@ -417,7 +465,7 @@
 import { ref, computed } from 'vue'
 import { router, usePage } from '@inertiajs/vue3'
 import {
-  ArrowLeft, FileText, Calendar, CheckCircle2, XCircle, ChevronLeft, ChevronRight
+  ArrowLeft, FileText, FileX, Calendar, CheckCircle2, XCircle, ChevronLeft, ChevronRight
 } from 'lucide-vue-next'
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
@@ -466,6 +514,9 @@ const maxPossibleConferenceCount = computed(() => possibleUploads.value.filter(i
 // [今回追加] 全ての書類の審査が完了しているか（pendingが1件も無いか）
 const allReviewed = computed(() => uploadList.value.every(u => u.status !== 'pending'))
 
+// [今回追加] 審査済画面からの閲覧かどうか（既に判定済みなら操作ボタンを出さない）
+const isAlreadyJudged = computed(() => cycle.value.reviewer_judgment !== 'unreviewed')
+
 const canPass = computed(() =>
   totalPoints.value >= requiredPoints && conferenceCount.value >= requiredConferenceCount
 )
@@ -485,13 +536,23 @@ const pendingUploads = computed(() => uploadList.value.filter(u => u.status === 
 const reviewedUploads = computed(() => uploadList.value.filter(u => u.status !== 'pending'))
 
 const statusLabel = (status) => {
-  const map = { pending: '未審査', approved: '承認済み', rejected: '却下' }
+  const map = { pending: '未審査', approved: '確認済', rejected: '却下' }
   return map[status] ?? '-'
 }
 
 const judgmentLabel = (judgment) => {
   const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '差し戻し' }
   return map[judgment] ?? '未判定'
+}
+
+// [今回追加] 審査済み表示バッジ用
+const judgmentClass = (judgment) => {
+  const map = {
+    pass: 'status-badge-green',
+    fail: 'status-badge-red',
+    re_review: 'status-badge-red',
+  }
+  return map[judgment] ?? 'status-badge-gray'
 }
 
 const sessionLabel = (session) => {

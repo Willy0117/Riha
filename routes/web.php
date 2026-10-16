@@ -25,6 +25,12 @@ use App\Http\Controllers\Admin\ScheduleController as ScheduleController;
 use App\Http\Controllers\Admin\InvoiceController;
 use App\Http\Controllers\Admin\InstructorCycleController as InstructorCycleController;
 
+use App\Http\Controllers\Admin\ExamAssignmentController;
+use App\Http\Controllers\Admin\ExamReviewerController;
+use App\Http\Controllers\Admin\ExamChiefReviewController;
+use App\Http\Controllers\Admin\ExamOfficeController;
+
+
 use App\Http\Controllers\Admin\SmsTestController;
 
 // use App\Http\Controllers\ApplicationController;
@@ -103,6 +109,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('smsTest.send');
 
         // exams　指導士試験申込
+        // [今回] このAdmin\ExamController::class（resource含む）は、今回作った
+        // exam-assignment / exam-reviewer / exam-chief / exam-office とは
+        // URL・ルート名とも重複していない、別の（現在使われていない）機能のため触れていない。
         Route::put(
             'exams/{exam}/status',
             [\App\Http\Controllers\Admin\ExamController::class, 'updateStatus']
@@ -245,7 +254,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('reviewer.view');
         Route::get('reviewer/pdfUploads/{id}/thumbnail', [ReviewerController::class, 'thumbnail'])
             ->name('reviewer.thumbnail');
-
+        // [今回追加] 審査員の審査済画面（既存のreviewer関連ルートと同じグループ内に追記してください）
+        Route::get('reviewer/reviewed', [ReviewerController::class, 'reviewed'])
+            ->name('reviewer.reviewed');
 
         // 審査委員長
         Route::get('chief', [ChiefReviewController::class, 'index'])
@@ -267,6 +278,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // サブリーダー
         Route::get('subleader', [SubLeaderAssignmentController::class, 'index'])
             ->name('subleader.index');
+        Route::get('subleader/members/{member}', [SubLeaderAssignmentController::class, 'show'])
+            ->name('subleader.show');    
         Route::post('subleader/instructorUpdateCycles/{cycle}/assign', [SubLeaderAssignmentController::class, 'assign'])
             ->name('subleader.assign');
         Route::post('subleader/instructorUpdateCycles/autoAssign', [SubLeaderAssignmentController::class, 'autoAssign'])
@@ -299,6 +312,50 @@ Route::prefix('admin')->name('admin.')->group(function () {
             ->name('rehab.reject');
         Route::post('/rehab-applications/{application}/approve', [RehabApplicationController::class, 'approve'])
             ->name('rehab.approve');
+        // [今回追加] 新規指導士申請フロー：管理画面側のルート一式
+        // 既存の admin プレフィックス・admin. 名前空間のグループ内に追記すること
+        // （Route::prefix('admin')->name('admin.')->middleware(['auth:admin'])->group(function () { ... }) の中）
+        // ── 審査員アサイン ──────────────────────────────
+        Route::prefix('exam-assignment')->name('examAssignment.')->group(function () {
+            Route::get('/', [ExamAssignmentController::class, 'index'])->name('index');
+            Route::post('/{exam}/assign', [ExamAssignmentController::class, 'assign'])->name('assign');
+            Route::post('/bulk-assign', [ExamAssignmentController::class, 'bulkAssign'])->name('bulkAssign');
+            Route::post('/auto-assign', [ExamAssignmentController::class, 'autoAssign'])->name('autoAssign');
+        });
+
+        // ── 審査員 ──────────────────────────────────
+        Route::prefix('exam-reviewer')->name('examReviewer.')->group(function () {
+            Route::get('/', [ExamReviewerController::class, 'index'])->name('index');
+            Route::get('/{exam}', [ExamReviewerController::class, 'show'])->name('show');
+            Route::get('/documents/{id}/view', [ExamReviewerController::class, 'view'])->name('view');
+            Route::get('/documents/{id}/thumbnail', [ExamReviewerController::class, 'thumbnail'])->name('thumbnail');
+            Route::post('/{exam}/judge', [ExamReviewerController::class, 'judge'])->name('judge');
+        });
+
+        // ── 委員長 ──────────────────────────────────
+        Route::prefix('exam-chief')->name('examChief.')->group(function () {
+            Route::get('/', [ExamChiefReviewController::class, 'index'])->name('index');
+            Route::get('/{exam}', [ExamChiefReviewController::class, 'show'])->name('show');
+            Route::get('/documents/{id}/view', [ExamChiefReviewController::class, 'view'])->name('view');
+            Route::get('/documents/{id}/thumbnail', [ExamChiefReviewController::class, 'thumbnail'])->name('thumbnail');
+            Route::post('/{exam}/review', [ExamChiefReviewController::class, 'review'])->name('review');
+            Route::post('/{exam}/send-back', [ExamChiefReviewController::class, 'sendBackToReviewer'])->name('sendBackToReviewer');
+            Route::post('/bulk-review', [ExamChiefReviewController::class, 'bulkReview'])->name('bulkReview');
+        });
+
+        // ── 事務局 ──────────────────────────────────
+        Route::prefix('exam-office')->name('examOffice.')->group(function () {
+            Route::get('/', [ExamOfficeController::class, 'index'])->name('index');
+            Route::get('/{exam}', [ExamOfficeController::class, 'show'])->name('show');
+            Route::get('/documents/{id}/view', [ExamOfficeController::class, 'view'])->name('view');
+            Route::get('/documents/{id}/thumbnail', [ExamOfficeController::class, 'thumbnail'])->name('thumbnail');
+            Route::post('/{exam}/record-exam-result', [ExamOfficeController::class, 'recordExamResult'])->name('recordExamResult');
+            Route::post('/{exam}/certify', [ExamOfficeController::class, 'certify'])->name('certify');
+        });
+
+        // ── 指導士回数マスター（既存Controllerの更新のみ。ルート自体が既に無ければ追加） ──
+        // Route::resource('instructor-cycles', \App\Http\Controllers\Admin\InstructorCycleController::class)
+        //     ->only(['index', 'store', 'update'])->names('instructorCycles');
 
         Route::get('import', [AdminImportController::class, 'index'])->name('import.index');
         Route::post('import', [AdminImportController::class, 'store'])->name('import.store');
@@ -410,7 +467,32 @@ Route::middleware([
 */
     Route::resource('pdf-uploads', PdfUploadController::class);
     
-    Route::resource('exams', ExamController::class);
+    //Route::resource('exams', ExamController::class);
+    Route::get('exams', [ExamController::class, 'index'])->name('exams.index');
+    Route::get('exams/{exam}', [ExamController::class, 'show'])->name('exams.show');
+    
+    Route::post('exams/{exam}/route', [ExamController::class, 'updateRoute'])
+        ->name('exams.updateRoute');
+    
+    Route::post('exams/{exam}/documents', [ExamController::class, 'uploadDocument'])
+        ->name('exams.uploadDocument');
+
+    Route::get('exam-documents/{document}/view', [ExamController::class, 'viewDocument'])
+        ->name('exams.viewDocument');
+    
+    Route::delete('exams/{exam}/documents/{document}', [ExamController::class, 'deleteDocument'])
+        ->name('exams.deleteDocument');
+    
+    Route::put('exams/{exam}/case-reports/{caseReport}', [ExamController::class, 'updateCaseReport'])
+        ->name('exams.updateCaseReport');
+    
+    Route::post('exams/{exam}/case-reports/{caseReport}/toggle-detailed', [ExamController::class, 'toggleDetailed'])
+        ->name('exams.toggleDetailed');
+    
+    Route::post('exams/{exam}/submit', [ExamController::class, 'submit'])
+        ->name('exams.submit');
+
+
     Route::resource('reports', ReportController::class);
     // ----------------------------------------
     // ユーザー向け

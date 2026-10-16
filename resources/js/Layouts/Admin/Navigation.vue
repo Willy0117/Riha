@@ -23,18 +23,7 @@
       ]"
     >
     <!-- 開いている時 -->
-    <div v-if="!collapsed" class="flex items-center justify-between p-2 border-b border-gray-200">
-      <div class="flex items-center gap-2">
-        <div class="logo-icon">JS</div>
-        <div class="overflow-hidden">
-          <span class="block text-xs font-bold text-gray-800 leading-tight truncate">
-            指導士資格更新システム
-          </span>
-          <span class="block text-gray-400 tracking-widest truncate" style="font-size:9px">
-            RENEWAL MANAGEMENT SYSTEM
-          </span>
-        </div>
-      </div>
+    <div v-if="!collapsed" class="flex items-center justify-end p-2 border-b border-gray-200">
       <button @click="toggleCollapse" class="p-2 rounded-full hover:bg-gray-200 flex-none">
         <XMarkIcon class="w-5 h-5 text-gray-600" />
       </button>
@@ -42,7 +31,6 @@
 
     <!-- 閉じている時 -->
     <div v-else class="flex flex-col items-center py-2 border-b border-gray-200 gap-1">
-      <div class="logo-icon">JS</div>
       <button @click="toggleCollapse" class="p-2 rounded-full hover:bg-gray-200">
         <Menu class="w-5 h-5 text-gray-600" />
       </button>
@@ -242,21 +230,6 @@
               <GraduationCap class="w-4 h-4 mr-1"/>
               <span v-if="!collapsed" class="ml-2">スケジュールリマインダー設定</span>
             </Link>
-            <Link
-              :href="route('admin.instructorCycles.index')"
-              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-              :class="isActive('instructorCycles.index') ? 'bg-gray-300 font-semibold' : ''"
-            >
-              <GraduationCap class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">指導士認定期間設定</span>
-            </Link>
-            <Link v-if="can('imports.view')|| can('imports.edit')" :href="route('admin.import.index')"
-                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-                  :class="isActive('admin.import.index') ? 'bg-gray-300 font-semibold' : ''">
-              <Upload class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">{{ t('import') }}</span>
-            </Link>
-
           </div>
         </transition>
       </div>    
@@ -299,32 +272,6 @@
         </transition>
       </div>
 
-      <div v-if="can('invoices.view') || can('invoices.edit')" class="mt-2">
-        <button
-          @click="toggleSubMenu('invoices')"
-          class="flex items-center justify-between w-full py-2 px-2 rounded hover:bg-gray-200 transition-colors"
-        >
-          <div class="flex items-center">
-            <Calendar class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">{{ t('invoices') }}</span>
-          </div>
-          <svg
-            v-if="!collapsed"
-            :class="{ 'rotate-90': openSubMenu === 'invoices' }"
-            class="w-4 h-4 transform transition-transform duration-200"
-            fill="none"
-            stroke="currentColor"
-            stroke-width="2"
-            viewBox="0 0 24 24"
-          >
-            <path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-          </svg>
-        </button>
-        <transition name="slide-fade">
-          <div v-show="openSubMenu === 'invoices' && !collapsed" class="pl-6 mt-1 space-y-1">
-          </div>
-        </transition>
-      </div>
 
       <div v-if="can('credits.view') || can('credits.edit')" class="mt-2">
         <button
@@ -388,6 +335,13 @@
             >
               <Upload class="w-4 h-4 mr-1"/>
               {{ t('import') }}
+            </Link>
+
+            <Link :href="route('admin.import.index')"
+                  class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+                  :class="isActive('admin.import.index') ? 'bg-gray-300 font-semibold' : ''">
+              <Upload class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">{{ t('import') }}</span>
             </Link>
           </div>
         </transition>
@@ -574,7 +528,7 @@ const isActive = (routeName) => false
 const hasApiFeatures = true
 
 const validMenus = ['members', 'admins', 'users', 'systems','annual_fees','organizations', 'approvals', 'renewals',
- 'certifications','imports', 'invoices', 'credits', 'instructorMember' ]
+ 'certifications','imports', 'credits', 'instructorMember' ]
 
 // 自動判定
 const detectMenu = () => {

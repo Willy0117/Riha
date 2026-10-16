@@ -65,6 +65,14 @@
                 {{ dayjs(props.schedule.subleader_start).format('YYYY-MM-DD') }}〜{{ dayjs(props.schedule.chief_end).format('YYYY-MM-DD') }}
               </p>
             </div>
+            <!-- [今回追加] 申請受付スケジュール一覧ダイアログを開くリンク -->
+            <button
+              type="button"
+              class="text-xs text-blue-600 underline hover:text-blue-800 mt-2"
+              @click="showScheduleDialog = true"
+            >
+              申請受付スケジュールについて
+            </button>
           </div>
 
           <!-- [今回追加] ステータスバッジ（独立カード・期間内のみ表示） -->
@@ -124,7 +132,7 @@
 
             <!-- 左側：① 更新要件充足チェック（横並び3カード） -->
             <div class="lg:col-span-4 border border-gray-200 rounded-xl p-4">
-              <p class="text-sm font-semibold text-gray-500 mb-3">① 更新要件充足チェック</p>
+              <p class="text-sm font-semibold text-gray-500 mb-3">更新要件充足チェック</p>
               <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
 
                 <!-- (a) 学術集会への参加 -->
@@ -134,7 +142,7 @@
                   </div>
                   <p class="font-semibold text-gray-900 text-base mb-1 pr-4">(a) 腎リハ学術集会に2回以上参加</p>
                   <p class="text-sm text-gray-500 mb-3">
-                    5年間に日本腎臓リハビリテーション学会学術集会に2回以上参加している（参加証明書を提出してください）。
+                    5年間に日本腎臓リハビリテーション学会学術集会に2回以上参加している（参加証を提出してください）。
                   </p>
                   <div class="flex items-center gap-3">
                     <div class="flex items-baseline gap-0.5 flex-shrink-0">
@@ -143,10 +151,10 @@
                     </div>
                     <div class="flex flex-col gap-1.5 flex-1">
                       <div class="bg-amber-50 border border-amber-200 rounded-lg text-center py-1.5">
-                        <span class="text-sm text-amber-700 font-semibold">蓄積中：{{ props?.pendingConferenceCount ?? 0 }} 回</span>
+                        <span class="text-sm text-amber-700 font-semibold">アップロード済：{{ props?.pendingConferenceCount ?? 0 }} 回</span>
                       </div>
                       <div class="bg-emerald-50 border border-emerald-200 rounded-lg text-center py-1.5">
-                        <span class="text-sm text-emerald-700 font-semibold">承認済み：{{ props?.approvedConferenceCount ?? 0 }} 回</span>
+                        <span class="text-sm text-emerald-700 font-semibold">確認済み：{{ props?.approvedConferenceCount ?? 0 }} 回</span>
                       </div>
                     </div>
                   </div>
@@ -168,10 +176,10 @@
                     </div>
                     <div class="flex flex-col gap-1.5 flex-1">
                       <div class="bg-amber-50 border border-amber-200 rounded-lg text-center py-1.5">
-                        <span class="text-sm text-amber-700 font-semibold">蓄積中：{{ props?.pendingTotal ?? 0 }} 単位</span>
+                        <span class="text-sm text-amber-700 font-semibold">アップロード済：{{ props?.pendingTotal ?? 0 }} 単位</span>
                       </div>
                       <div class="bg-emerald-50 border border-emerald-200 rounded-lg text-center py-1.5">
-                        <span class="text-sm text-emerald-700 font-semibold">承認済み：{{ props?.approvedTotal ?? 0 }} 単位</span>
+                        <span class="text-sm text-emerald-700 font-semibold">確認済み：{{ props?.approvedTotal ?? 0 }} 単位</span>
                       </div>
                     </div>
                   </div>
@@ -204,7 +212,7 @@
             <!-- 右側：② 更新申請 / ③ 資格更新料納付（縦並び） -->
             <div class="lg:col-span-1 flex flex-col gap-3">
               <div class="border border-gray-200 rounded-xl p-4">
-                <p class="text-sm font-semibold text-gray-500 mb-3">② 更新申請を行う</p>
+                <p class="text-sm font-semibold text-gray-500 mb-3">更新申請を行う</p>
                 <div class="flex flex-col gap-2">
                   <div>
                     <Button
@@ -246,7 +254,7 @@
               </div>
 
               <div class="border border-gray-200 rounded-xl p-4">
-                <p class="text-sm font-semibold text-gray-500 mb-3">③ 資格更新料納付</p>
+                <p class="text-sm font-semibold text-gray-500 mb-3">資格更新料納付</p>
                 <span :class="badgeClasses(paymentBadgeToneMap[paymentBadgeState.tone])">
                   <CheckCircle2 v-if="paymentBadgeState.tone === 'paid'" class="w-3.5 h-3.5" />
                   <Clock v-else-if="paymentBadgeState.tone === 'unpaid'" class="w-3.5 h-3.5" />
@@ -296,13 +304,23 @@
                 </div>
               </td>
             </tr>
-            <tr v-for="app in props.uploads" :key="app.id">
+            <tr
+              v-for="app in props.uploads"
+              :key="app.id"
+              :class="isDuplicate(app) ? 'bg-amber-100' : ''"
+              :title="isDuplicate(app) ? '同一の区分・学会名・役割（・開催回）のデータが他にもあります' : ''"
+            >
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">
                 <div class="flex items-center gap-2">
-                  <FileText class="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <!-- [今回追加] 学術講習会インポート（事務局が登録）の記録は専用アイコンにする -->
+                  <FileX v-if="app.is_imported" class="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <FileText v-else class="w-4 h-4 text-gray-400 flex-shrink-0" />
                   <div>
                     <p class="font-medium">
                       <template v-if="app.session">第{{ app.session }}回 </template>{{ app.credit_conference_name }}
+                      <span v-if="app.is_imported" class="inline-block text-[10px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full ml-1">
+                        事務局登録
+                      </span>
                     </p>
                     <Badge variant="outline" class="text-xs mt-1">{{ app.role_name }}</Badge>
                     <p class="text-xs text-blue-600 font-semibold mt-1">認定学会: {{ app.credit_category_name }}</p>
@@ -336,6 +354,9 @@
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-700">
                 <div class="flex items-center gap-2">
+                  <!-- [今回追加] インポートされた記録には添付資料が無いため、詳細・削除とも操作不可にする -->
+                  <span v-if="app.is_imported" class="text-xs text-gray-300">資料なし</span>
+                  <template v-else>
                   <button
                     @click="previewPdf = `/pdf-uploads/${app.id}/view`"
                     class="text-xs text-gray-500 hover:text-sky-700 transition flex items-center gap-1"
@@ -356,6 +377,7 @@
                     <Trash2 class="w-4 h-4" />
                     削除
                   </button>
+                  </template>
                 </div>
               </td>
             </tr>
@@ -427,6 +449,46 @@
 
           <DialogFooter>
             <Button variant="outline" size="sm" @click="showFeeDialog = false">閉じる</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <!-- [今回追加] 申請受付スケジュール一覧ダイアログ -->
+      <Dialog :open="showScheduleDialog" @update:open="showScheduleDialog = false">
+        <DialogContent class="sm:max-w-2xl bg-white">
+          <DialogHeader>
+            <DialogTitle>申請受付スケジュールについて</DialogTitle>
+          </DialogHeader>
+
+          <table class="w-full text-sm">
+            <thead>
+              <tr class="border-b text-gray-500">
+                <th class="py-2 text-left">期</th>
+                <th class="py-2 text-left">応募期間</th>
+                <th class="py-2 text-left">審査期間</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="s in props.allSchedules" :key="s.period_name" class="border-b">
+                <td class="py-2 font-semibold">{{ s.period_name }}</td>
+                <td class="py-2 text-gray-700">
+                  {{ dayjs(s.application_start).format('YYYY-MM-DD') }}〜{{ dayjs(s.application_end).format('YYYY-MM-DD') }}
+                </td>
+                <td class="py-2 text-gray-700">
+                  {{ dayjs(s.subleader_start).format('YYYY-MM-DD') }}〜{{ dayjs(s.chief_end).format('YYYY-MM-DD') }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- [今回追加] チェックを入れて閉じると、次回以降はこの自動表示ダイアログを出さない -->
+          <label class="flex items-center gap-2 text-sm text-gray-600 mt-2 cursor-pointer select-none">
+            <input type="checkbox" v-model="scheduleDialogAcknowledged" class="rounded" />
+            確認しました（次回から自動で表示しない）
+          </label>
+
+          <DialogFooter>
+            <Button variant="outline" size="sm" @click="closeScheduleDialog">閉じる</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -539,7 +601,7 @@
 
             <!-- 書類名（session：回数） -->
             <div v-if="selectedRolePointRequiresSession" class="space-y-2">
-              <Label for="session">回数</Label>
+              <Label for="session">開催会</Label>
               <TextInput
                 id="session"
                 v-model="form.session"
@@ -632,7 +694,7 @@ import TextInput from '@/Components/TextInput.vue';
 import InputError from '@/Components/InputError.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
-import { Eye, FileText, Calendar, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle, CheckCircle2, Check, ChevronsUpDown, X } from 'lucide-vue-next'
+import { Eye, FileText, FileX, Calendar, Clock, Info, GraduationCap, Award, Trash2, Upload, Save, FileUp, AlertCircle, AlertTriangle, CheckCircle2, Check, ChevronsUpDown, X } from 'lucide-vue-next'
 import dayjs from 'dayjs'
 
 import { useI18n } from 'vue-i18n'
@@ -643,6 +705,19 @@ const page = usePage()
 
 const warnings = computed(() => page.props.flash?.warnings ?? [])
 const uploadError = computed(() => page.props.flash?.error ?? null)
+
+// 同一の「区分・学会名・役割（・開催回）」を持つ書類（却下を除く）が複数ある行をハイライトする
+const dupKey = (u) => [u.credit_category_name, u.credit_conference_name, u.role_name, u.session ?? ''].join('|')
+const duplicateKeys = computed(() => {
+  const count = {}
+  for (const u of props.uploads ?? []) {
+    if (u.status === 'rejected') continue
+    const k = dupKey(u)
+    count[k] = (count[k] ?? 0) + 1
+  }
+  return new Set(Object.keys(count).filter(k => count[k] > 1))
+})
+const isDuplicate = (u) => u.status !== 'rejected' && duplicateKeys.value.has(dupKey(u))
 
 const props = defineProps({
   uploads: { type: Array, required: true },
@@ -664,7 +739,9 @@ const props = defineProps({
   fees: Object,
   annualFeeStatus: Boolean, 
   renewalFeeStatus: { type: String, default: 'unbilled' }, // [今回追加]
-  schedule: Object, // [今回追加] 現在の期区分（応募期間・審査期間）
+  schedule: Object, // 現在の期区分（応募期間・審査期間）
+  allSchedules: Array, // [今回追加] 申請受付スケジュール一覧（全期間）
+  shouldShowScheduleDialog: Boolean, // [今回追加] ページを開いた瞬間に自動表示するか
 })
 
 const totalCredits = computed(() => (props.approvedTotal ?? 0) + (props.pendingTotal ?? 0))
@@ -858,7 +935,7 @@ const deleteUpload = (id) => {
 
 const uploadStatusLabel = (status) => {
   switch (status) {
-    case 'pending':       return '蓄積中'
+    case 'pending':       return 'アップロード済'
     case 'approved':      return '承認'
     case 'rejected':      return '却下'
     case 'under_review':  return '審査中'
@@ -992,6 +1069,23 @@ const isWithinPeriod = computed(() => {
 const annualFeeStatus = computed(() => props.annualFeeStatus ? '納入済' : '未納')
 
 const showFeeDialog = ref(false)
+
+// [今回追加] 申請受付スケジュール一覧ダイアログ。
+// 該当者（今年度対象かつ未申請）の場合、ページを開いた瞬間に自動表示する。
+// ただし、一度「確認しました」にチェックして閉じていれば（localStorage）、自動表示はしない。
+const scheduleDialogStorageKey = `scheduleDialogAcknowledged_${props.member?.id ?? 'guest'}`
+const scheduleDialogAcknowledged = ref(localStorage.getItem(scheduleDialogStorageKey) === 'true')
+
+const showScheduleDialog = ref(
+  !!props.shouldShowScheduleDialog && !scheduleDialogAcknowledged.value
+)
+
+const closeScheduleDialog = () => {
+  if (scheduleDialogAcknowledged.value) {
+    localStorage.setItem(scheduleDialogStorageKey, 'true')
+  }
+  showScheduleDialog.value = false
+}
 const missingParticipationSessions = computed(() => {
   const uploads = props.uploads || []
 
