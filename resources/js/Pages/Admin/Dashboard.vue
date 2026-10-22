@@ -55,7 +55,7 @@
               <tr class="bg-gray-50 text-gray-600">
                 <th class="px-4 py-2 text-left font-medium">期</th>
                 <th class="px-4 py-2 text-left font-medium">応募期間</th>
-                <th class="px-4 py-2 text-left font-medium">サブ（アサイン担当者）</th>
+                <th class="px-4 py-2 text-left font-medium">アサイン担当者</th>
                 <th class="px-4 py-2 text-left font-medium">審査員</th>
                 <th class="px-4 py-2 text-left font-medium">委員長</th>
               </tr>

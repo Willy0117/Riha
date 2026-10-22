@@ -129,6 +129,8 @@
               v-for="upload in pendingUploads"
               :key="upload.id"
               class="flex gap-6 p-6 bg-white rounded-xl border transition"
+              :style="duplicateStyle(upload)"
+              :title="duplicateTitle(upload)"
               :class="upload.chief_flagged ? 'border-orange-300 ring-1 ring-orange-200' : 'border-gray-200'"
             >
               <div class="w-32 flex-none">
@@ -185,7 +187,7 @@
                   </span>
                 </div>
 
-                <div class="bg-gray-50 rounded-xl p-4 space-y-3">
+                <div v-if="!isAlreadyJudged" class="bg-gray-50 rounded-xl p-4 space-y-3">
                   <div class="space-y-1">
                     <label class="text-xs font-medium text-gray-600">却下の理由</label>
                     <select v-model="rejectReasons[upload.id]" class="input-field text-sm">
@@ -207,7 +209,7 @@
                   </div>
                 </div>
 
-                <div class="flex gap-3">
+                <div v-if="!isAlreadyJudged" class="flex gap-3">
                   <Button
                     class="flex-1 bg-green-600 hover:bg-green-700 text-white font-bold"
                     @click="handleApprove(upload.id)"
@@ -235,6 +237,8 @@
               v-for="upload in reviewedUploads"
               :key="upload.id"
               class="flex gap-6 p-6 bg-white rounded-xl border border-gray-200"
+              :style="duplicateStyle(upload)"
+              :title="duplicateTitle(upload)"
             >
               <div class="w-32 flex-none">
                 <div
@@ -469,6 +473,7 @@ import {
 } from 'lucide-vue-next'
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
+import { useDuplicateHighlight } from '@/composables/useDuplicateHighlight'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -483,6 +488,7 @@ const uploads = props.props.uploads
 // thumbnail_url・role_name・credit_conference_name はコントローラ側（show()）で
 // 計算済みの値をそのまま使う（クライアント側での復元ロジックは削除）
 const uploadList = ref(uploads)
+const { isDuplicate, duplicateStyle, duplicateTitle } = useDuplicateHighlight(uploadList)
 
 const rejectReasons = ref({})
 const rejectComments = ref({})
@@ -515,7 +521,9 @@ const maxPossibleConferenceCount = computed(() => possibleUploads.value.filter(i
 const allReviewed = computed(() => uploadList.value.every(u => u.status !== 'pending'))
 
 // [今回追加] 審査済画面からの閲覧かどうか（既に判定済みなら操作ボタンを出さない）
-const isAlreadyJudged = computed(() => cycle.value.reviewer_judgment !== 'unreviewed')
+// 合否判定済み（合格・不合格）の場合のみ操作ボタンを出さない。
+// 未審査・差し戻し（再審査）は、書類の審査・判定ができる。
+const isAlreadyJudged = computed(() => ['pass', 'fail'].includes(cycle.value.reviewer_judgment))
 
 const canPass = computed(() =>
   totalPoints.value >= requiredPoints && conferenceCount.value >= requiredConferenceCount
@@ -674,7 +682,18 @@ const handleJudge = (judgment) => {
   )
 }
 
+// 審査済画面（?from=reviewed）から来た場合は、検索条件・ページを保ったまま審査済画面に戻る。
+// それ以外は従来どおり審査員の一覧に戻る。
 const backToIndex = () => {
+  const from = new URLSearchParams(window.location.search).get('from')
+  if (from === 'reviewed') {
+    if (window.history.length > 1) {
+      window.history.back()
+    } else {
+      router.get(route('admin.reviewer.reviewed'))
+    }
+    return
+  }
   router.get(route('admin.reviewer.index'))
 }
 </script>

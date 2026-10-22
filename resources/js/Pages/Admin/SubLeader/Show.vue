@@ -102,6 +102,8 @@
             v-for="upload in uploadList"
             :key="upload.id"
             class="p-3 rounded-lg border transition"
+            :style="duplicateStyle(upload)"
+            :title="duplicateTitle(upload)"
             :class="[
               upload.is_imported ? 'cursor-default' : 'cursor-pointer hover:shadow-sm',
               {
@@ -126,7 +128,7 @@
             >
               インポート
             </span>
-            <p class="text-sm font-bold text-indigo-900 truncate">{{ sessionLabel(upload.session) || upload.credit_conference_name }}</p>
+            <p class="text-sm font-bold text-indigo-900 truncate">{{ [sessionLabel(upload.session), upload.credit_conference_name].filter(Boolean).join(' ') }}</p>
             <p class="text-xs text-gray-500 truncate mt-0.5">{{ upload.role_name }}</p>
 
             <div class="flex items-center justify-between mt-2">
@@ -156,28 +158,7 @@
     </div>
 
     <!-- PDF/画像プレビューDialog -->
-    <Dialog :open="!!previewUpload" @update:open="previewUpload = null">
-      <DialogContent class="w-[95vw] max-w-[95vw] h-[95vh] max-h-[95vh] p-0 flex flex-col">
-        <DialogHeader class="px-4 py-3 border-b">
-          <DialogTitle>{{ t('PDFpreview') }}</DialogTitle>
-        </DialogHeader>
-        <div class="flex-1 overflow-hidden flex items-center justify-center bg-gray-50">
-          <img
-            v-if="previewUpload?.is_image"
-            :src="previewFileUrl"
-            class="max-w-full max-h-full object-contain"
-          />
-          <iframe
-            v-else-if="previewFileUrl"
-            :src="previewFileUrl"
-            class="w-full h-full border-0"
-          />
-        </div>
-        <DialogFooter class="px-4 py-3 border-t">
-          <Button variant="outline" @click="previewUpload = null">{{ t('closed') }}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+    <DocumentViewer v-model="previewUpload" :uploads="uploadList" file-route="admin.instructorMembers.view" />
 
   </AppLayout>
 </template>
@@ -192,6 +173,8 @@ import {
 } from 'lucide-vue-next'
 
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
+import { useDuplicateHighlight } from '@/composables/useDuplicateHighlight'
+import DocumentViewer from '@/Components/DocumentViewer.vue'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import {
@@ -237,6 +220,7 @@ const formatDate = (value) => {
 // thumbnail_url・role_name・credit_conference_name・category_name はコントローラ側（edit()）で
 // 計算済みの値をそのまま使う（クライアント側での復元ロジックは削除）
 const uploadList = ref(uploads)
+const { isDuplicate, duplicateStyle, duplicateTitle } = useDuplicateHighlight(uploadList)
 
 const previewUpload = ref(null)
 
@@ -276,7 +260,11 @@ const previewFileUrl = computed(() =>
 )
 
 const backToIndex = () => {
-  router.get(route('admin.subleader.index'))
+  if (window.history.length > 1) {
+    window.history.back()
+  } else {
+    router.get(route('admin.subleader.index'))
+  }
 }
 </script>
 

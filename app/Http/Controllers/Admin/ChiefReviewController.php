@@ -100,8 +100,12 @@ class ChiefReviewController extends Controller
             $cycles = $allCycles;
         }
 
+        $periods = \App\Support\ApplicationPeriod::list();
+        \App\Support\ApplicationPeriod::annotate($cycles->getCollection(), $periods);
+
         return inertia('Admin/Chief/Index', [
             'cycles' => $cycles,
+            'periods' => $periods,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
         ]);

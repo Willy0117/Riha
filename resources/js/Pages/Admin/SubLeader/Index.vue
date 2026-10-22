@@ -97,6 +97,8 @@
       </div>
 
       <!-- 申請一覧 + アサイン -->
+      <PeriodLegend :periods="periods" />
+
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
           <thead>
@@ -132,7 +134,7 @@
               </td>
             </tr>
             <tr v-for="cycle in cycles.data" :key="cycle.id" :class="{ 'bg-[#EAF1FA]': selectedIds.includes(cycle.id) }">
-              <td class="px-3 py-3.5 border-b border-gray-100">
+              <td :style="periodCellStyle(cycle.application_period)" class="px-3 py-3.5 border-b border-gray-100">
                 <input
                   type="checkbox"
                   :checked="selectedIds.includes(cycle.id)"
@@ -167,9 +169,9 @@
                   <Link
                     :href="route('admin.subleader.show', cycle.member_id)"
                     class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
-                    title="詳細"
+                    title="閲覧"
                   >
-                    <Pencil class="w-4 h-4" />
+                    <FileSearch class="w-5 h-5" />
                   </Link>
                   <select
                     v-model="selectedReviewer[cycle.id]"
@@ -206,12 +208,15 @@
 <script setup>
 import { computed, reactive, ref } from 'vue'
 import { router, Link } from '@inertiajs/vue3'
-import { Shuffle, X, Pencil } from 'lucide-vue-next'
+import { Shuffle, X, FileSearch } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
+import PeriodLegend from '@/Components/PeriodLegend.vue'
+import { periodCellStyle } from '@/composables/usePeriodColor'
 import { Button } from '@/components/ui/button'
 
 const props = defineProps({
+  periods: { type: Array, default: () => [] },
   cycles: Object,
   reviewers: Array,
   filter: { type: String, default: 'unassigned' },

@@ -21,6 +21,8 @@
         </div>
       </div>
 
+      <PeriodLegend :periods="periods" />
+
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
           <thead>
@@ -54,7 +56,7 @@
               </td>
             </tr>
             <tr v-for="cycle in cycles.data" :key="cycle.id">
-              <td class="px-5 py-3.5 border-b border-gray-100">{{ cycle.member?.code }}</td>
+              <td :style="periodCellStyle(cycle.application_period)" class="px-5 py-3.5 border-b border-gray-100">{{ cycle.member?.code }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 font-medium">{{ cycle.member?.name }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.start_date?.split('T')[0] }} 〜 {{ cycle.end_date?.split('T')[0] }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.updated_at?.split('T')[0] }}</td>
@@ -95,8 +97,11 @@ import { ref } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
+import PeriodLegend from '@/Components/PeriodLegend.vue'
+import { periodCellStyle } from '@/composables/usePeriodColor'
 
 const props = defineProps({
+  periods: { type: Array, default: () => [] },
   cycles: Object,
   sortBy: { type: String, default: 'updated_at' },
   sortDir: { type: String, default: 'asc' },

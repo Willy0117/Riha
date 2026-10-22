@@ -38,6 +38,8 @@
         </span>
       </div>
 
+      <PeriodLegend :periods="periods" />
+
       <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
         <table class="w-full border-collapse text-sm">
           <thead>
@@ -80,7 +82,7 @@
               </td>
             </tr>
             <tr v-for="cycle in cycles.data" :key="cycle.id" :class="{ 'bg-blue-50/50': selectedIds.includes(cycle.id) }">
-              <td class="px-3 py-3.5 border-b border-gray-100">
+              <td :style="periodCellStyle(cycle.application_period)" class="px-3 py-3.5 border-b border-gray-100">
                 <input
                   type="checkbox"
                   :checked="selectedIds.includes(cycle.id)"
@@ -119,7 +121,7 @@
                   <Link
                     :href="route('admin.chief.show', cycle.id)"
                     class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
-                    title="詳細"
+                    title="詳細・差し戻し"
                   >
                     <Pencil class="w-4 h-4" />
                   </Link>
@@ -188,12 +190,15 @@ import { router, Link } from '@inertiajs/vue3'
 import { CheckCircle2, Pencil } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
+import PeriodLegend from '@/Components/PeriodLegend.vue'
+import { periodCellStyle } from '@/composables/usePeriodColor'
 import DialogModal from '@/Components/DialogModal.vue'
 import SecondaryButton from '@/Components/SecondaryButton.vue'
 import PrimaryButton from '@/Components/PrimaryButton.vue'
 import { Button } from '@/components/ui/button'
 
 const props = defineProps({
+  periods: { type: Array, default: () => [] },
   cycles: Object,
   sortBy: { type: String, default: 'reviewer_judged_at' },
   sortDir: { type: String, default: 'desc' },

@@ -78,6 +78,11 @@ const menus = [
   },
 ]
 
+// [今回追加] 既に指導士資格を持っている人には、受験申込（指導士資格認定試験）のメニューを表示しない
+const visibleMenus = computed(() =>
+  menus.filter(m => !(m.key === 'exams' && page.props.auth.user?.already_instructor))
+)
+
 const { props } = usePage()
 // Jetstream props
 // [修正] props.jetstream・current_team 等はテンプレートで未使用かつ、
@@ -226,7 +231,7 @@ const showAccessControl = computed(() => {
         <div class="mt-2">
 
         <div
-          v-for="menu in menus"
+          v-for="menu in visibleMenus"
           :key="menu.key"
           class="mb-1"
         >

@@ -290,6 +290,56 @@ class InstructorMemberController extends Controller
         ]);
     }
 
+    // [今回追加] 閲覧専用の詳細（編集・保存はできない。編集は edit() の画面）
+    public function show(Request $request, Member $member)
+    {
+        $member->load([
+            'updateCycles',
+            'invoices',
+        ]);
+
+        $cycle = $member->updateCycles->first();
+
+        $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole.creditRole'])
+            ->where('member_id', $member->id)
+            ->latest()
+            ->get()
+            ->map(function (PdfUpload $upload) {
+                return array_merge($upload->toArray(), [
+                    'credit_conference_name' => $upload->creditConference?->name ?? '',
+                    'category_name' => $upload->creditCategory?->name ?? '',
+                    'role_name' => $upload->creditRole?->creditRole?->name ?? '',
+                    'thumbnail_url' => $this->thumbnailUrl($upload->thumbnail_path),
+                    // プレビューダイアログで img / iframe を出し分けるためのフラグ
+                    'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
+                    // [今回追加] 学術講習会インポートで作成された書類（添付資料なし）かどうか
+                    'is_imported' => empty($upload->file_path),
+                ]);
+            });
+
+        if ($cycle) {
+            $cycle->conference_count = PdfUpload::where('member_id', $member->id)
+                ->where('status', 'approved')
+                ->whereHas('creditCategory', fn ($q) => $q->where('name', '学術集会'))
+                ->whereHas('creditConference', fn ($q) => $q->where('name', '日本腎臓リハビリテーション学会'))
+                ->whereDate('issued_date', '>=', $cycle->start_date)
+                ->whereDate('issued_date', '<=', $cycle->end_date)
+                ->whereHas('creditRole.creditRole', fn ($q) => $q->where('name', '参加'))
+                ->count();
+
+            $cycle->total_points = PdfUpload::where('member_id', $member->id)
+                ->where('status', 'approved')
+                ->whereDate('issued_date', '>=', $cycle->start_date)
+                ->whereDate('issued_date', '<=', $cycle->end_date)
+                ->sum('points');
+        }
+
+        return inertia('Admin/InstructorMembers/Show', [
+            'member' => $member,
+            'uploads' => $uploads,
+        ]);
+    }
+
     /**
      * [今回追加] 指導士サイクルの end_date・renewal_end_date を事務局が直接編集する。
      * instructorMembers.edit 権限が無ければ保存を拒否する（Members側と同じガード方式）。

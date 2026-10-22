@@ -207,6 +207,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // Route::get('instructorMembers/{member}', [AdminInstructorMemberController::class, 'show'])
         //     ->name('instructorMembers.show');
         //
+        Route::get('instructorMembers/{member}/show', [AdminInstructorMemberController::class, 'show'])
+            ->name('instructorMembers.show');
         Route::get('instructorMembers/{member}/edit', [AdminInstructorMemberController::class, 'edit'])
             ->name('instructorMembers.edit');
         Route::put('instructorMembers/{member}', [AdminInstructorMemberController::class, 'update'])
@@ -241,6 +243,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         // 審査員
         Route::get('reviewer', [ReviewerController::class, 'index'])
             ->name('reviewer.index');
+        Route::get('reviewer/reviewed/{cycle}', [ReviewerController::class, 'reviewedShow'])->name('reviewer.reviewed.show');
+        	    
         Route::get('reviewer/instructorUpdateCycles/{cycle}', [ReviewerController::class, 'show'])
             ->name('reviewer.show');
         Route::post('reviewer/instructorUpdateCycles/{cycle}/judge', [ReviewerController::class, 'judge'])

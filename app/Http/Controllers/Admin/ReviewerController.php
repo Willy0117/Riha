@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\InstructorCycle;
 use App\Models\InstructorUpdateCycle;
 use App\Models\PdfUpload;
 use Illuminate\Http\Request;
@@ -57,8 +58,12 @@ class ReviewerController extends Controller
             return $cycle;
         });
 
+        $periods = \App\Support\ApplicationPeriod::list();
+        \App\Support\ApplicationPeriod::annotate($cycles->getCollection(), $periods);
+
         return inertia('Admin/Reviewer/Index', [
             'cycles' => $cycles,
+            'periods' => $periods,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
         ]);
@@ -66,7 +71,9 @@ class ReviewerController extends Controller
 
     /**
      * [今回追加] 自分（ログイン中の審査員）が既に判定済みの申請の一覧（審査済画面）。
-     * index() とは逆に、reviewer_judgment が unreviewed 以外（pass/fail/re_review）を対象にする。
+     * 未審査（unreviewed）・差し戻し（re_review）以外、つまり pass/fail の判定済みを対象にする。
+     * 委員長の承認後（status が approved/reject）も一覧に残す。
+     * 検索：氏名、第N回（認定期間）、委員長承認日の from-to。
      * 再判定はさせない閲覧用の一覧のため、showの操作ボタンはVue側で非表示にする。
      */
     public function reviewed(Request $request)
@@ -77,11 +84,44 @@ class ReviewerController extends Controller
         $sortBy = in_array($request->sort_by, $sortableColumns) ? $request->sort_by : 'reviewer_judged_at';
         $sortDir = $request->sort_dir === 'desc' ? 'desc' : 'asc';
 
-        $cycles = InstructorUpdateCycle::with(['member'])
+        $name = trim((string) $request->name);
+        $roundId = $request->round_id;
+        $dateFrom = $request->date_from;
+        $dateTo = $request->date_to;
+
+        $query = InstructorUpdateCycle::with(['member'])
             ->where('reviewer_admin_id', $adminId)
-            ->where('status', 'pending')
-            ->where('reviewer_judgment', '!=', 'unreviewed')
-            ->orderBy($sortBy, $sortDir)
+            ->whereIn('reviewer_judgment', ['pass', 'fail']);
+
+        // 氏名（姓名・かな。空白は無視して部分一致）
+        if ($name !== '') {
+            $keyword = str_replace([' ', '　'], '', $name);
+            $query->whereHas('member', function ($q) use ($keyword) {
+                $q->whereRaw("REPLACE(CONCAT(IFNULL(last_name,''), IFNULL(first_name,'')), ' ', '') LIKE ?", ["%{$keyword}%"])
+                  ->orWhereRaw("REPLACE(CONCAT(IFNULL(last_name_kana,''), IFNULL(first_name_kana,'')), ' ', '') LIKE ?", ["%{$keyword}%"]);
+            });
+        }
+
+        // 第N回：その回の認定期間（instructor_cycles.start_date）に紐づく申請に絞る
+        if ($roundId) {
+            $round = InstructorCycle::find($roundId);
+            if ($round) {
+                $query->whereDate('start_date', $round->start_date);
+            }
+        }
+
+        // 委員長承認日：承認・却下済みの申請の updated_at（承認時に承認日で上書きされる）
+        if ($dateFrom || $dateTo) {
+            $query->whereIn('status', ['approved', 'reject']);
+            if ($dateFrom) {
+                $query->whereDate('updated_at', '>=', $dateFrom);
+            }
+            if ($dateTo) {
+                $query->whereDate('updated_at', '<=', $dateTo);
+            }
+        }
+
+        $cycles = $query->orderBy($sortBy, $sortDir)
             ->paginate($request->per_page ?? 20);
 
         $isConferenceParticipation = function ($u) {
@@ -112,6 +152,15 @@ class ReviewerController extends Controller
             'cycles' => $cycles,
             'sortBy' => $sortBy,
             'sortDir' => $sortDir,
+            // 検索用：第N回（指導士認定期間）の一覧
+            'rounds' => InstructorCycle::orderBy('exam_round')
+                ->get(['id', 'exam_round', 'start_date', 'end_date']),
+            'filters' => [
+                'name' => $name,
+                'round_id' => $roundId ? (int) $roundId : null,
+                'date_from' => $dateFrom,
+                'date_to' => $dateTo,
+            ],
         ]);
     }
 
@@ -188,11 +237,57 @@ class ReviewerController extends Controller
         ]);
     }
 
+    /**
+     * [今回追加] 審査確認一覧（審査済画面）から開く閲覧専用の詳細画面（Show）。
+     * 審査画面（show）とは別画面で、編集・判定の操作は一切持たない。
+     * 委員長の承認後（status が approved/reject）でも閲覧できる。
+     */
+    public function reviewedShow(Request $request, InstructorUpdateCycle $cycle)
+    {
+        $adminId = Auth::guard('admin')->id();
+
+        abort_unless($cycle->reviewer_admin_id === $adminId, 403, 'この申請の担当審査員ではありません。');
+
+        $cycle->load('member');
+
+        $uploads = PdfUpload::with(['creditCategory', 'creditConference', 'creditRole.creditRole'])
+            ->where('member_id', $cycle->member_id)
+            ->whereDate('issued_date', '>=', $cycle->start_date)
+            ->whereDate('issued_date', '<=', $cycle->end_date)
+            ->latest()
+            ->get();
+
+        $approvedUploads = $uploads->where('status', 'approved');
+
+        $cycle->total_points = $approvedUploads->sum('points');
+        $cycle->conference_count = $approvedUploads->filter(function ($u) {
+            return $u->creditCategory?->name === '学術集会'
+                && $u->creditConference?->name === '日本腎臓リハビリテーション学会'
+                && $u->creditRole?->creditRole?->name === '参加';
+        })->count();
+
+        $uploads = $uploads->map(function (PdfUpload $upload) {
+            return array_merge($upload->toArray(), [
+                'credit_conference_name' => $upload->creditConference?->name ?? '',
+                'category_name' => $upload->creditCategory?->name ?? '',
+                'role_name' => $upload->creditRole?->creditRole?->name ?? '',
+                'is_image' => in_array(strtolower(pathinfo($upload->file_path ?? '', PATHINFO_EXTENSION)), ['jpg', 'jpeg', 'png']),
+                'is_imported' => empty($upload->file_path),
+            ]);
+        });
+
+        return inertia('Admin/Reviewer/ReviewedShow', [
+            'cycle' => $cycle,
+            'member' => $cycle->member,
+            'uploads' => $uploads,
+        ]);
+    }
+
     // PDF本体プレビュー（署名URLへリダイレクト）
     public function view(Request $request, $id)
     {
         $upload = PdfUpload::findOrFail($id);
-        $this->authorizeForUpload($upload);
+        $this->authorizeForUpload($upload, false);
 
         if (!$upload->file_path || !$this->disk()->exists($upload->file_path)) {
             abort(404);
@@ -207,7 +302,7 @@ class ReviewerController extends Controller
     public function thumbnail(Request $request, $id)
     {
         $upload = PdfUpload::findOrFail($id);
-        $this->authorizeForUpload($upload);
+        $this->authorizeForUpload($upload, false);
 
         if (!$upload->thumbnail_path || !$this->disk()->exists($upload->thumbnail_path)) {
             abort(404);
@@ -311,13 +406,14 @@ class ReviewerController extends Controller
     }
 
     // その書類が、ログイン中審査員にアサインされた申請に属するかチェック
-    private function authorizeForUpload(PdfUpload $upload): void
+    private function authorizeForUpload(PdfUpload $upload, bool $requirePending = true): void
     {
         $adminId = Auth::guard('admin')->id();
 
         $cycle = InstructorUpdateCycle::where('member_id', $upload->member_id)
             ->where('reviewer_admin_id', $adminId)
-            ->where('status', 'pending')
+            // 審査操作（承認/差し戻し）は審査中のみ。閲覧（view/thumbnail）は状態を問わない
+            ->when($requirePending, fn ($q) => $q->where('status', 'pending'))
             ->whereDate('start_date', '<=', $upload->issued_date)
             ->whereDate('end_date', '>=', $upload->issued_date)
             ->first();

@@ -92,8 +92,12 @@ class SubLeaderAssignmentController extends Controller
             ->whereDate('updated_at', '<=', now()->toDateString())
             ->count();
 
+        $periods = \App\Support\ApplicationPeriod::list();
+        \App\Support\ApplicationPeriod::annotate($cycles->getCollection(), $periods);
+
         return inertia('Admin/SubLeader/Index', [
             'cycles' => $cycles,
+            'periods' => $periods,
             'reviewers' => $reviewers,
             'filter' => $filter,
             'reviewerId' => $reviewerId ? (int) $reviewerId : null,

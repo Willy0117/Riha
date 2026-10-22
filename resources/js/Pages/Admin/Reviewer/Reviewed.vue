@@ -3,11 +3,36 @@
     <template #header>
       <div>
         <h2 class="text-2xl font-bold page-title-navy">審査員ポータル（審査済）</h2>
-        <p class="text-xs text-gray-500 mt-1">既に判定済みの申請を確認できます（再判定はできません）。</p>
+        <p class="text-xs text-gray-500 mt-1">合格・不合格を判定済みの申請を確認できます（未審査・差し戻し中は含みません。再判定はできません）。</p>
       </div>
     </template>
 
     <div class="p-6">
+      <!-- 検索 -->
+      <form class="bg-white border border-gray-200 rounded-xl p-4 mb-4 flex flex-wrap items-end gap-3" @submit.prevent="search">
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">氏名</label>
+          <input v-model="filters.name" type="text" placeholder="氏名・かな" class="border rounded px-2 py-1.5 text-sm w-48" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">第N回（認定期間）</label>
+          <select v-model="filters.round_id" @change="search" class="border rounded pl-2 pr-7 py-1.5 text-sm">
+            <option value="">指定なし</option>
+            <option v-for="r in rounds" :key="r.id" :value="r.id">第{{ r.exam_round }}回（{{ r.start_date?.split('T')[0] }} 〜 {{ r.end_date?.split('T')[0] }}）</option>
+          </select>
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">委員長承認日（from）</label>
+          <input v-model="filters.date_from" type="date" class="border rounded px-2 py-1.5 text-sm" />
+        </div>
+        <div>
+          <label class="text-xs text-gray-500 mb-1 block">委員長承認日（to）</label>
+          <input v-model="filters.date_to" type="date" class="border rounded px-2 py-1.5 text-sm" />
+        </div>
+        <button type="submit" class="px-4 py-1.5 bg-[#1D4E89] text-white rounded hover:bg-[#163B68] text-sm font-semibold">検索</button>
+        <button type="button" class="px-4 py-1.5 bg-gray-50 text-gray-700 border border-gray-200 rounded hover:bg-gray-100 text-sm" @click="clearSearch">クリア</button>
+      </form>
+
       <!-- ツールバー -->
       <div class="flex items-center justify-between mb-4">
         <div class="flex items-center gap-2 text-sm text-gray-500">
@@ -34,6 +59,7 @@
               >
                 申請日 <span class="text-white/60">{{ sortArrow('updated_at') }}</span>
               </th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">委員長承認日</th>
               <th
                 class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('reviewer_assigned_at')"
@@ -55,7 +81,7 @@
           </thead>
           <tbody>
             <tr v-if="cycles.data.length === 0">
-              <td colspan="11" class="!p-12 text-center text-gray-400">
+              <td colspan="12" class="!p-12 text-center text-gray-400">
                 審査済みの申請はありません
               </td>
             </tr>
@@ -63,7 +89,8 @@
               <td class="px-5 py-3.5 border-b border-gray-100">{{ cycle.member?.code }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 font-medium">{{ cycle.member?.name }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.start_date?.split('T')[0] }} 〜 {{ cycle.end_date?.split('T')[0] }}</td>
-              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.updated_at?.split('T')[0] }}</td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.status === 'pending' ? cycle.updated_at?.split('T')[0] : '-' }}</td>
+              <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ ['approved', 'reject'].includes(cycle.status) ? cycle.updated_at?.split('T')[0] : '-' }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.reviewer_assigned_at?.split('T')[0] ?? '-' }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.reviewer_judged_at?.split('T')[0] ?? '-' }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.document_review_status }}</td>
@@ -79,10 +106,11 @@
               </td>
               <td class="px-5 py-3.5 border-b border-gray-100">
                 <Link
-                  :href="route('admin.reviewer.show', cycle.id)"
-                  class="px-3 py-1.5 rounded text-xs font-semibold bg-gray-50 text-gray-700 border border-gray-200 hover:bg-gray-100"
+                  :href="route('admin.reviewer.reviewed.show', cycle.id)"
+                  class="inline-flex p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                  title="閲覧"
                 >
-                  確認する
+                  <FileSearch class="w-5 h-5" />
                 </Link>
               </td>
             </tr>
@@ -98,8 +126,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, reactive } from 'vue'
 import { Link, router } from '@inertiajs/vue3'
+import { FileSearch } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 
@@ -107,37 +136,59 @@ const props = defineProps({
   cycles: Object,
   sortBy: { type: String, default: 'reviewer_judged_at' },
   sortDir: { type: String, default: 'asc' },
+  filters: { type: Object, default: () => ({}) },
+  rounds: { type: Array, default: () => [] },
 })
 
 const perPage = ref(props.cycles.per_page ?? 20)
 const sortBy = ref(props.sortBy)
 const sortDir = ref(props.sortDir)
 
+const filters = reactive({
+  name: props.filters?.name ?? '',
+  round_id: props.filters?.round_id ?? '',
+  date_from: props.filters?.date_from ?? '',
+  date_to: props.filters?.date_to ?? '',
+})
+
+// 現在の検索条件・並び順・件数をまとめたクエリ（ページ移動・並び替え時も検索条件を維持する）
+const buildQuery = (extra = {}) => ({
+  page: 1,
+  per_page: perPage.value,
+  sort_by: sortBy.value,
+  sort_dir: sortDir.value,
+  name: filters.name || undefined,
+  round_id: filters.round_id || undefined,
+  date_from: filters.date_from || undefined,
+  date_to: filters.date_to || undefined,
+  ...extra,
+})
+
+const search = () => {
+  router.get(route('admin.reviewer.reviewed'), buildQuery(), { preserveState: true })
+}
+
+const clearSearch = () => {
+  filters.name = ''
+  filters.date_from = ''
+  filters.date_to = ''
+  filters.round_id = ''
+  search()
+}
+
 const goPage = (page) => {
-  router.get(
-    route('admin.reviewer.reviewed'),
-    { page, per_page: perPage.value, sort_by: sortBy.value, sort_dir: sortDir.value },
-    { preserveState: true }
-  )
+  router.get(route('admin.reviewer.reviewed'), buildQuery({ page }), { preserveState: true })
 }
 
 const changePerPage = () => {
-  router.get(
-    route('admin.reviewer.reviewed'),
-    { page: 1, per_page: perPage.value, sort_by: sortBy.value, sort_dir: sortDir.value },
-    { preserveState: true }
-  )
+  router.get(route('admin.reviewer.reviewed'), buildQuery(), { preserveState: true })
 }
 
 const toggleSort = (column) => {
   const nextDir = (sortBy.value === column && sortDir.value === 'asc') ? 'desc' : 'asc'
   sortBy.value = column
   sortDir.value = nextDir
-  router.get(
-    route('admin.reviewer.reviewed'),
-    { page: 1, per_page: perPage.value, sort_by: sortBy.value, sort_dir: sortDir.value },
-    { preserveState: true }
-  )
+  router.get(route('admin.reviewer.reviewed'), buildQuery(), { preserveState: true })
 }
 
 const sortArrow = (column) => {

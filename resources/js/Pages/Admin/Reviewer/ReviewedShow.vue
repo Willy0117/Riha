@@ -1,0 +1,285 @@
+<template>
+  <AppLayout :title="`${member.name} - ${t('instructor_details')}`">
+    <template #header>{{ member.name }}</template>
+
+    <div class="p-6 space-y-6">
+
+      <!-- 戻るボタン -->
+      <button
+        @click="backToIndex"
+        class="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+      >
+        <ArrowLeft class="w-4 h-4" />
+        {{ t('back') }}
+      </button>
+
+      <!-- 会員情報 -->
+      <Card>
+        <CardContent class="p-4 grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+          <div>
+            <p class="text-xs text-gray-500">{{ t('name') }}</p>
+            <p class="font-semibold">{{ member.name }}</p>
+            <p class="text-xs text-gray-400 mt-0.5">会員番号：{{ member.code }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">職種</p>
+            <p class="font-semibold">{{ member.occupation || '-' }}<span v-if="member.occupation_other">（{{ member.occupation_other }}）</span></p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">申込日時</p>
+            <p class="font-semibold">{{ appliedAtLabel }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">{{ t('instructors.update_period') }}</p>
+            <p class="font-semibold">{{ formatDate(cycle.start_date) }} - {{ formatDate(cycle.end_date) }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">審査数 / 総審査</p>
+            <p class="font-semibold">{{ reviewedCount }} / {{ totalCount }}</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">{{ t('instructors.total_points') }}</p>
+            <p class="font-semibold">{{ cycle.total_points }} 単位</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">{{ t('instructors.conference_count') }}</p>
+            <p class="font-semibold">{{ cycle.conference_count }} 回</p>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500 mb-1">審査員による判定</p>
+            <span
+              class="status-badge-common"
+              :class="{
+                'status-badge-gray': cycle.reviewer_judgment === 'unreviewed' || !cycle.reviewer_judgment,
+                'status-badge-green': cycle.reviewer_judgment === 'pass',
+                'status-badge-red': cycle.reviewer_judgment === 'fail',
+                'status-badge-orange': cycle.reviewer_judgment === 're_review',
+              }"
+            >
+              {{ judgmentLabel(cycle.reviewer_judgment) }}
+            </span>
+          </div>
+          <div>
+            <p class="text-xs text-gray-500">{{ t('status') }}</p>
+            <p class="font-semibold">{{ cycleStatusLabel(cycle.status) }}</p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <!-- [今回変更] 更新者向けメッセージは不要になったためコメントアウト。委員長向け・審査員向けの2枚に変更 -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <!--
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3">
+          <p class="text-xs font-semibold text-red-700 mb-1">更新者向けメッセージ（不合格理由）</p>
+          <p v-if="cycle.reason" class="text-sm text-red-700 whitespace-pre-wrap">{{ cycle.reason }}</p>
+        </div>
+        -->
+
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3">
+          <p class="text-xs font-semibold text-blue-700 mb-1">委員長向けメッセージ（審査員から）</p>
+          <p v-if="cycle.reviewer_response_message" class="text-sm text-blue-700 whitespace-pre-wrap">{{ cycle.reviewer_response_message }}</p>
+        </div>
+
+        <div class="bg-orange-50 border border-orange-200 rounded-lg p-3">
+          <p class="text-xs font-semibold text-orange-700 mb-1">審査員向けメッセージ（委員長からの差し戻し理由）</p>
+          <p v-if="cycle.chief_feedback" class="text-sm text-orange-700 whitespace-pre-wrap">{{ cycle.chief_feedback }}</p>
+        </div>
+      </div>
+
+      <!-- アップロード一覧 -->
+      <div>
+        <h2 class="text-xl font-bold text-gray-800 mb-4">{{ t('uploaded_files') }}</h2>
+
+        <div
+          v-if="uploadList.length === 0"
+          class="bg-gray-50 border border-dashed border-gray-300 rounded-2xl p-10 text-center text-gray-500"
+        >
+          {{ t('no_uploads') }}
+        </div>
+
+        <div v-else class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div
+            v-for="upload in uploadList"
+            :key="upload.id"
+            class="p-3 rounded-lg border transition"
+            :style="duplicateStyle(upload)"
+            :title="duplicateTitle(upload)"
+            :class="[
+              upload.is_imported ? 'cursor-default' : 'cursor-pointer hover:shadow-sm',
+              {
+                'bg-yellow-50/60 border-yellow-200 hover:border-yellow-300': upload.status === 'pending',
+                'bg-green-50/60 border-green-200 hover:border-green-300': upload.status === 'approved',
+                'bg-red-50/60 border-red-200 hover:border-red-300': upload.status === 'rejected',
+              }
+            ]"
+            @click="!upload.is_imported && openPreview(upload)"
+          >
+            <!-- [今回追加] 学術講習会インポートの書類は添付資料が無いため、専用アイコンにする -->
+            <div v-if="upload.is_imported" class="flex items-center justify-center h-16 bg-white/70 rounded-md mb-2" title="インポートされた記録のため、添付資料はありません">
+              <FileX class="w-7 h-7 text-gray-400" />
+            </div>
+            <div v-else class="flex items-center justify-center h-16 bg-white/70 rounded-md mb-2">
+              <FileText class="w-7 h-7 text-gray-400" />
+            </div>
+
+            <span
+              v-if="upload.is_imported"
+              class="inline-block text-[10px] font-semibold text-gray-600 bg-gray-100 px-1.5 py-0.5 rounded-full mb-1"
+            >
+              インポート
+            </span>
+            <p class="text-sm font-bold text-indigo-900 truncate">{{ [sessionLabel(upload.session), upload.credit_conference_name].filter(Boolean).join(' ') }}</p>
+            <p class="text-xs text-gray-500 truncate mt-0.5">{{ upload.role_name }}</p>
+
+            <div class="flex items-center justify-between mt-2">
+              <span class="text-[11px] text-gray-400">{{ formatDate(upload.issued_date) }}</span>
+              <span class="text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-full">
+                +{{ upload.points }}
+              </span>
+            </div>
+
+            <span
+              class="inline-block mt-2 text-[11px] px-2 py-0.5 rounded-full font-medium bg-white/80"
+              :class="{
+                'text-yellow-600 border border-yellow-200': upload.status === 'pending',
+                'text-green-600 border border-green-200': upload.status === 'approved',
+                'text-red-600 border border-red-200': upload.status === 'rejected',
+              }"
+            >
+              {{ uploadStatusLabel(upload.status) }}
+            </span>
+            <p v-if="upload.status === 'rejected'" class="text-[11px] text-red-500 mt-1 line-clamp-2">
+              {{ upload.rejection_message }}
+            </p>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- [今回変更] previewUpload（現在表示中の書類）を保持し、◁▷で前後に移動できるようにする。
+         右側に情報パネル（学会名・区分・種別・承認/差し戻し操作）を追加した左右分割レイアウト。 -->
+    <DocumentViewer v-model="previewUpload" :uploads="uploadList" file-route="admin.reviewer.view" />
+  </AppLayout>
+</template>
+
+<script setup>
+import { ref, computed } from 'vue'
+import { router, usePage } from '@inertiajs/vue3'
+import { useI18n } from 'vue-i18n'
+import dayjs from 'dayjs'
+import {
+  ArrowLeft, FileText, FileX, ChevronLeft, ChevronRight, Calendar, CheckCircle2, XCircle
+} from 'lucide-vue-next'
+
+import AppLayout from '@/Layouts/Admin/AppLayout.vue'
+import { useDuplicateHighlight } from '@/composables/useDuplicateHighlight'
+import DocumentViewer from '@/Components/DocumentViewer.vue'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import {
+  Dialog, DialogContent, DialogHeader,
+  DialogTitle, DialogFooter
+} from '@/components/ui/dialog'
+
+const { t } = useI18n()
+const page = usePage()
+
+const member = page.props.member
+const uploads = page.props.uploads
+const cycle = page.props.cycle
+
+// [今回追加] ステータス（cycle.status）の日本語ラベル（Index.vueと同じマップ）
+const cycleStatusLabel = (status) => {
+  const map = {
+    'updated':       '更新済',
+    'before_update': '更新前',
+    'no_update':     '更新しない',
+    'pending':       '審査中',
+    'approved':      '承認',
+    'reject':        '却下',
+    'lapsed':        '資格喪失',
+  }
+  return map[status] ?? '-'
+}
+
+// [今回追加] YYYY-MM-DD形式でフォーマットする（時刻部分は表示しない）
+const formatDate = (value) => {
+  if (!value) return '-'
+  return dayjs(value).format('YYYY-MM-DD')
+}
+
+// thumbnail_url・role_name・credit_conference_name・category_name はコントローラ側（edit()）で
+// 計算済みの値をそのまま使う（クライアント側での復元ロジックは削除）
+const uploadList = ref(uploads)
+const { isDuplicate, duplicateStyle, duplicateTitle } = useDuplicateHighlight(uploadList)
+
+const previewUpload = ref(null)
+
+
+const totalCount = computed(() => uploadList.value.length)
+const reviewedCount = computed(() =>
+  uploadList.value.filter(u => u.status === 'approved' || u.status === 'rejected').length
+)
+
+const appliedAtLabel = computed(() => formatDate(cycle.updated_at))
+
+const uploadStatusLabel = (status) => {
+  const map = {
+    pending:  '未審査',
+    approved: '承認済み',
+    rejected: '差し戻し',
+  }
+  return map[status] ?? '-'
+}
+
+const judgmentLabel = (judgment) => {
+  const map = { unreviewed: '未判定', pass: '合格', fail: '不合格', re_review: '再審査' }
+  return map[judgment] ?? '未判定'
+}
+
+const sessionLabel = (session) => {
+  return session ? `第${session}回` : ''
+}
+
+const statusLabel = (status) => ({ pending: '未審査', approved: '承認済み', rejected: '差し戻し' }[status] ?? '-')
+
+// 現在プレビュー中の書類が一覧の何番目か（ページ番号表示・◁▷の端判定に使う）
+const previewIndex = computed(() =>
+  previewUpload.value ? uploadList.value.findIndex(u => u.id === previewUpload.value.id) : -1
+)
+
+// ◁▷ボタンで前後の書類に移動（端でループしない）
+const showAdjacentPreview = (direction) => {
+  if (!previewUpload.value) return
+  const next = previewIndex.value + direction
+  if (next < 0 || next >= uploadList.value.length) return
+  previewUpload.value = uploadList.value[next]
+}
+
+const openPreview = (upload) => {
+  // [今回追加] 学術講習会インポートの書類は添付資料が無いため開かない
+  if (upload.is_imported) return
+  previewUpload.value = upload
+}
+
+const previewFileUrl = computed(() =>
+  previewUpload.value ? route('admin.reviewer.view', { id: previewUpload.value.id }) : null
+)
+
+// 審査確認一覧（検索条件・ページ）に戻る
+const backToIndex = () => {
+  if (window.history.length > 1) {
+    window.history.back()
+  } else {
+    router.get(route('admin.reviewer.reviewed'))
+  }
+}
+</script>
+
+<style>
+.input-field {
+  @apply w-full rounded-md border border-gray-300 px-3 py-2 text-sm
+         shadow-sm focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500;
+}
+</style>

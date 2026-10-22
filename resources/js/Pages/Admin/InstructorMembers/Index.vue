@@ -247,6 +247,13 @@
                 <td class="border px-3 py-2">
                   <div class="flex items-center gap-2">
                     <Link
+                      :href="route('admin.instructorMembers.show', member.id)"
+                      class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
+                      title="閲覧"
+                    >
+                      <FileSearch class="w-5 h-5" />
+                    </Link>
+                    <Link
                       :href="route('admin.instructorMembers.edit', member.id)"
                       class="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-blue-600"
                       title="編集"
@@ -381,7 +388,7 @@ import DialogModal from '@/Components/DialogModal.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import SecondaryButton from '@/Components/SecondaryButton.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
-import { CheckCircle2, XCircle, Receipt, Pencil, Download } from 'lucide-vue-next'
+import { CheckCircle2, XCircle, Receipt, Pencil, Download, FileSearch } from 'lucide-vue-next'
 
 const { t } = useI18n()
 

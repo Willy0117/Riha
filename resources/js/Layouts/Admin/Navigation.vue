@@ -115,6 +115,14 @@
               <CheckCircle2 class="w-4 h-4 mr-1"/>
               <span v-if="!collapsed" class="ml-2">担当申請の審査</span>
             </Link>
+            <Link
+              :href="route('admin.reviewer.reviewed')"
+              class="flex items-center py-2 px-2 rounded hover:bg-gray-200 transition-colors"
+              :class="isActive('reviewer.reviewed') ? 'bg-gray-300 font-semibold' : ''"
+            >
+              <CheckCircle2 class="w-4 h-4 mr-1"/>
+              <span v-if="!collapsed" class="ml-2">担当申請の審査確認</span>
+            </Link>
           </div>
         </transition>
       </div>

@@ -52,6 +52,13 @@ class HandleInertiaRequests extends Middleware
                         'name' => $request->user()->name,
                         'roles' => $request->user()->tenantRoles()->pluck('name')->toArray(),
                         'permissions' => $request->user()->tenantPermissions()->pluck('name')->toArray(),
+                        // [今回追加] 既に指導士資格を持っている（instructor_update_cyclesに1件でもある）か。
+                        // ExamController::checkEligibility と同じ基準。受験申込メニューの表示切替に使う。
+                        // 管理画面では $request->user() が Admin になる（Admin::member() は別の定義）ため、
+                        // 一般ユーザー（User）のときだけ判定する。
+                        'already_instructor' => $request->user() instanceof \App\Models\User
+                            ? (bool) $request->user()->member?->updateCycles()->exists()
+                            : false,
                     ]
                     : null,
             ],
