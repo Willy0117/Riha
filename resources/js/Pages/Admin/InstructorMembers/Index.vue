@@ -45,12 +45,12 @@
 
         <select v-model="cycleStatus" @change="submitSearch" class="border rounded pl-3 pr-8 py-2 h-9 text-sm">
           <option value="">ステータス（すべて）</option>
-          <option value="before_update">更新前</option>
+          <option value="before_update">未申請</option>
           <option value="pending">審査中</option>
-          <option value="approved">承認</option>
-          <option value="reject">却下</option>
-          <option value="no_update">更新しない</option>
-          <option value="updated">更新済</option>
+          <option value="approved">審査合格</option>
+          <option value="reject">審査不合格</option>
+          <option value="no_update">辞退</option>
+          <option value="updated">更新完了</option>
           <option value="lapsed">資格喪失</option>
         </select>
 
@@ -114,12 +114,12 @@
             v-model="statusChangeTarget"
             class="border rounded pl-3 pr-8 py-2 h-9 text-sm"
           >
-            <option value="before_update">更新前</option>
+            <option value="before_update">未申請</option>
             <option value="pending">審査中</option>
-            <option value="approved">承認</option>
-            <option value="reject">却下</option>
-            <option value="no_update">更新しない</option>
-            <option value="updated">更新済</option>
+            <option value="approved">審査合格</option>
+            <option value="reject">審査不合格</option>
+            <option value="no_update">辞退</option>
+            <option value="updated">更新完了</option>
             <option value="lapsed">資格喪失</option>
           </select>
           <button
@@ -534,12 +534,12 @@ const executeBulkAction = () => {
 // [今回追加] ステータス変更（独立した機能。資格喪失もここに統合）
 const statusChangeTarget = ref('before_update')
 const statusLabelMap = {
-  before_update: '更新前',
+  before_update: '未申請',
   pending: '審査中',
-  approved: '承認',
-  reject: '却下',
-  no_update: '更新しない',
-  updated: '更新済',
+  approved: '審査合格',
+  reject: '審査不合格',
+  no_update: '辞退',
+  updated: '更新完了',
   lapsed: '資格喪失',
 }
 
@@ -619,12 +619,12 @@ const bulkCreateInvoice = () => {
 
 const statusLabel = (status) => {
   const map = {
-    'updated':       '更新済',
-    'before_update': '更新前',
-    'no_update':     '更新しない',
+    'updated':       '更新完了',
+    'before_update': '未申請',
+    'no_update':     '辞退',
     'pending':       '審査中',
-    'approved':      '承認',
-    'reject':        '却下',
+    'approved':      '審査合格',
+    'reject':        '審査不合格',
     'lapsed':        '資格喪失',
   }
   return map[status] ?? '-'

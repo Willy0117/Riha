@@ -35,7 +35,7 @@
   "allow": "選択できる",
   "disallow": "選択できない",
   "view_pdf": "PDFを見る",
-  "pdf_upload": "単位取得",
+  "pdf_upload": "資格更新",
   "upload_pdf": "PDFファイルをアップロードする（最大10MBまで）",
   "drag_drop_pdf": "単位帳票(PDF)をドラッグ&ドロップ",
   "drag_and_drop": "PDFファイルをアップロードする（最大10MBまで）",
@@ -129,7 +129,7 @@
   "cycle_status": {
     "updated": "更新済み",
     "before_update": "更新前",
-    "no_update": "更新しない",
+    "no_update": "辞退",
     "pending": "申請中"
   },
   "instructors": {

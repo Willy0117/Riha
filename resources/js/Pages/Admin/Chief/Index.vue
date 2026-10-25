@@ -2,8 +2,8 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold page-title-navy">審査委員長ポータル</h2>
-        <p class="text-xs text-gray-500 mt-1">審査員の判定（合格/不合格）を承認します。合格は承認、不合格は却下として確定します。</p>
+        <h2 class="text-2xl font-bold page-title-navy">最終承認</h2>
+        <p class="text-xs text-gray-500 mt-1">審査結果に対して、承認または差し戻しを行います。</p>
       </div>
     </template>
 
@@ -55,13 +55,13 @@
                 class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('approved_points_total')"
               >
-                承認済み単位数 <span class="text-white/60">{{ sortArrow('approved_points_total') }}</span>
+                確認済単位数 <span class="text-white/60">{{ sortArrow('approved_points_total') }}</span>
               </th>
               <th
                 class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell table-header-navy-sortable"
                 @click="toggleSort('approved_conference_count')"
               >
-                承認済み参加回数 <span class="text-white/60">{{ sortArrow('approved_conference_count') }}</span>
+                腎リハ学会確認済回数 <span class="text-white/60">{{ sortArrow('approved_conference_count') }}</span>
               </th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">担当審査員</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査員判定</th>
@@ -78,10 +78,10 @@
           <tbody>
             <tr v-if="cycles.data.length === 0">
               <td colspan="12" class="!p-12 text-center text-gray-400">
-                判定待ちの申請はありません
+                承認待ちの申請はありません
               </td>
             </tr>
-            <tr v-for="cycle in cycles.data" :key="cycle.id" :class="{ 'bg-blue-50/50': selectedIds.includes(cycle.id) }">
+            <tr v-for="cycle in cycles.data" :key="cycle.id" :style="overdueRowStyle(cycle.overdue?.chief)" :class="{ 'bg-blue-50/50': selectedIds.includes(cycle.id) }">
               <td :style="periodCellStyle(cycle.application_period)" class="px-3 py-3.5 border-b border-gray-100">
                 <input
                   type="checkbox"
@@ -191,7 +191,7 @@ import { CheckCircle2, Pencil } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import PeriodLegend from '@/Components/PeriodLegend.vue'
-import { periodCellStyle } from '@/composables/usePeriodColor'
+import { periodCellStyle, overdueRowStyle } from '@/composables/usePeriodColor'
 import DialogModal from '@/Components/DialogModal.vue'
 import SecondaryButton from '@/Components/SecondaryButton.vue'
 import PrimaryButton from '@/Components/PrimaryButton.vue'

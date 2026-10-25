@@ -303,12 +303,12 @@ const statusLabel = (status) => {
 // [今回追加] instructor_update_cycles.status 用（事務局画面と表記を統一）
 const cycleStatusLabel = (status) => {
   const map = {
-    'updated':       '更新済',
-    'before_update': '更新前',
-    'no_update':     '更新しない',
+    'updated':       '更新完了',
+    'before_update': '未申請',
+    'no_update':     '辞退',
     'pending':       '審査中',
-    'approved':      '承認',
-    'reject':        '却下',
+    'approved':      '審査合格',
+    'reject':        '審査不合格',
     'lapsed':        '資格喪失',
   }
   return map[status] ?? '-'

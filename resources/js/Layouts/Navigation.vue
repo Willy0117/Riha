@@ -65,7 +65,7 @@ const menus = [
 
     children: [
       {
-        label: '更新申請',
+        label: '資格更新',
         route: 'pdf-uploads.create',
       },
 /*      

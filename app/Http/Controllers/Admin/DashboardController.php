@@ -26,12 +26,12 @@ class DashboardController extends Controller
             ->pluck('count', 'status');
 
         $statusLabels = [
-            'before_update' => '更新前',
+            'before_update' => '未申請',
             'pending'       => '審査中',
-            'approved'      => '承認',
-            'reject'        => '却下',
-            'no_update'     => '更新しない',
-            'updated'       => '更新済',
+            'approved'      => '審査合格',
+            'reject'        => '審査不合格',
+            'no_update'     => '辞退',
+            'updated'       => '更新完了',
             'lapsed'        => '資格喪失',
         ];
 

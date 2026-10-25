@@ -200,12 +200,12 @@ const cycle = member.update_cycles?.[0] || {
 // [今回追加] ステータス（cycle.status）の日本語ラベル（Index.vueと同じマップ）
 const cycleStatusLabel = (status) => {
   const map = {
-    'updated':       '更新済',
-    'before_update': '更新前',
-    'no_update':     '更新しない',
+    'updated':       '更新完了',
+    'before_update': '未申請',
+    'no_update':     '辞退',
     'pending':       '審査中',
-    'approved':      '承認',
-    'reject':        '却下',
+    'approved':      '審査合格',
+    'reject':        '審査不合格',
     'lapsed':        '資格喪失',
   }
   return map[status] ?? '-'

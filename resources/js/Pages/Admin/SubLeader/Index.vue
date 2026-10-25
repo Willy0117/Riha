@@ -2,7 +2,7 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold page-title-navy">アサイン担当者ポータル</h2>
+        <h2 class="text-2xl font-bold page-title-navy">アサイン</h2>
         <p class="text-xs text-gray-500 mt-1">更新申請ごとに担当審査員を割り当てます。</p>
       </div>
     </template>
@@ -55,7 +55,7 @@
             @click="confirmAutoAssign"
           >
             <Shuffle class="w-3.5 h-3.5 mr-1" />
-            未アサインを自動割振
+            未アサインを自動割当
           </Button>
         </div>
       </div>
@@ -122,8 +122,8 @@
                 アサイン日時 <span class="text-white/60">{{ sortArrow('reviewer_assigned_at') }}</span>
               </th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済回数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済単位数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">腎リハ学会確認済回数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">確認済単位数</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>
           </thead>
@@ -133,7 +133,7 @@
                 該当する申請はありません
               </td>
             </tr>
-            <tr v-for="cycle in cycles.data" :key="cycle.id" :class="{ 'bg-[#EAF1FA]': selectedIds.includes(cycle.id) }">
+            <tr v-for="cycle in cycles.data" :key="cycle.id" :style="overdueRowStyle(cycle.overdue?.subleader)" :class="{ 'bg-[#EAF1FA]': selectedIds.includes(cycle.id) }">
               <td :style="periodCellStyle(cycle.application_period)" class="px-3 py-3.5 border-b border-gray-100">
                 <input
                   type="checkbox"
@@ -212,7 +212,7 @@ import { Shuffle, X, FileSearch } from 'lucide-vue-next'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import PeriodLegend from '@/Components/PeriodLegend.vue'
-import { periodCellStyle } from '@/composables/usePeriodColor'
+import { periodCellStyle, overdueRowStyle } from '@/composables/usePeriodColor'
 import { Button } from '@/components/ui/button'
 
 const props = defineProps({

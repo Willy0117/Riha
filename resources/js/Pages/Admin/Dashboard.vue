@@ -1,7 +1,7 @@
 <template>
   <AppLayout>
     <template #header>
-      <h2 class="text-2xl font-bold page-title-navy">更新進捗ダッシュボード</h2>
+      <h2 class="text-2xl font-bold page-title-navy">ダッシュボード</h2>
     </template>
 
     <div class="p-6 space-y-6">
@@ -48,7 +48,7 @@
 
       <!-- 申請受付スケジュール（全期） -->
       <div class="bg-white border border-gray-200 rounded-xl overflow-hidden">
-        <h3 class="text-sm font-bold text-gray-700 px-5 py-3 border-b border-gray-200">申請受付スケジュール</h3>
+        <h3 class="text-sm font-bold text-gray-700 px-5 py-3 border-b border-gray-200">スケジュール</h3>
         <div class="overflow-x-auto">
           <table class="w-full text-sm">
             <thead>
@@ -78,16 +78,16 @@
 
       <!-- 年度選択 -->
       <div class="flex items-center gap-2">
-        <span class="text-sm text-gray-500">対象年度</span>
+        <span class="text-sm text-gray-500">対象年</span>
         <select v-model.number="selectedYear" @change="changeYear" class="border rounded pl-2 pr-7 py-1 text-sm">
-          <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年度</option>
+          <option v-for="y in yearOptions" :key="y" :value="y">{{ y }}年</option>
         </select>
       </div>
 
       <!-- サマリーカード -->
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <div class="bg-white border border-gray-200 rounded-xl p-5">
-          <p class="text-xs text-gray-500 mb-1">今年度対象者数</p>
+          <p class="text-xs text-gray-500 mb-1">今年対象者数</p>
           <p class="text-3xl font-bold text-gray-800">{{ totalTargets }}<span class="text-sm font-normal ml-1">名</span></p>
         </div>
 

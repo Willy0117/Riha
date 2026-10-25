@@ -34,7 +34,7 @@
               {{ props.cycle?.end_date ? dayjs(props.cycle.end_date).format('YYYY-MM-DD') : '' }}
             </p>
             <p v-if="cycleYears > 5" class="text-xs text-red-500 mt-1">
-              （原則5年だが延長されている扱い）
+              
             </p>
           </div>
           <div v-if="isWithinRenewalPeriod" class="bg-orange-50 rounded-lg px-4 py-2.5">
@@ -154,7 +154,7 @@
                         <span class="text-sm text-amber-700 font-semibold">アップロード済：{{ props?.pendingConferenceCount ?? 0 }} 回</span>
                       </div>
                       <div class="bg-emerald-50 border border-emerald-200 rounded-lg text-center py-1.5">
-                        <span class="text-sm text-emerald-700 font-semibold">確認済み：{{ props?.approvedConferenceCount ?? 0 }} 回</span>
+                        <span class="text-sm text-emerald-700 font-semibold">確認済：{{ props?.approvedConferenceCount ?? 0 }} 回</span>
                       </div>
                     </div>
                   </div>
@@ -179,7 +179,7 @@
                         <span class="text-sm text-amber-700 font-semibold">アップロード済：{{ props?.pendingTotal ?? 0 }} 単位</span>
                       </div>
                       <div class="bg-emerald-50 border border-emerald-200 rounded-lg text-center py-1.5">
-                        <span class="text-sm text-emerald-700 font-semibold">確認済み：{{ props?.approvedTotal ?? 0 }} 単位</span>
+                        <span class="text-sm text-emerald-700 font-semibold">確認済：{{ props?.approvedTotal ?? 0 }} 単位</span>
                       </div>
                     </div>
                   </div>
@@ -796,7 +796,7 @@ const confirmDecline = () => {
 
 // ---- 更新手続きフェーズ ステッパー ----
 
-const phases = ['単位蓄積', '更新申請', '審査', '更新料納付', '資格認定更新']
+const phases = ['書類アップロード', '更新申請', '審査', '更新料納付', '資格認定更新']
 
 // 「審査結果まち」「資格更新認定」は四角、それ以外は丸
 const squarePhaseIndexes = [2, 4]
@@ -858,10 +858,10 @@ const isCreditsRequirementMet = computed(() =>
 const cycleStatusLabel = computed(() => {
   const map = {
     before_update: '未申請',
-    pending: '更新申請済',
+    pending: '審査中',
     no_update: '辞退',
-    reject: '不合格',
-    approved: '委員長が承認',
+    reject: '審査不合格',
+    approved: '審査合格',
     updated: '更新完了',
   }
   return map[props.cycle?.status] ?? '未申請'
@@ -881,9 +881,9 @@ const cycleStatusBadgeClass = computed(() => {
 
 const applyBadgeState = computed(() => {
   switch (props.cycle?.status) {
-    case 'pending':  return { label: '更新申請 提出完了', tone: 'met' }
-    case 'approved': return { label: '承認済み', tone: 'met' }
-    case 'updated':  return { label: '完了', tone: 'met' }
+    case 'pending':  return { label: '審査中', tone: 'met' }
+    case 'approved': return { label: '審査合格', tone: 'met' }
+    case 'updated':  return { label: '更新完了', tone: 'met' }
     default:         return null // before_update・reject → ボタン表示
   }
 })

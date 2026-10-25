@@ -2,8 +2,8 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold page-title-navy">審査員ポータル（審査済）</h2>
-        <p class="text-xs text-gray-500 mt-1">合格・不合格を判定済みの申請を確認できます（未審査・差し戻し中は含みません。再判定はできません）。</p>
+        <h2 class="text-2xl font-bold page-title-navy">審査済一覧</h2>
+        <p class="text-xs text-gray-500 mt-1">審査が完了した申請の一覧です。審査結果を閲覧できます。</p>
       </div>
     </template>
 
@@ -73,8 +73,8 @@
                 判定日 <span class="text-white/60">{{ sortArrow('reviewer_judged_at') }}</span>
               </th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">書類審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済み回数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済み単位数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">腎リハ学会確認済回数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">確認済単位数</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">判定</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>

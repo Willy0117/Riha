@@ -2,8 +2,8 @@
   <AppLayout>
     <template #header>
       <div>
-        <h2 class="text-2xl font-bold page-title-navy">審査員ポータル</h2>
-        <p class="text-xs text-gray-500 mt-1">担当申請の書類を確認し、承認/差し戻しを行います。</p>
+        <h2 class="text-2xl font-bold page-title-navy">審査</h2>
+        <p class="text-xs text-gray-500 mt-1">書類を確認し、合否判定を行います。</p>
       </div>
     </template>
 
@@ -43,8 +43,8 @@
                 アサイン日 <span class="text-white/60">{{ sortArrow('reviewer_assigned_at') }}</span>
               </th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">書類審査状況</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済み回数</th>
-              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">承認済み単位数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">腎リハ学会確認済回数</th>
+              <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">確認済単位数</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">判定</th>
               <th class="px-5 py-3 text-left text-xs font-semibold table-header-navy-cell">操作</th>
             </tr>
@@ -55,7 +55,7 @@
                 担当している申請はありません
               </td>
             </tr>
-            <tr v-for="cycle in cycles.data" :key="cycle.id">
+            <tr v-for="cycle in cycles.data" :key="cycle.id" :style="overdueRowStyle(cycle.overdue?.reviewer)">
               <td :style="periodCellStyle(cycle.application_period)" class="px-5 py-3.5 border-b border-gray-100">{{ cycle.member?.code }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 font-medium">{{ cycle.member?.name }}</td>
               <td class="px-5 py-3.5 border-b border-gray-100 text-gray-500">{{ cycle.start_date?.split('T')[0] }} 〜 {{ cycle.end_date?.split('T')[0] }}</td>
@@ -98,7 +98,7 @@ import { Link, router } from '@inertiajs/vue3'
 import AppLayout from '@/Layouts/Admin/AppLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import PeriodLegend from '@/Components/PeriodLegend.vue'
-import { periodCellStyle } from '@/composables/usePeriodColor'
+import { periodCellStyle, overdueRowStyle } from '@/composables/usePeriodColor'
 
 const props = defineProps({
   periods: { type: Array, default: () => [] },

@@ -215,7 +215,7 @@
                     @click="handleApprove(upload.id)"
                   >
                     <CheckCircle2 class="w-4 h-4 mr-2" />
-                    この書類を確認した
+                    確認
                   </Button>
                   <Button
                     variant="outline"
@@ -423,7 +423,7 @@
                   @click="handleApprove(previewUpload.id)"
                 >
                   <CheckCircle2 class="w-4 h-4 mr-2" />
-                  この書類を確認した
+                  確認
                 </Button>
                 <Button
                   variant="outline"
@@ -602,7 +602,7 @@ const showAdjacentPreview = (direction) => {
 }
 
 const handleApprove = (id) => {
-  if (!confirm('この書類を承認しますか？')) return
+  if (!confirm('この書類を確認しますか？')) return
   router.post(
     route('admin.reviewer.approve', { id }),
     {},

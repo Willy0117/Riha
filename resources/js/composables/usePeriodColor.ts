@@ -9,3 +9,8 @@ export function periodColor(no: number | null | undefined): string {
 export function periodCellStyle(no: number | null | undefined) {
   return { boxShadow: `inset 6px 0 0 ${periodColor(no)}` }
 }
+
+// 審査期限を過ぎた行の背景（薄い赤）
+export function overdueRowStyle(overdue: boolean | null | undefined) {
+  return overdue ? { backgroundColor: '#FEE2E2' } : {}
+}

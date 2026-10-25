@@ -113,7 +113,7 @@
               :class="isActive('reviewer.index') ? 'bg-gray-300 font-semibold' : ''"
             >
               <CheckCircle2 class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">担当申請の審査</span>
+              <span v-if="!collapsed" class="ml-2">審査</span>
             </Link>
             <Link
               :href="route('admin.reviewer.reviewed')"
@@ -121,7 +121,7 @@
               :class="isActive('reviewer.reviewed') ? 'bg-gray-300 font-semibold' : ''"
             >
               <CheckCircle2 class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">担当申請の審査確認</span>
+              <span v-if="!collapsed" class="ml-2">審査済一覧</span>
             </Link>
           </div>
         </transition>
@@ -157,7 +157,7 @@
               :class="isActive('chief.index') ? 'bg-gray-300 font-semibold' : ''"
             >
               <Award class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">更新申請の最終判定</span>
+              <span v-if="!collapsed" class="ml-2">最終承認</span>
             </Link>
           </div>
         </transition>
@@ -171,7 +171,7 @@
         >
           <div class="flex items-center">
             <GraduationCap class="w-5 h-5"/>
-            <span v-if="!collapsed" class="ml-2">アサイン担当者ポータル</span>
+            <span v-if="!collapsed" class="ml-2">アサインポータル</span>
           </div>
           <svg
             v-if="!collapsed"
@@ -193,7 +193,7 @@
               :class="isActive('subleader.index') ? 'bg-gray-300 font-semibold' : ''"
             >
               <GraduationCap class="w-4 h-4 mr-1"/>
-              <span v-if="!collapsed" class="ml-2">審査員アサイン</span>
+              <span v-if="!collapsed" class="ml-2">アサイン</span>
             </Link>
           </div>
         </transition>
