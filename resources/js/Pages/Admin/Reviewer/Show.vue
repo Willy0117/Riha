@@ -63,11 +63,11 @@
                 <p class="font-semibold leading-tight">{{ reviewedCount }} / {{ totalCount }}</p>
               </div>
               <div>
-                <p class="text-xs text-gray-500">合計単位</p>
+                <p class="text-xs text-gray-500">確認済単位数</p>
                 <p class="font-semibold leading-tight">{{ totalPoints }} / {{ requiredPoints }} 単位</p>
               </div>
               <div>
-                <p class="text-xs text-gray-500">学術集会参加</p>
+                <p class="text-xs text-gray-500">腎リハ学会確認済回数</p>
                 <p class="font-semibold leading-tight">{{ conferenceCount }} / {{ requiredConferenceCount }} 回</p>
               </div>
               <div v-if="cycle.reviewer_judgment === 're_review'">

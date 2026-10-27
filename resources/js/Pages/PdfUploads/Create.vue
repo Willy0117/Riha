@@ -601,7 +601,7 @@
 
             <!-- 書類名（session：回数） -->
             <div v-if="selectedRolePointRequiresSession" class="space-y-2">
-              <Label for="session">開催会</Label>
+              <Label for="session">開催回</Label>
               <TextInput
                 id="session"
                 v-model="form.session"
@@ -936,7 +936,7 @@ const deleteUpload = (id) => {
 const uploadStatusLabel = (status) => {
   switch (status) {
     case 'pending':       return 'アップロード済'
-    case 'approved':      return '承認'
+    case 'approved':      return '確認済'
     case 'rejected':      return '却下'
     case 'under_review':  return '審査中'
     case 'out_of_period': return '期間外'

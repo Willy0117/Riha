@@ -133,5 +133,5 @@ const showAdjacentPreview = (direction) => {
 }
 
 const sessionLabel = (session) => (session ? `第${session}回` : '')
-const statusLabel = (status) => ({ pending: '未審査', approved: '承認済み', rejected: '差し戻し' }[status] ?? '-')
+const statusLabel = (status) => ({ pending: '未審査', approved: '確認済', rejected: '却下' }[status] ?? '-')
 </script>

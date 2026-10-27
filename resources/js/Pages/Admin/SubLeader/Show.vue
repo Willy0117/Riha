@@ -38,11 +38,11 @@
             <p class="font-semibold">{{ reviewedCount }} / {{ totalCount }}</p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">{{ t('instructors.total_points') }}</p>
+            <p class="text-xs text-gray-500">確認済単位数</p>
             <p class="font-semibold">{{ cycle.total_points }} 単位</p>
           </div>
           <div>
-            <p class="text-xs text-gray-500">{{ t('instructors.conference_count') }}</p>
+            <p class="text-xs text-gray-500">腎リハ学会確認済回数</p>
             <p class="font-semibold">{{ cycle.conference_count }} 回</p>
           </div>
           <div>
@@ -234,8 +234,8 @@ const appliedAtLabel = computed(() => formatDate(cycle.updated_at))
 const uploadStatusLabel = (status) => {
   const map = {
     pending:  '未審査',
-    approved: '承認済み',
-    rejected: '差し戻し',
+    approved: '確認済',
+    rejected: '却下',
   }
   return map[status] ?? '-'
 }
