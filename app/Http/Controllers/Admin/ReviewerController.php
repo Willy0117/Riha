@@ -290,7 +290,10 @@ class ReviewerController extends Controller
         $this->authorizeForUpload($upload, false);
 
         if (!$upload->file_path || !$this->disk()->exists($upload->file_path)) {
-            abort(404);
+            return response(
+                '<!doctype html><html lang="ja"><meta charset="utf-8"><body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;font-family:sans-serif;color:#6b7280;">ファイルが見つかりません</body></html>',
+                404
+            );
         }
 
         return redirect(
